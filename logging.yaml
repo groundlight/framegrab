@@ -1,0 +1,32 @@
+# documentation https://docs.python.org/3/library/logging.config.html#logging-config-dictschema
+version: 1
+formatters:
+  json:
+    class: jsonformatter.JsonFormatter
+    # attributes documented https://docs.python.org/3.9/library/logging.html#logrecord-attributes
+    format: |-
+      {
+      "name":"name",
+      "level":"levelname",
+      "file":"pathname",
+      "line":"lineno",
+      "function":"funcName",
+      "time":"asctime",
+      "asctime":"asctime",
+      "created":"created",
+      "message":"message"
+      }
+handlers:
+  json:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: json
+    stream: ext://sys.stdout
+loggers:
+  lipsum:
+    level: DEBUG
+    handlers: [json]
+    propagate: false
+root:
+  level: INFO
+  handlers: [json]
