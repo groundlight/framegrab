@@ -1,3 +1,4 @@
+docopt==0.6.2
 groundlight==0.1.7
 jsonformatter==0.3.1
 numpy==1.21.2

@@ -12,4 +12,4 @@ RUN pip install awscli
 RUN aws codeartifact login --region us-west-2 --domain positronix --repository internal --tool pip
 RUN pip install -r requirements.txt
 ADD . /src/
-CMD ["python","streamlight.py"]
+ENTRYPOINT ["python","streamlight.py"]
