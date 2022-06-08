@@ -16,7 +16,7 @@ export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 Then you can build the docker image exposing these envs as build args.
 
 ``` shell
-docker build -t stream:local --build-arg AWS_ACCESS_KEY_ID --build-arg AWS_SECRET_ACCESS .
+docker build -t stream:local --build-arg AWS_ACCESS_KEY_ID --build-arg AWS_SECRET_ACCESS_KEY .
 ```
 
 ## run
