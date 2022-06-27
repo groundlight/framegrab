@@ -15,6 +15,7 @@ options:
 import io
 import logging
 from logging.config  import dictConfig
+import math
 import os
 from queue import Queue
 import time
@@ -24,6 +25,7 @@ import cv2
 import docopt
 import yaml
 
+from grabber import FrameGrabber
 from groundlight import Groundlight
 
 
@@ -44,12 +46,12 @@ def frame_processor(q:Queue, client:Groundlight, detector:str):
        frame = cv2.resize(frame, (480,270))
        logger.debug(f"Resized {frame.shape=}")
        is_success, buffer = cv2.imencode(".jpg", frame)
-       logger.debug(f"buffer size is {len(buffer)}")
        io_buf = io.BytesIO(buffer)
        end = time.time()
        logger.info(f"Prepared the image in {1000*(end-start):.1f}ms")
        # send image query
        image_query = client.submit_image_query(detector_id=detector, image=io_buf)
+       logger.debug(f'{image_query=}')
        start = end
        end = time.time()
        logger.info(f"API time for image {1000*(end-start):.1f}ms")
@@ -81,13 +83,10 @@ def main():
 
     logger.debug(f'creating groundlight client with {ENDPOINT=} and {TOKEN=}')
     gl = Groundlight(endpoint=ENDPOINT, api_token=TOKEN)
-
-    logger.debug(f'initializing video capture: {STREAM=}')
-    cap = cv2.VideoCapture(STREAM, cv2.CAP_ANY)
-
+    grabber = FrameGrabber.create_grabber(stream=STREAM)
     q = Queue()
     workers = []
-    for i in range(round(FPS)):
+    for i in range(math.ceil(FPS)):
        thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR))
        workers.append(thread)
        thread.start()
@@ -95,16 +94,12 @@ def main():
     desired_delay = 1/FPS
     start = time.time()
     while True:
-       if not cap.isOpened():
-           logger.error(f'Cannot open stream {STREAM=}')
-           exit(1)
-       ret, frame = cap.read()
+       frame = grabber.grab()
        now = time.time()
-       logger.info(f'captured a frame after {now-start}.')
+       logger.info(f'captured a new frame after {now-start}.')
        start = now
-       logger.debug(f'read() -> {ret=}, {frame=}')
-       if not ret:
-          logger.warning(f'continuing because {ret=}')
+       if frame is None:
+          logger.warning(f'continuing because {frame=}')
           continue
        q.put(frame)
        now = time.time()
@@ -114,8 +109,6 @@ def main():
           logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {now-start}s. The queue contains {len(q)} frames.')
           actual_delay = 0
        time.sleep(actual_delay)
-
-    cap.release()
 
 
 if __name__ == '__main__':
