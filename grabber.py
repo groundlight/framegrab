@@ -14,7 +14,7 @@ class FrameGrabber(metaclass=ABCMeta):
     def create_grabber(stream=None):
         if type(stream) == int:
             return DeviceFrameGrabber(stream=stream)
-        elif type(stream) == str and stream[:7] == 'rtsp://':
+        elif type(stream) == str and stream[:4] == 'rtsp':
             logger.debug(f'found rtsp stream {stream=}')
             return RTSPFrameGrabber(stream=stream)
         else:
