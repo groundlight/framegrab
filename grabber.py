@@ -5,6 +5,8 @@ import time
 
 import cv2
 
+import pafy
+
 logger = logging.getLogger('groundlight.stream')
 
 
@@ -17,6 +19,9 @@ class FrameGrabber(metaclass=ABCMeta):
         elif type(stream) == str and stream[:4] == 'rtsp':
             logger.debug(f'found rtsp stream {stream=}')
             return RTSPFrameGrabber(stream=stream)
+        elif type(stream) == str and stream.find("youtube.com") > 0:
+            logger.debug(f'found youtube stream {stream=}')
+            return YouTubeFrameGrabber(stream=stream)
         else:
             raise ValueError(f'cannot create a frame grabber from {stream=}')
 
@@ -58,7 +63,6 @@ class DeviceFrameGrabber(FrameGrabber):
         logger.info(f'read the frame in {now-start}s.')
         return frame
 
-
 class RTSPFrameGrabber(FrameGrabber):
     '''grabs the most recent frame from an rtsp stream. The RTSP capture
     object has a non-configurable built-in buffer, so just calling
@@ -96,3 +100,36 @@ class RTSPFrameGrabber(FrameGrabber):
         while True:
             with self.lock:
                 ret = self.capture.grab() # just grab and don't decode
+
+
+class YouTubeFrameGrabber(FrameGrabber):
+    '''grabs the most recent frame from an YouTube stream. To avoid extraneous bandwidth
+    this class tears down the stream between each frame grab.  maximum framerate
+    is likely around 0.5fps in most cases.
+    '''
+
+    def __init__(self, stream=None):
+        self.lock = Lock()
+        self.stream = stream
+        self.video = pafy.new(self.stream)
+        self.best_video = self.video.getbest(preftype="mp4")
+        self.capture = cv2.VideoCapture(self.best_video.url)
+        logger.debug(f'initialized video capture with backend={self.capture.getBackendName()}')
+        if not self.capture.isOpened():
+            raise ValueError(f'could not initially open {self.stream=}')
+        self.capture.release()
+
+
+    def grab(self):
+        start = time.time()
+        with self.lock:
+            logger.debug(f'grabbed lock to read frame from buffer')
+            self.capture = cv2.VideoCapture(self.best_video.url)
+            ret, frame = self.capture.read() # grab and decode since we want this frame
+            if not ret:
+                logger.error(f'could not read frame from {capture=}')
+            now = time.time()
+            logger.info(f'read the frame in {now-start}s.')
+            self.capture.release()
+            return frame
+

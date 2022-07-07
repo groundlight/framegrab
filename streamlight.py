@@ -93,22 +93,27 @@ def main():
 
     desired_delay = 1/FPS
     start = time.time()
-    while True:
-       frame = grabber.grab()
-       now = time.time()
-       logger.info(f'captured a new frame after {now-start}.')
-       start = now
-       if frame is None:
-          logger.warning(f'continuing because {frame=}')
-          continue
-       q.put(frame)
-       now = time.time()
-       actual_delay = desired_delay - (now-start)
-       logger.debug(f'waiting for {actual_delay=} to capture the next frame.')
-       if actual_delay < 0:
-          logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {now-start}s. The queue contains {len(q)} frames.')
-          actual_delay = 0
-       time.sleep(actual_delay)
+    
+    try:
+      while True:
+         frame = grabber.grab()
+         now = time.time()
+         logger.info(f'captured a new frame after {now-start}.')
+         start = now
+         if frame is None:
+            logger.warning(f'continuing because {frame=}')
+            continue
+         q.put(frame)
+         now = time.time()
+         actual_delay = desired_delay - (now-start)
+         logger.debug(f'waiting for {actual_delay=} to capture the next frame.')
+         if actual_delay < 0:
+            logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {now-start}s. The queue contains {len(q)} frames.')
+            actual_delay = 0
+         time.sleep(actual_delay)
+    except KeyboardInterrupt:
+      print("exiting with KeyboardInterrupt.  you will probably have to hit ctrl-c again to kill the worker threads")
+      quit()
 
 
 if __name__ == '__main__':
