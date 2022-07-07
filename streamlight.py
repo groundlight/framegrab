@@ -11,6 +11,7 @@ options:
   -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
   -t, --token=TOKEN      api token to authenticate with the groundlight api
   -v, --verbose
+  --noresize             upload images in full original resolution instead of 480x272
 '''
 import io
 import logging
@@ -32,6 +33,7 @@ from groundlight import Groundlight
 fname = os.path.join(os.path.dirname(__file__), 'logging.yaml')
 dictConfig(yaml.safe_load(open(fname, 'r')))
 logger = logging.getLogger(name='groundlight.stream')
+resizeImages = False
 
 INTEG = "https://device.integ.positronix.ai/device-api"
 
@@ -43,7 +45,8 @@ def frame_processor(q:Queue, client:Groundlight, detector:str):
        # prepare image
        start = time.time()
        logger.debug(f"Original {frame.shape=}")
-       frame = cv2.resize(frame, (480,270))
+       if resizeImages:
+         frame = cv2.resize(frame, (480,270))
        logger.debug(f"Resized {frame.shape=}")
        is_success, buffer = cv2.imencode(".jpg", frame)
        io_buf = io.BytesIO(buffer)
@@ -62,6 +65,9 @@ def main():
     if args.get('--verbose'):
         logger.level = logging.DEBUG
         logger.debug(f'{args=}')
+    
+    if args.get('--noresize'):
+         resizeImages = True
 
     ENDPOINT = args['--endpoint']
     if ENDPOINT == 'integ':
