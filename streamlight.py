@@ -21,6 +21,7 @@ import os
 from queue import Queue
 import time
 from threading import Thread
+from xmlrpc.client import Boolean
 
 import cv2
 import docopt
@@ -32,20 +33,19 @@ from groundlight import Groundlight
 
 fname = os.path.join(os.path.dirname(__file__), 'logging.yaml')
 dictConfig(yaml.safe_load(open(fname, 'r')))
-logger = logging.getLogger(name='groundlight.stream')
-resize_images = True
+logger = logging.getLogger(name='groundlight.stream')\
 
 INTEG = "https://device.integ.positronix.ai/device-api"
 
 
-def frame_processor(q:Queue, client:Groundlight, detector:str):
+def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool):
     logger.debug(f'frame_processor({q=}, {client=}, {detector=})')
     while True:
        frame = q.get() # locks
        # prepare image
        start = time.time()
        logger.debug(f"Original {frame.shape=}")
-       if resize_images:
+       if resize:
          frame = cv2.resize(frame, (480,270))
        logger.debug(f"Resized {frame.shape=}")
        is_success, buffer = cv2.imencode(".jpg", frame)
@@ -67,8 +67,9 @@ def main():
         logger.debug(f'{args=}')
     
     if args.get('--noresize'):
-         global resize_images
-         resize_images = False
+        resize_images = False
+    else:
+        resize_images = True 
 
     ENDPOINT = args['--endpoint']
     if ENDPOINT == 'integ':
@@ -94,7 +95,7 @@ def main():
     q = Queue()
     workers = []
     for i in range(math.ceil(FPS)):
-       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR))
+       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR, resize=resize_images))
        workers.append(thread)
        thread.start()
 
