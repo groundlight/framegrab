@@ -4,7 +4,6 @@ from threading import Thread, Lock
 import time
 
 import cv2
-
 import pafy
 
 logger = logging.getLogger('groundlight.stream')
@@ -109,7 +108,6 @@ class YouTubeFrameGrabber(FrameGrabber):
     '''
 
     def __init__(self, stream=None):
-        self.lock = Lock()
         self.stream = stream
         self.video = pafy.new(self.stream)
         self.best_video = self.video.getbest(preftype="mp4")
@@ -122,14 +120,12 @@ class YouTubeFrameGrabber(FrameGrabber):
 
     def grab(self):
         start = time.time()
-        with self.lock:
-            logger.debug(f'grabbed lock to read frame from buffer')
-            self.capture = cv2.VideoCapture(self.best_video.url)
-            ret, frame = self.capture.read() # grab and decode since we want this frame
-            if not ret:
-                logger.error(f'could not read frame from {capture=}')
-            now = time.time()
-            logger.info(f'read the frame in {now-start}s.')
-            self.capture.release()
-            return frame
+        self.capture = cv2.VideoCapture(self.best_video.url)
+        ret, frame = self.capture.read() # grab and decode since we want this frame
+        if not ret:
+            logger.error(f'could not read frame from {capture=}')
+        now = time.time()
+        logger.info(f'read the frame in {now-start}s.')
+        self.capture.release()
+        return frame
 

@@ -33,7 +33,7 @@ from groundlight import Groundlight
 fname = os.path.join(os.path.dirname(__file__), 'logging.yaml')
 dictConfig(yaml.safe_load(open(fname, 'r')))
 logger = logging.getLogger(name='groundlight.stream')
-resizeImages = False
+resize_images = True
 
 INTEG = "https://device.integ.positronix.ai/device-api"
 
@@ -45,7 +45,7 @@ def frame_processor(q:Queue, client:Groundlight, detector:str):
        # prepare image
        start = time.time()
        logger.debug(f"Original {frame.shape=}")
-       if resizeImages:
+       if resize_images:
          frame = cv2.resize(frame, (480,270))
        logger.debug(f"Resized {frame.shape=}")
        is_success, buffer = cv2.imencode(".jpg", frame)
@@ -67,7 +67,8 @@ def main():
         logger.debug(f'{args=}')
     
     if args.get('--noresize'):
-         resizeImages = True
+         global resize_images
+         resize_images = False
 
     ENDPOINT = args['--endpoint']
     if ENDPOINT == 'integ':
@@ -118,7 +119,9 @@ def main():
             actual_delay = 0
          time.sleep(actual_delay)
     except KeyboardInterrupt:
-      print("exiting with KeyboardInterrupt.  you will probably have to hit ctrl-c again to kill the worker threads")
+      logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c again to kill the worker threads")
+      for thread in workers:
+         thread.join(timeout=1)
       quit()
 
 
