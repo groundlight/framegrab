@@ -11,6 +11,7 @@ options:
   -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
   -t, --token=TOKEN      api token to authenticate with the groundlight api
   -v, --verbose
+  --noresize             upload images in full original resolution instead of 480x272
 '''
 import io
 import logging
@@ -20,6 +21,7 @@ import os
 from queue import Queue
 import time
 from threading import Thread
+from xmlrpc.client import Boolean
 
 import cv2
 import docopt
@@ -31,19 +33,20 @@ from groundlight import Groundlight
 
 fname = os.path.join(os.path.dirname(__file__), 'logging.yaml')
 dictConfig(yaml.safe_load(open(fname, 'r')))
-logger = logging.getLogger(name='groundlight.stream')
+logger = logging.getLogger(name='groundlight.stream')\
 
 INTEG = "https://device.integ.positronix.ai/device-api"
 
 
-def frame_processor(q:Queue, client:Groundlight, detector:str):
+def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool):
     logger.debug(f'frame_processor({q=}, {client=}, {detector=})')
     while True:
        frame = q.get() # locks
        # prepare image
        start = time.time()
        logger.debug(f"Original {frame.shape=}")
-       frame = cv2.resize(frame, (480,270))
+       if resize:
+         frame = cv2.resize(frame, (480,270))
        logger.debug(f"Resized {frame.shape=}")
        is_success, buffer = cv2.imencode(".jpg", frame)
        io_buf = io.BytesIO(buffer)
@@ -62,6 +65,11 @@ def main():
     if args.get('--verbose'):
         logger.level = logging.DEBUG
         logger.debug(f'{args=}')
+    
+    if args.get('--noresize'):
+        resize_images = False
+    else:
+        resize_images = True 
 
     ENDPOINT = args['--endpoint']
     if ENDPOINT == 'integ':
@@ -87,28 +95,35 @@ def main():
     q = Queue()
     workers = []
     for i in range(math.ceil(FPS)):
-       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR))
+       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR, resize=resize_images))
        workers.append(thread)
        thread.start()
 
     desired_delay = 1/FPS
     start = time.time()
-    while True:
-       frame = grabber.grab()
-       now = time.time()
-       logger.info(f'captured a new frame after {now-start}.')
-       start = now
-       if frame is None:
-          logger.warning(f'continuing because {frame=}')
-          continue
-       q.put(frame)
-       now = time.time()
-       actual_delay = desired_delay - (now-start)
-       logger.debug(f'waiting for {actual_delay=} to capture the next frame.')
-       if actual_delay < 0:
-          logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {now-start}s. The queue contains {len(q)} frames.')
-          actual_delay = 0
-       time.sleep(actual_delay)
+    
+    try:
+      while True:
+         frame = grabber.grab()
+         now = time.time()
+         logger.info(f'captured a new frame after {now-start}.')
+         start = now
+         if frame is None:
+            logger.warning(f'continuing because {frame=}')
+            continue
+         q.put(frame)
+         now = time.time()
+         actual_delay = desired_delay - (now-start)
+         logger.debug(f'waiting for {actual_delay=} to capture the next frame.')
+         if actual_delay < 0:
+            logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {now-start}s. The queue contains {len(q)} frames.')
+            actual_delay = 0
+         time.sleep(actual_delay)
+    except KeyboardInterrupt:
+      logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c again to kill the worker threads")
+      for thread in workers:
+         thread.join(timeout=1)
+      quit()
 
 
 if __name__ == '__main__':
