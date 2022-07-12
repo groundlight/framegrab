@@ -3,6 +3,7 @@ import logging
 import re
 from threading import Thread, Lock
 import time
+from pathlib import Path
 
 import cv2
 import pafy
@@ -22,7 +23,7 @@ class FrameGrabber(metaclass=ABCMeta):
         elif type(stream) == str and stream.find("youtube.com") > 0:
             logger.debug(f'found youtube stream {stream=}')
             return YouTubeFrameGrabber(stream=stream)
-        elif type(stream) == str and stream.find(".") >0:
+        elif type(stream) == str and Path(stream).is_file():
             logger.debug(f'found filename stream {stream=}')
             return FileStreamFrameGrabber(stream=stream, **kwargs)
         else:
@@ -50,7 +51,8 @@ class FileStreamFrameGrabber(FrameGrabber):
             raise e
 
     def grab(self):
-        '''consistent with existing behavior based on VideoCapture.read()
+        '''decimates stream to self.fps_target, 0 fps to use full original stream. 
+        consistent with existing behavior based on VideoCapture.read()
         which may return None when it cannot read a frame.
         '''
         start = time.time()
@@ -61,6 +63,8 @@ class FileStreamFrameGrabber(FrameGrabber):
                 ret, frame = self.capture.read()
             self.remainder = round(drop_frames - round(drop_frames), 2)
             logger.debug(f'dropped {round(drop_frames)} frames to meet {self.fps_target} FPS target from {self.fps_source} FPS source (off by {self.remainder} frames)')
+        else:
+            logger.debug(f'frame dropping disabled for {self.fps_target} FPS target from {self.fps_source} FPS source')
 
         ret, frame = self.capture.read()
         if not ret:
