@@ -91,7 +91,7 @@ def main():
 
     logger.debug(f'creating groundlight client with {ENDPOINT=} and {TOKEN=}')
     gl = Groundlight(endpoint=ENDPOINT, api_token=TOKEN)
-    grabber = FrameGrabber.create_grabber(stream=STREAM)
+    grabber = FrameGrabber.create_grabber(stream=STREAM, fps_target=FPS)
     q = Queue()
     workers = []
     for i in range(math.ceil(FPS)):
