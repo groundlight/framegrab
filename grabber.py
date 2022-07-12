@@ -1,7 +1,9 @@
 from abc import ABCMeta, abstractmethod
 import logging
+import re
 from threading import Thread, Lock
 import time
+from pathlib import Path
 
 import cv2
 import pafy
@@ -12,7 +14,7 @@ logger = logging.getLogger('groundlight.stream')
 class FrameGrabber(metaclass=ABCMeta):
 
     @staticmethod
-    def create_grabber(stream=None):
+    def create_grabber(stream=None, **kwargs):
         if type(stream) == int:
             return DeviceFrameGrabber(stream=stream)
         elif type(stream) == str and stream[:4] == 'rtsp':
@@ -21,6 +23,9 @@ class FrameGrabber(metaclass=ABCMeta):
         elif type(stream) == str and stream.find("youtube.com") > 0:
             logger.debug(f'found youtube stream {stream=}')
             return YouTubeFrameGrabber(stream=stream)
+        elif type(stream) == str and Path(stream).is_file():
+            logger.debug(f'found filename stream {stream=}')
+            return FileStreamFrameGrabber(stream=stream, **kwargs)
         else:
             raise ValueError(f'cannot create a frame grabber from {stream=}')
 
@@ -29,6 +34,44 @@ class FrameGrabber(metaclass=ABCMeta):
     def grab():
         pass
 
+class FileStreamFrameGrabber(FrameGrabber):
+
+    def __init__(self, stream=None, fps_target = 0):
+        '''stream must be an filename'''
+        try:
+            self.capture = cv2.VideoCapture(stream)
+            logger.debug(f'initialized video capture with backend={self.capture.getBackendName()}')
+            ret, frame = self.capture.read()
+            self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
+            self.fps_target = fps_target
+            logger.debug(f'source FPS : {self.fps_source=}  / target FPS : {self.fps_target}')
+            self.remainder = 0.0
+        except Exception as e:
+            logger.error(f'could not initialize DeviceFrameGrabber: {stream=} filename is invalid or read error')
+            raise e
+
+    def grab(self):
+        '''decimates stream to self.fps_target, 0 fps to use full original stream. 
+        consistent with existing behavior based on VideoCapture.read()
+        which may return None when it cannot read a frame.
+        '''
+        start = time.time()
+        
+        if self.fps_target > 0 and self.fps_target < self.fps_source :
+            drop_frames = (self.fps_source / self.fps_target) - 1 + self.remainder
+            for i in range(round(drop_frames)):
+                ret, frame = self.capture.read()
+            self.remainder = round(drop_frames - round(drop_frames), 2)
+            logger.debug(f'dropped {round(drop_frames)} frames to meet {self.fps_target} FPS target from {self.fps_source} FPS source (off by {self.remainder} frames)')
+        else:
+            logger.debug(f'frame dropping disabled for {self.fps_target} FPS target from {self.fps_source} FPS source')
+
+        ret, frame = self.capture.read()
+        if not ret:
+            raise RuntimeWarning('could not read frame from {self.capture=}.  possible end of file.')
+        now = time.time()
+        logger.info(f'read the frame in {now-start}s.')
+        return frame
 
 class DeviceFrameGrabber(FrameGrabber):
     '''Grabs frames directly from a device via a VideoCapture object that

@@ -6,7 +6,7 @@ usage: streamlight [options] -t TOKEN -d DETECTOR
 options:
   -d, --detector=ID      detector id to which the image queries are sent
   -e, --endpoint=URL     api endpoint [default: https://device.positronix.ai/device-api]
-  -f, --fps=FPS          number of frames to capture per second. [default: 5]
+  -f, --fps=FPS          number of frames to capture per second. 0 to use maximum rate possible. [default: 5]
   -h, --help             show this message.
   -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
   -t, --token=TOKEN      api token to authenticate with the groundlight api
@@ -91,15 +91,25 @@ def main():
 
     logger.debug(f'creating groundlight client with {ENDPOINT=} and {TOKEN=}')
     gl = Groundlight(endpoint=ENDPOINT, api_token=TOKEN)
-    grabber = FrameGrabber.create_grabber(stream=STREAM)
+    grabber = FrameGrabber.create_grabber(stream=STREAM, fps_target=FPS)
     q = Queue()
     workers = []
-    for i in range(math.ceil(FPS)):
+    '''create worker threads one per requested FPS.  
+    use max of 10 if FPS is zero (max rate). there may be a better number to use'''
+    if FPS == 0:
+       worker_thread_count = 10
+    else:
+       worker_thread_count = math.ceil(FPS)
+    for i in range(worker_thread_count):
        thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR, resize=resize_images))
        workers.append(thread)
        thread.start()
 
-    desired_delay = 1/FPS
+    try:
+       desired_delay = 1/FPS
+    except ZeroDivisionError:
+       desired_delay = 1
+       logger.debug(f'FPS set to 0.  Using maximum stream rate')
     start = time.time()
     
     try:
@@ -113,14 +123,16 @@ def main():
             continue
          q.put(frame)
          now = time.time()
-         actual_delay = desired_delay - (now-start)
-         logger.debug(f'waiting for {actual_delay=} to capture the next frame.')
-         if actual_delay < 0:
-            logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {now-start}s. The queue contains {len(q)} frames.')
-            actual_delay = 0
-         time.sleep(actual_delay)
+         if desired_delay > 0:
+            actual_delay = desired_delay - (now-start)
+            logger.debug(f'waiting for {actual_delay=} to capture the next frame.')
+            if actual_delay < 0:
+               logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {now-start}s. The queue contains {len(q)} frames.')
+               actual_delay = 0
+            time.sleep(actual_delay)
+
     except KeyboardInterrupt:
-      logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c again to kill the worker threads")
+      logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c several times to kill the worker threads")
       for thread in workers:
          thread.join(timeout=1)
       quit()
