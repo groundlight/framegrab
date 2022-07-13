@@ -127,7 +127,7 @@ def main():
             actual_delay = desired_delay - (now-start)
             logger.debug(f'waiting for {actual_delay=} to capture the next frame.')
             if actual_delay < 0:
-               logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {now-start}s. The queue contains {len(q)} frames.')
+               logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {now-start}s. The queue contains {q.qsize()} frames.')
                actual_delay = 0
             time.sleep(actual_delay)
 

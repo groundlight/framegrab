@@ -51,12 +51,12 @@ class FileStreamFrameGrabber(FrameGrabber):
             raise e
 
     def grab(self):
-        '''decimates stream to self.fps_target, 0 fps to use full original stream. 
+        '''decimates stream to self.fps_target, 0 fps to use full original stream.
         consistent with existing behavior based on VideoCapture.read()
         which may return None when it cannot read a frame.
         '''
         start = time.time()
-        
+
         if self.fps_target > 0 and self.fps_target < self.fps_source :
             drop_frames = (self.fps_source / self.fps_target) - 1 + self.remainder
             for i in range(round(drop_frames)):
@@ -131,7 +131,7 @@ class RTSPFrameGrabber(FrameGrabber):
             logger.debug(f'grabbed lock to read frame from buffer')
             ret, frame = self.capture.read() # grab and decode since we want this frame
             if not ret:
-                logger.error(f'could not read frame from {capture=}')
+                logger.error(f'could not read frame from {self.capture=}')
             now = time.time()
             logger.info(f'read the frame in {now-start}s.')
             return frame
@@ -166,9 +166,8 @@ class YouTubeFrameGrabber(FrameGrabber):
         self.capture = cv2.VideoCapture(self.best_video.url)
         ret, frame = self.capture.read() # grab and decode since we want this frame
         if not ret:
-            logger.error(f'could not read frame from {capture=}')
+            logger.error(f'could not read frame from {self.capture=}')
         now = time.time()
         logger.info(f'read the frame in {now-start}s.')
         self.capture.release()
         return frame
-
