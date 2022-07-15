@@ -1,4 +1,4 @@
-'''Captures frames from a real-time video stream and sends frames as
+'''Captures frames from a video device, file or stream and sends frames as
 image queries to a configured detector using the Groundlight API
 
 usage: streamlight [options] -t TOKEN -d DETECTOR
@@ -10,7 +10,7 @@ options:
   -h, --help             show this message.
   -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
   -t, --token=TOKEN      api token to authenticate with the groundlight api
-  -v, --verbose
+  -v, --verbose          enable debug logs
   --noresize             upload images in full original resolution instead of 480x272
 '''
 import io
@@ -33,9 +33,7 @@ from groundlight import Groundlight
 
 fname = os.path.join(os.path.dirname(__file__), 'logging.yaml')
 dictConfig(yaml.safe_load(open(fname, 'r')))
-logger = logging.getLogger(name='groundlight.stream')\
-
-INTEG = "https://device.integ.positronix.ai/device-api"
+logger = logging.getLogger(name='groundlight.stream')
 
 
 def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool):
@@ -65,15 +63,13 @@ def main():
     if args.get('--verbose'):
         logger.level = logging.DEBUG
         logger.debug(f'{args=}')
-    
+
     if args.get('--noresize'):
         resize_images = False
     else:
-        resize_images = True 
+        resize_images = True
 
     ENDPOINT = args['--endpoint']
-    if ENDPOINT == 'integ':
-        ENDPOINT = INTEG
     TOKEN = args['--token']
     DETECTOR = args['--detector']
     STREAM = args['--stream']
@@ -94,8 +90,6 @@ def main():
     grabber = FrameGrabber.create_grabber(stream=STREAM, fps_target=FPS)
     q = Queue()
     workers = []
-    '''create worker threads one per requested FPS.  
-    use max of 10 if FPS is zero (max rate). there may be a better number to use'''
     if FPS == 0:
        worker_thread_count = 10
     else:
@@ -111,7 +105,7 @@ def main():
        desired_delay = 1
        logger.debug(f'FPS set to 0.  Using maximum stream rate')
     start = time.time()
-    
+
     try:
       while True:
          frame = grabber.grab()

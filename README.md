@@ -14,7 +14,7 @@ Now you can run it
 ``` shell
 docker run stream:local -h
 
-Captures frames from a real-time video stream and sends frames as
+Captures frames from a video device, file or stream and sends frames as
 image queries to a configured detector using the Groundlight API
 
 usage: streamlight [options] -t TOKEN -d DETECTOR
@@ -22,11 +22,12 @@ usage: streamlight [options] -t TOKEN -d DETECTOR
 options:
   -d, --detector=ID      detector id to which the image queries are sent
   -e, --endpoint=URL     api endpoint [default: https://device.positronix.ai/device-api]
-  -f, --framerate=FPS    number of frames to capture per second.
+  -f, --fps=FPS          number of frames to capture per second. 0 to use maximum rate possible. [default: 5]
   -h, --help             show this message.
   -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
   -t, --token=TOKEN      api token to authenticate with the groundlight api
-  -v, --verbose
+  -v, --verbose          enable debug logs
+  --noresize             upload images in full original resolution instead of 480x272
 ```
 and pass an actual token and detector
 ``` shell
