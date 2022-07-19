@@ -5,7 +5,7 @@ from threading import Thread, Lock
 import time
 from pathlib import Path
 import urllib
-import requests
+#import requests
 
 import cv2
 import pafy
