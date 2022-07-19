@@ -4,9 +4,12 @@ import re
 from threading import Thread, Lock
 import time
 from pathlib import Path
+import urllib
+import requests
 
 import cv2
 import pafy
+import numpy as np
 
 logger = logging.getLogger('groundlight.stream')
 
@@ -15,6 +18,7 @@ class FrameGrabber(metaclass=ABCMeta):
 
     @staticmethod
     def create_grabber(stream=None, **kwargs):
+        logger.debug(f'Input {stream=}')
         if type(stream) == int:
             return DeviceFrameGrabber(stream=stream)
         elif type(stream) == str and stream[:4] == 'rtsp':
@@ -26,6 +30,9 @@ class FrameGrabber(metaclass=ABCMeta):
         elif type(stream) == str and Path(stream).is_file():
             logger.debug(f'found filename stream {stream=}')
             return FileStreamFrameGrabber(stream=stream, **kwargs)
+        elif type(stream) == str and stream[:4] == 'http':
+            logger.debug(f'found image url {stream=}')
+            return SingleRefreshedImageUrlGrabber(url=stream, **kwargs)
         else:
             raise ValueError(f'cannot create a frame grabber from {stream=}')
 
@@ -170,4 +177,33 @@ class YouTubeFrameGrabber(FrameGrabber):
         now = time.time()
         logger.info(f'read the frame in {now-start}s.')
         self.capture.release()
+        return frame
+
+
+class SingleRefreshedImageUrlGrabber(FrameGrabber):
+    ''' grabs the current image at a single URL. 
+    max frame rate should be set by the user as a function of the URL refresh, 
+    default = 0.01 (1 frame every 100 seconds)
+    '''
+
+    def __init__(self, url=None, fps_target=0.01, **kwargs):
+        self.url = url
+        self.fps_target = fps_target
+
+
+    def grab(self):
+        start = time.time()
+        try:
+            req = urllib.request.urlopen(self.url)
+            #req = requests.get(self.url)
+            response = req.read()
+            print(response)
+            arr = np.asarray(bytearray(response), dtype=np.uint8)
+            frame = cv2.imdecode(arr, -1) # 'Load it as it is'
+        except Exception as e:
+            logger.error(f'could not grab frame from {self.url}: {str(e)}')
+            frame = None
+        now = time.time()
+        logger.info(f'read the url image into frame in {now-start}s.')
+
         return frame
