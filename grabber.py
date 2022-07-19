@@ -5,7 +5,6 @@ from threading import Thread, Lock
 import time
 from pathlib import Path
 import urllib
-#import requests
 
 import cv2
 import pafy
@@ -189,21 +188,28 @@ class SingleRefreshedImageUrlGrabber(FrameGrabber):
     def __init__(self, url=None, fps_target=0.01, **kwargs):
         self.url = url
         self.fps_target = fps_target
-
+        self.wait_time = 1.0/self.fps_target
+        logger.info(f'{self.wait_time=}')
+        self.last_grab_time = time.time()
 
     def grab(self):
         start = time.time()
+        elapsed = start - self.last_grab_time
+        if elapsed < self.wait_time:
+            wait_time = self.wait_time - elapsed
+            logger.info(f'sleeping for {wait_time}s targeting {self.fps_target}fps')
+            time.sleep(wait_time)
         try:
             req = urllib.request.urlopen(self.url)
-            #req = requests.get(self.url)
             response = req.read()
-            print(response)
             arr = np.asarray(bytearray(response), dtype=np.uint8)
             frame = cv2.imdecode(arr, -1) # 'Load it as it is'
         except Exception as e:
             logger.error(f'could not grab frame from {self.url}: {str(e)}')
             frame = None
         now = time.time()
-        logger.info(f'read the url image into frame in {now-start}s.')
+        elapsed = now - start
+        logger.info(f'read the url image into frame in {elapsed}s')
+        self.last_grab_time = now
 
         return frame
