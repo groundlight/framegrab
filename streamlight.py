@@ -5,7 +5,7 @@ usage: streamlight [options] -t TOKEN -d DETECTOR
 
 options:
   -d, --detector=ID      detector id to which the image queries are sent
-  -e, --endpoint=URL     api endpoint [default: https://device.positronix.ai/device-api]
+  -e, --endpoint=URL     api endpoint [default: https://api.groundlight.ai/device-api]
   -f, --fps=FPS          number of frames to capture per second. 0 to use maximum rate possible. [default: 5]
   -h, --help             show this message.
   -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
