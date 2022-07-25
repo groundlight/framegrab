@@ -17,7 +17,7 @@ docker run stream:local -h
 Captures frames from a video device, file or stream and sends frames as
 image queries to a configured detector using the Groundlight API
 
-usage: docker run stream:local [options] -t TOKEN -d DETECTOR
+usage: streamlight [options] -t TOKEN -d DETECTOR
 
 options:
   -d, --detector=ID      detector id to which the image queries are sent
