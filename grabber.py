@@ -31,7 +31,7 @@ class FrameGrabber(metaclass=ABCMeta):
             return FileStreamFrameGrabber(stream=stream, **kwargs)
         elif type(stream) == str and stream[:4] == 'http':
             logger.debug(f'found image url {stream=}')
-            return SingleRefreshedImageUrlGrabber(url=stream, **kwargs)
+            return ImageURLFrameGrabber(url=stream, **kwargs)
         else:
             raise ValueError(f'cannot create a frame grabber from {stream=}')
 
@@ -179,26 +179,17 @@ class YouTubeFrameGrabber(FrameGrabber):
         return frame
 
 
-class SingleRefreshedImageUrlGrabber(FrameGrabber):
+class ImageURLFrameGrabber(FrameGrabber):
     ''' grabs the current image at a single URL. 
-    max frame rate should be set by the user as a function of the URL refresh, 
-    default = 0.01 (1 frame every 100 seconds)
+    NOTE: if image is expected to be refreshed or change with a particular frequency, 
+    it is up to the user of the class to call the `grab` method with that frequency
     '''
 
-    def __init__(self, url=None, fps_target=0.01, **kwargs):
+    def __init__(self, url=None, **kwargs):
         self.url = url
-        self.fps_target = fps_target
-        self.wait_time = 1.0/self.fps_target
-        logger.info(f'{self.wait_time=}')
-        self.last_grab_time = time.time()
 
     def grab(self):
         start = time.time()
-        elapsed = start - self.last_grab_time
-        if elapsed < self.wait_time:
-            wait_time = self.wait_time - elapsed
-            logger.info(f'sleeping for {wait_time}s targeting {self.fps_target}fps')
-            time.sleep(wait_time)
         try:
             req = urllib.request.urlopen(self.url)
             response = req.read()
@@ -209,7 +200,6 @@ class SingleRefreshedImageUrlGrabber(FrameGrabber):
             frame = None
         now = time.time()
         elapsed = now - start
-        logger.info(f'read the url image into frame in {elapsed}s')
-        self.last_grab_time = now
+        logger.info(f'read image from URL {self.url} into frame in {elapsed}s')
 
         return frame
