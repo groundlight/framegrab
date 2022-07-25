@@ -4,9 +4,11 @@ import re
 from threading import Thread, Lock
 import time
 from pathlib import Path
+import urllib
 
 import cv2
 import pafy
+import numpy as np
 
 logger = logging.getLogger('groundlight.stream')
 
@@ -15,6 +17,7 @@ class FrameGrabber(metaclass=ABCMeta):
 
     @staticmethod
     def create_grabber(stream=None, **kwargs):
+        logger.debug(f'Input {stream=}')
         if type(stream) == int:
             return DeviceFrameGrabber(stream=stream)
         elif type(stream) == str and stream[:4] == 'rtsp':
@@ -26,6 +29,9 @@ class FrameGrabber(metaclass=ABCMeta):
         elif type(stream) == str and Path(stream).is_file():
             logger.debug(f'found filename stream {stream=}')
             return FileStreamFrameGrabber(stream=stream, **kwargs)
+        elif type(stream) == str and stream[:4] == 'http':
+            logger.debug(f'found image url {stream=}')
+            return ImageURLFrameGrabber(url=stream, **kwargs)
         else:
             raise ValueError(f'cannot create a frame grabber from {stream=}')
 
@@ -170,4 +176,30 @@ class YouTubeFrameGrabber(FrameGrabber):
         now = time.time()
         logger.info(f'read the frame in {now-start}s.')
         self.capture.release()
+        return frame
+
+
+class ImageURLFrameGrabber(FrameGrabber):
+    ''' grabs the current image at a single URL. 
+    NOTE: if image is expected to be refreshed or change with a particular frequency, 
+    it is up to the user of the class to call the `grab` method with that frequency
+    '''
+
+    def __init__(self, url=None, **kwargs):
+        self.url = url
+
+    def grab(self):
+        start = time.time()
+        try:
+            req = urllib.request.urlopen(self.url)
+            response = req.read()
+            arr = np.asarray(bytearray(response), dtype=np.uint8)
+            frame = cv2.imdecode(arr, -1) # 'Load it as it is'
+        except Exception as e:
+            logger.error(f'could not grab frame from {self.url}: {str(e)}')
+            frame = None
+        now = time.time()
+        elapsed = now - start
+        logger.info(f'read image from URL {self.url} into frame in {elapsed}s')
+
         return frame
