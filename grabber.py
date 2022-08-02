@@ -166,13 +166,26 @@ class YouTubeFrameGrabber(FrameGrabber):
             raise ValueError(f'could not initially open {self.stream=}')
         self.capture.release()
 
+    def reset_stream(self):
+        self.video = pafy.new(self.stream)
+        self.best_video = self.video.getbest(preftype="mp4")
+        self.capture = cv2.VideoCapture(self.best_video.url)
+        logger.debug(f'initialized video capture with backend={self.capture.getBackendName()}')
+        if not self.capture.isOpened():
+            raise ValueError(f'could not initially open {self.stream=}')
+        self.capture.release()
+
 
     def grab(self):
         start = time.time()
         self.capture = cv2.VideoCapture(self.best_video.url)
         ret, frame = self.capture.read() # grab and decode since we want this frame
         if not ret:
-            logger.error(f'could not read frame from {self.capture=}')
+            logger.error(f'could not read frame from {self.capture=}. attempting to reset stream')
+            self.reset_stream()
+            self.capture = cv2.VideoCapture(self.best_video.url)
+            if not ret:
+                logger.error(f'failed to effectively reset stream {self.stream=} / {self.best_video.url=}')
         now = time.time()
         logger.info(f'read the frame in {now-start}s.')
         self.capture.release()
