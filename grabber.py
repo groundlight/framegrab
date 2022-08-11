@@ -184,6 +184,7 @@ class YouTubeFrameGrabber(FrameGrabber):
             logger.error(f'could not read frame from {self.capture=}. attempting to reset stream')
             self.reset_stream()
             self.capture = cv2.VideoCapture(self.best_video.url)
+            ret, frame = self.capture.read()
             if not ret:
                 logger.error(f'failed to effectively reset stream {self.stream=} / {self.best_video.url=}')
         now = time.time()
