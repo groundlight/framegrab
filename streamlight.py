@@ -14,12 +14,13 @@ options:
   --noresize             upload images in full original resolution instead of 480x272
   --multithread          use additional threads as necessary to reach target FPS (suggested at > 1 FPS)
 '''
+from asyncio import QueueEmpty
 import io
 import logging
 from logging.config  import dictConfig
 import math
 import os
-from queue import Queue
+from queue import Empty, Queue
 import time
 from threading import Thread
 from xmlrpc.client import Boolean
@@ -44,7 +45,10 @@ class ThreadControl():
       self.exit_all_threads = True
 
 def process_frame(q:Queue, client:Groundlight, detector:str, resize:bool):
-   frame = q.get() # locks
+   try:
+      frame = q.get(timeout=2) # locks
+   except Empty:
+      return
    # prepare image
    start = time.time()
    logger.debug(f"Original {frame.shape=}")
@@ -153,8 +157,7 @@ def main():
         tc.force_exit()
       else:
         logger.info("exiting with KeyboardInterrupt.") 
-
-      os._exit(-1)
+      exit(-1)
 
 if __name__ == '__main__':
     main()
