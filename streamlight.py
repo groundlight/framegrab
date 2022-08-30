@@ -46,7 +46,7 @@ class ThreadControl():
 
 def process_frame(q:Queue, client:Groundlight, detector:str, resize:bool):
    try:
-      frame = q.get(timeout=2) # locks
+      frame = q.get(timeout=1) # locks
    except Empty:
       return
    # prepare image
