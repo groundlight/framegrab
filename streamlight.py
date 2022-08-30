@@ -151,12 +151,10 @@ def main():
       if worker_thread_count > 0:
         logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c several times or wait to end the worker threads")
         tc.force_exit()
-        time.sleep(2)
       else:
         logger.info("exiting with KeyboardInterrupt.") 
 
-      exit(-1)
-      #os.exit(-1)
+      os._exit(-1)
 
 if __name__ == '__main__':
     main()
