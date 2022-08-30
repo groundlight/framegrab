@@ -36,6 +36,13 @@ fname = os.path.join(os.path.dirname(__file__), 'logging.yaml')
 dictConfig(yaml.safe_load(open(fname, 'r')))
 logger = logging.getLogger(name='groundlight.stream')
 
+class ThreadControl():
+   def __init__(self):
+      self.exit_all_threads = False
+   def force_exit(self):
+      logger.debug('Attempting force exit of all threads')
+      self.exit_all_threads = True
+
 def process_frame(q:Queue, client:Groundlight, detector:str, resize:bool):
    frame = q.get() # locks
    # prepare image
@@ -55,9 +62,12 @@ def process_frame(q:Queue, client:Groundlight, detector:str, resize:bool):
    end = time.time()
    logger.info(f"API time for image {1000*(end-start):.1f}ms")
 
-def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool):
+def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool, control:ThreadControl):
     logger.debug(f'frame_processor({q=}, {client=}, {detector=})')
     while True:
+      if control.exit_all_threads:
+         logger.debug('exiting worker thread.')
+         break
       process_frame(q, client, detector, resize)
 
 def main():
@@ -99,10 +109,11 @@ def main():
     gl = Groundlight(endpoint=ENDPOINT, api_token=TOKEN)
     grabber = FrameGrabber.create_grabber(stream=STREAM, fps_target=FPS)
     q = Queue()
+    tc = ThreadControl()
     workers = []
 
     for i in range(worker_thread_count):
-       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR, resize=resize_images))
+       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR, resize=resize_images, control = tc))
        workers.append(thread)
        thread.start()
 
@@ -138,12 +149,14 @@ def main():
 
     except KeyboardInterrupt:
       if worker_thread_count > 0:
-        logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c several times to kill the worker threads")
+        logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c several times or wait to end the worker threads")
+        tc.force_exit()
+        time.sleep(2)
       else:
         logger.info("exiting with KeyboardInterrupt.") 
-        for thread in workers:
-          thread.join(timeout=1)
-      quit()
+
+      exit(-1)
+      #os.exit(-1)
 
 if __name__ == '__main__':
     main()
