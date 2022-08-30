@@ -12,6 +12,7 @@ options:
   -t, --token=TOKEN      api token to authenticate with the groundlight api
   -v, --verbose          enable debug logs
   --noresize             upload images in full original resolution instead of 480x272
+  --multithread          use additional threads as necessary to reach target FPS (suggested at > 1 FPS)
 '''
 import io
 import logging
@@ -35,28 +36,29 @@ fname = os.path.join(os.path.dirname(__file__), 'logging.yaml')
 dictConfig(yaml.safe_load(open(fname, 'r')))
 logger = logging.getLogger(name='groundlight.stream')
 
+def process_frame(q:Queue, client:Groundlight, detector:str, resize:bool):
+   frame = q.get() # locks
+   # prepare image
+   start = time.time()
+   logger.debug(f"Original {frame.shape=}")
+   if resize:
+      frame = cv2.resize(frame, (480,270))
+   logger.debug(f"Resized {frame.shape=}")
+   is_success, buffer = cv2.imencode(".jpg", frame)
+   io_buf = io.BytesIO(buffer)
+   end = time.time()
+   logger.info(f"Prepared the image in {1000*(end-start):.1f}ms")
+   # send image query
+   image_query = client.submit_image_query(detector_id=detector, image=io_buf)
+   logger.debug(f'{image_query=}')
+   start = end
+   end = time.time()
+   logger.info(f"API time for image {1000*(end-start):.1f}ms")
 
 def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool):
     logger.debug(f'frame_processor({q=}, {client=}, {detector=})')
     while True:
-       frame = q.get() # locks
-       # prepare image
-       start = time.time()
-       logger.debug(f"Original {frame.shape=}")
-       if resize:
-         frame = cv2.resize(frame, (480,270))
-       logger.debug(f"Resized {frame.shape=}")
-       is_success, buffer = cv2.imencode(".jpg", frame)
-       io_buf = io.BytesIO(buffer)
-       end = time.time()
-       logger.info(f"Prepared the image in {1000*(end-start):.1f}ms")
-       # send image query
-       image_query = client.submit_image_query(detector_id=detector, image=io_buf)
-       logger.debug(f'{image_query=}')
-       start = end
-       end = time.time()
-       logger.info(f"API time for image {1000*(end-start):.1f}ms")
-
+      process_frame(q, client, detector, resize)
 
 def main():
     args = docopt.docopt(__doc__)
@@ -85,15 +87,20 @@ def main():
        logger.error(f'Invalid argument {FPS=}. Must be a number.')
        exit(-1)
 
+    if args.get('--multithread'):
+       if FPS == 0:
+          worker_thread_count = 10
+       else:
+          worker_thread_count = math.ceil(FPS)
+    else:
+       worker_thread_count = 0
+
     logger.debug(f'creating groundlight client with {ENDPOINT=} and {TOKEN=}')
     gl = Groundlight(endpoint=ENDPOINT, api_token=TOKEN)
     grabber = FrameGrabber.create_grabber(stream=STREAM, fps_target=FPS)
     q = Queue()
     workers = []
-    if FPS == 0:
-       worker_thread_count = 10
-    else:
-       worker_thread_count = math.ceil(FPS)
+
     for i in range(worker_thread_count):
        thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR, resize=resize_images))
        workers.append(thread)
@@ -115,22 +122,28 @@ def main():
          if frame is None:
             logger.warning(f'continuing because {frame=}')
             continue
+
          q.put(frame)
+         if worker_thread_count == 0:
+            process_frame(q=q, client=gl, detector=DETECTOR, resize=resize_images)
+
          now = time.time()
          if desired_delay > 0:
             actual_delay = desired_delay - (now-start)
-            logger.debug(f'waiting for {actual_delay=} to capture the next frame.')
+            logger.debug(f'waiting for {actual_delay=:.3} to capture the next frame.')
             if actual_delay < 0:
-               logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {now-start}s. The queue contains {q.qsize()} frames.')
+               logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {(now-start):.3}s. The queue contains {q.qsize()} frames.')
                actual_delay = 0
             time.sleep(actual_delay)
 
     except KeyboardInterrupt:
-      logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c several times to kill the worker threads")
-      for thread in workers:
-         thread.join(timeout=1)
+      if worker_thread_count > 0:
+        logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c several times to kill the worker threads")
+      else:
+        logger.info("exiting with KeyboardInterrupt.") 
+        for thread in workers:
+          thread.join(timeout=1)
       quit()
-
 
 if __name__ == '__main__':
     main()
