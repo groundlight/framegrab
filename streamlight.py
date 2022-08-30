@@ -4,19 +4,23 @@ image queries to a configured detector using the Groundlight API
 usage: streamlight [options] -t TOKEN -d DETECTOR
 
 options:
-  -d, --detector=ID      detector id to which the image queries are sent
-  -e, --endpoint=URL     api endpoint [default: https://api.groundlight.ai/device-api]
-  -f, --fps=FPS          number of frames to capture per second. 0 to use maximum rate possible. [default: 5]
-  -h, --help             show this message.
-  -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
-  -t, --token=TOKEN      api token to authenticate with the groundlight api
-  -v, --verbose          enable debug logs
-  --noresize             upload images in full original resolution instead of 480x272
+  -d, --detector=ID           detector id to which the image queries are sent
+  -e, --endpoint=URL          api endpoint [default: https://api.groundlight.ai/device-api]
+  -f, --fps=FPS               number of frames to capture per second. 0 to use maximum rate possible. [default: 5]
+  -h, --help                  show this message.
+  -s, --stream=STREAM         id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
+  -t, --token=TOKEN           api token to authenticate with the groundlight api
+  -v, --verbose               enable debug logs
+  --noresize                  upload images in full original resolution instead of 480x272
+  -m, --motion                enable motion detection
+  -p, --postmotion=POSTMOTION minimum number of seconds to capture for every motion detection [default:0]
+  -i, --maxinterval=MAXINT    maximum number of seconds before sending frames even without motion [default: 1000]
 '''
 import io
 import logging
 from logging.config  import dictConfig
 import math
+from operator import truediv
 import os
 from queue import Queue
 import time
@@ -28,13 +32,13 @@ import docopt
 import yaml
 
 from grabber import FrameGrabber
+from motion import MotionDetector
 from groundlight import Groundlight
 
 
 fname = os.path.join(os.path.dirname(__file__), 'logging.yaml')
 dictConfig(yaml.safe_load(open(fname, 'r')))
 logger = logging.getLogger(name='groundlight.stream')
-
 
 def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool):
     logger.debug(f'frame_processor({q=}, {client=}, {detector=})')
@@ -85,10 +89,28 @@ def main():
        logger.error(f'Invalid argument {FPS=}. Must be a number.')
        exit(-1)
 
+    if args.get('--motion'):
+      motion_detect = True
+      POST_MOTION = args['--postmotion']
+      MAX_INTERVAL = args['--maxinterval']
+      try:
+         post_motion_time = float(POST_MOTION)
+      except ValueError as e:
+         logger.error(f'Invalid arguement {POST_MOTION=}')
+      try:
+         max_frame_interval = float(MAX_INTERVAL)
+      except ValueError as e:
+         logger.error(f'Invalid arguement {MAX_INTERVAL=}')
+      logger.info(f'Motion detection enabled with post-motion capture of {POST_MOTION=} and max interval of {MAX_INTERVAL=}')
+    else:
+      motion_detect = False
+      logger.info(f'Motion detection disabled.')
+
     logger.debug(f'creating groundlight client with {ENDPOINT=} and {TOKEN=}')
     gl = Groundlight(endpoint=ENDPOINT, api_token=TOKEN)
     grabber = FrameGrabber.create_grabber(stream=STREAM, fps_target=FPS)
     q = Queue()
+    m = MotionDetector()
     workers = []
     if FPS == 0:
        worker_thread_count = 10
@@ -106,6 +128,7 @@ def main():
        logger.debug(f'FPS set to 0.  Using maximum stream rate')
     start = time.time()
 
+    last_frame_time = time.time()
     try:
       while True:
          frame = grabber.grab()
@@ -115,7 +138,27 @@ def main():
          if frame is None:
             logger.warning(f'continuing because {frame=}')
             continue
-         q.put(frame)
+
+         if motion_detect:
+            if m.motion_detected(frame):
+               motion_start = time.time()
+               add_frame_to_queue = True
+            elif time.time() - motion_start < post_motion_time:
+               logger.debug(f'adding post motion frame after {(time.time() - motion_start):.3} with {post_motion_time=}')
+               add_frame_to_queue = True
+            elif time.time() - last_frame_time > max_frame_interval:
+               logger.debug(f'adding frame after {(time.time()-last_frame_time):.3}s for {max_frame_interval=}s')
+               add_frame_to_queue = True
+            else:
+               logger.debug(f'skipping frame per motion detection settings')
+               add_frame_to_queue = False
+         else:
+            add_frame_to_queue = True
+         
+         if add_frame_to_queue:
+             q.put(frame)
+             last_frame_time = time.time()
+             logger.debug('added frame to queue!')
          now = time.time()
          if desired_delay > 0:
             actual_delay = desired_delay - (now-start)
@@ -127,6 +170,7 @@ def main():
 
     except KeyboardInterrupt:
       logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c several times to kill the worker threads")
+  
       for thread in workers:
          thread.join(timeout=1)
       quit()
