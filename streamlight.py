@@ -12,7 +12,7 @@ options:
   -t, --token=TOKEN      api token to authenticate with the groundlight api
   -v, --verbose          enable debug logs
   -w, --width=WIDTH      resize images to w pixels wide (and scale height proportionately if not set explicitly)
-  -y, --height=HEIGHT    resize images to h pixels high (and scale wieght proportionately if not set explicitly)
+  -y, --height=HEIGHT    resize images to y pixels high (and scale width proportionately if not set explicitly)
 '''
 import io
 import logging
@@ -54,6 +54,26 @@ def frame_processor(q:Queue, client:Groundlight, detector:str):
        end = time.time()
        logger.info(f"API time for image {1000*(end-start):.1f}ms")
 
+def resize_if_needed(frame, width:int, height:int):
+   #scales cv2 image frame to widthxheight pixels
+   #values of 0 for width or height will keep proportional.
+
+   if ((width==0) & (height==0)):
+      return
+   
+   image_height, image_width, _ =frame.shape
+   if width > 0 :
+      target_width = width
+   else:
+      target_width = int(image_width * (height/image_height))
+   if height > 0:
+      target_height = height
+   else:
+      target_height = int(image_height * (width/image_width))
+
+   logger.debug(f"resizing from {frame.shape=} to {target_width=}x{target_height=}")
+   frame = cv2.resize(frame, (target_width,target_height))
+
 
 def main():
     args = docopt.docopt(__doc__)
@@ -66,18 +86,15 @@ def main():
       try:
          resize_width = int(args['--width'])
       except ValueError as e:
-         logger.debug(f'invalid width parameter: {args["--width"]} ignoring --width argument.')
+         logger.warning(f'invalid width parameter: {args["--width"]} ignoring --width argument.')
    
     resize_height = 0
     if args.get('--height'):
       try:
          resize_height = int(args['--height'])
       except ValueError as e:
-         logger.debug(f'invalid width parameter: {args["--height"]} ignoring --height argument.')
+         logger.warning(f'invalid height parameter: {args["--height"]} ignoring --height argument.')
 
-    resize_images = (resize_width + resize_height) > 0
-
- 
     ENDPOINT = args['--endpoint']
     TOKEN = args['--token']
     DETECTOR = args['--detector']
@@ -126,21 +143,7 @@ def main():
          logger.info(f'captured a new frame after {now-start:.3}. of size {frame.shape=} ')
          start = now
 
-         if resize_images:
-            # at least one of resize_width and resize_height must be non-zero
-            
-            image_height, image_width, _ =frame.shape
-            if resize_width > 0 :
-               target_width = resize_width
-            else:
-               target_width = int(image_width * (resize_height/image_height))
-            if resize_height > 0:
-               target_height = resize_height
-            else:
-               target_height = int(image_height * (resize_width/image_width))
-
-            logger.debug(f"resizing from {frame.shape=} to {target_width=}x{target_height=}")
-            frame = cv2.resize(frame, (target_width,target_height))
+         resize_if_needed(frame, resize_width, resize_height)
 
          q.put(frame)
          now = time.time()
