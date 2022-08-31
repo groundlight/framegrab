@@ -11,7 +11,8 @@ options:
   -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
   -t, --token=TOKEN      api token to authenticate with the groundlight api
   -v, --verbose          enable debug logs
-  --noresize             upload images in full original resolution instead of 480x272
+  -w, --width=WIDTH      resize images to w pixels wide (and scale height proportionately if not set explicitly)
+  -y, --height=HEIGHT    resize images to y pixels high (and scale width proportionately if not set explicitly)
 '''
 import io
 import logging
@@ -36,16 +37,12 @@ dictConfig(yaml.safe_load(open(fname, 'r')))
 logger = logging.getLogger(name='groundlight.stream')
 
 
-def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool):
+def frame_processor(q:Queue, client:Groundlight, detector:str):
     logger.debug(f'frame_processor({q=}, {client=}, {detector=})')
     while True:
        frame = q.get() # locks
        # prepare image
        start = time.time()
-       logger.debug(f"Original {frame.shape=}")
-       if resize:
-         frame = cv2.resize(frame, (480,270))
-       logger.debug(f"Resized {frame.shape=}")
        is_success, buffer = cv2.imencode(".jpg", frame)
        io_buf = io.BytesIO(buffer)
        end = time.time()
@@ -57,6 +54,26 @@ def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool):
        end = time.time()
        logger.info(f"API time for image {1000*(end-start):.1f}ms")
 
+def resize_if_needed(frame, width:int, height:int):
+   #scales cv2 image frame to widthxheight pixels
+   #values of 0 for width or height will keep proportional.
+
+   if ((width==0) & (height==0)):
+      return
+   
+   image_height, image_width, _ =frame.shape
+   if width > 0 :
+      target_width = width
+   else:
+      target_width = int(image_width * (height/image_height))
+   if height > 0:
+      target_height = height
+   else:
+      target_height = int(image_height * (width/image_width))
+
+   logger.debug(f"resizing from {frame.shape=} to {target_width=}x{target_height=}")
+   frame = cv2.resize(frame, (target_width,target_height))
+
 
 def main():
     args = docopt.docopt(__doc__)
@@ -64,10 +81,19 @@ def main():
         logger.level = logging.DEBUG
         logger.debug(f'{args=}')
 
-    if args.get('--noresize'):
-        resize_images = False
-    else:
-        resize_images = True
+    resize_width = 0
+    if args.get('--width'):
+      try:
+         resize_width = int(args['--width'])
+      except ValueError as e:
+         logger.warning(f'invalid width parameter: {args["--width"]} ignoring --width argument.')
+   
+    resize_height = 0
+    if args.get('--height'):
+      try:
+         resize_height = int(args['--height'])
+      except ValueError as e:
+         logger.warning(f'invalid height parameter: {args["--height"]} ignoring --height argument.')
 
     ENDPOINT = args['--endpoint']
     TOKEN = args['--token']
@@ -95,7 +121,7 @@ def main():
     else:
        worker_thread_count = math.ceil(FPS)
     for i in range(worker_thread_count):
-       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR, resize=resize_images))
+       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR))
        workers.append(thread)
        thread.start()
 
@@ -109,12 +135,16 @@ def main():
     try:
       while True:
          frame = grabber.grab()
-         now = time.time()
-         logger.info(f'captured a new frame after {now-start}.')
-         start = now
          if frame is None:
-            logger.warning(f'continuing because {frame=}')
+            logger.warning(f'No frame captured! {frame=}')
             continue
+
+         now = time.time()
+         logger.info(f'captured a new frame after {now-start:.3}. of size {frame.shape=} ')
+         start = now
+
+         resize_if_needed(frame, resize_width, resize_height)
+
          q.put(frame)
          now = time.time()
          if desired_delay > 0:
