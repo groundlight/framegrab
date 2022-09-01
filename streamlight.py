@@ -4,17 +4,17 @@ image queries to a configured detector using the Groundlight API
 usage: streamlight [options] -t TOKEN -d DETECTOR
 
 options:
-  -d, --detector=ID           detector id to which the image queries are sent
-  -e, --endpoint=URL          api endpoint [default: https://api.groundlight.ai/device-api]
-  -f, --fps=FPS               number of frames to capture per second. 0 to use maximum rate possible. [default: 5]
-  -h, --help                  show this message.
-  -s, --stream=STREAM         id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
-  -t, --token=TOKEN           api token to authenticate with the groundlight api
-  -v, --verbose               enable debug logs
-  --noresize                  upload images in full original resolution instead of 480x272
-  -m, --motion                enable motion detection
-  -p, --postmotion=POSTMOTION minimum number of seconds to capture for every motion detection [default:0]
-  -i, --maxinterval=MAXINT    maximum number of seconds before sending frames even without motion [default: 1000]
+  -d, --detector=ID            detector id to which the image queries are sent
+  -e, --endpoint=URL           api endpoint [default: https://api.groundlight.ai/device-api]
+  -f, --fps=FPS                number of frames to capture per second. 0 to use maximum rate possible. [default: 5]
+  -h, --help                   show this message.
+  -s, --stream=STREAM          id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
+  -t, --token=TOKEN            api token to authenticate with the groundlight api
+  -v, --verbose                enable debug logs
+  --noresize                   upload images in full original resolution instead of 480x272
+  -m, --motion=THRESHOLD       enable motion detection with pixel change threshold percentage (disabled by default)
+  -p, --postmotion=POSTMOTION  minimum number of seconds to capture for every motion detection [default: 1]
+  -i, --maxinterval=MAXINT     maximum number of seconds before sending frames even without motion [default: 1000]
 '''
 import io
 import logging
@@ -91,17 +91,22 @@ def main():
 
     if args.get('--motion'):
       motion_detect = True
+      MOTION_THRESHOLD = args['--motion']
       POST_MOTION = args['--postmotion']
       MAX_INTERVAL = args['--maxinterval']
       try:
+         motion_threshold = int(MOTION_THRESHOLD)
+      except ValueError as e:
+         logger.error(f'Invalid arguement {MOTION_THRESHOLD=} must be an integer')
+      try:
          post_motion_time = float(POST_MOTION)
       except ValueError as e:
-         logger.error(f'Invalid arguement {POST_MOTION=}')
+         logger.error(f'Invalid arguement {POST_MOTION=} must be a number')
       try:
          max_frame_interval = float(MAX_INTERVAL)
       except ValueError as e:
-         logger.error(f'Invalid arguement {MAX_INTERVAL=}')
-      logger.info(f'Motion detection enabled with post-motion capture of {POST_MOTION=} and max interval of {MAX_INTERVAL=}')
+         logger.error(f'Invalid arguement {MAX_INTERVAL=} must be a number')
+      logger.info(f'Motion detection enabled with {MOTION_THRESHOLD=} and post-motion capture of {POST_MOTION=} and max interval of {MAX_INTERVAL=}')
     else:
       motion_detect = False
       logger.info(f'Motion detection disabled.')
@@ -110,7 +115,7 @@ def main():
     gl = Groundlight(endpoint=ENDPOINT, api_token=TOKEN)
     grabber = FrameGrabber.create_grabber(stream=STREAM, fps_target=FPS)
     q = Queue()
-    m = MotionDetector()
+    m = MotionDetector(pct_threshold = motion_threshold)
     workers = []
     if FPS == 0:
        worker_thread_count = 10

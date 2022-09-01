@@ -1,5 +1,4 @@
 
-# Simple Collins motion detection to decimate stream.  Defaults to 1% pixel difference threshold
 
 import logging
 import numpy as np
@@ -8,12 +7,15 @@ import numpy as np
 logger = logging.getLogger('groundlight.stream')
 
 class MotionDetector():
+# Simple motion detector using the three frame differencing 
+# commonly attributed to Collins, et. al A system for video surveillance and monitoring. Technical report, 2000
+# Defaults to 1% pixel difference threshold (good for many applications)
 
-    def __init__(self):
+    def __init__(self, pct_threshold:int=1, val_threshold:int=50) -> bool:
         self.unused = True
         self.threshold = 50
         self.pixel_val_threshold = 50
-        self.pixel_pct_threshold = 1
+        self.pixel_pct_threshold = pct_threshold
         self.log_pixel_percent = True
 
     def pixel_threshold(self, img:np.ndarray, threshold_val:float=None):
