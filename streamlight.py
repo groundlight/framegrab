@@ -12,7 +12,8 @@ options:
   -t, --token=TOKEN            api token to authenticate with the groundlight api
   -v, --verbose                enable debug logs
   --noresize                   upload images in full original resolution instead of 480x272
-  -m, --motion=THRESHOLD       enable motion detection with pixel change threshold percentage (disabled by default)
+  -m, --motion                 enable motion detection with pixel change threshold percentage (disabled by default)
+  -r, --threshold=THRESHOLD    set detection threshold for motion detection [default: 1]
   -p, --postmotion=POSTMOTION  minimum number of seconds to capture for every motion detection [default: 1]
   -i, --maxinterval=MAXINT     maximum number of seconds before sending frames even without motion [default: 1000]
 '''
@@ -91,7 +92,7 @@ def main():
 
     if args.get('--motion'):
       motion_detect = True
-      MOTION_THRESHOLD = args['--motion']
+      MOTION_THRESHOLD = args['--threshold']
       POST_MOTION = args['--postmotion']
       MAX_INTERVAL = args['--maxinterval']
       try:
