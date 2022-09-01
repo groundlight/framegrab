@@ -18,13 +18,14 @@ options:
   -p, --postmotion=POSTMOTION  minimum number of seconds to capture for every motion detection [default: 1]
   -i, --maxinterval=MAXINT     maximum number of seconds before sending frames even without motion [default: 1000]
 '''
+from asyncio import QueueEmpty
 import io
 import logging
 from logging.config  import dictConfig
 import math
 from operator import truediv
 import os
-from queue import Queue
+from queue import Empty, Queue
 import time
 from threading import Thread
 from xmlrpc.client import Boolean
@@ -42,23 +43,45 @@ fname = os.path.join(os.path.dirname(__file__), 'logging.yaml')
 dictConfig(yaml.safe_load(open(fname, 'r')))
 logger = logging.getLogger(name='groundlight.stream')
 
+class ThreadControl():
+   def __init__(self):
+      self.exit_all_threads = False
+   def force_exit(self):
+      logger.debug('Attempting force exit of all threads')
+      self.exit_all_threads = True
 
-def frame_processor(q:Queue, client:Groundlight, detector:str):
+
+def frame_processor(q:Queue, client:Groundlight, detector:str, control:ThreadControl):
     logger.debug(f'frame_processor({q=}, {client=}, {detector=})')
+    global thread_control_request_exit
     while True:
-       frame = q.get() # locks
-       # prepare image
-       start = time.time()
-       is_success, buffer = cv2.imencode(".jpg", frame)
-       io_buf = io.BytesIO(buffer)
-       end = time.time()
-       logger.info(f"Prepared the image in {1000*(end-start):.1f}ms")
-       # send image query
-       image_query = client.submit_image_query(detector_id=detector, image=io_buf)
-       logger.debug(f'{image_query=}')
-       start = end
-       end = time.time()
-       logger.info(f"API time for image {1000*(end-start):.1f}ms")
+      if control.exit_all_threads:
+         logger.debug('exiting worker thread.')
+         break
+      try:
+         frame = q.get(timeout=1) # timeout avoids deadlocked orphan when main process dies
+      except Empty:
+         continue
+      try:
+         # prepare image
+         start = time.time()
+         logger.debug(f"Original {frame.shape=}")
+         if resize:
+            frame = cv2.resize(frame, (480,270))
+         logger.debug(f"Resized {frame.shape=}")
+         is_success, buffer = cv2.imencode(".jpg", frame)
+         io_buf = io.BytesIO(buffer)
+         end = time.time()
+         logger.info(f"Prepared the image in {1000*(end-start):.1f}ms")
+         # send image query
+         image_query = client.submit_image_query(detector_id=detector, image=io_buf)
+         logger.debug(f'{image_query=}')
+         start = end
+         end = time.time()
+         logger.info(f"API time for image {1000*(end-start):.1f}ms")
+      except Exception as e:
+         logger.debug(f'Exception while processing frame : {e}')
+
 
 def resize_if_needed(frame, width:int, height:int):
    #scales cv2 image frame to widthxheight pixels
@@ -79,7 +102,6 @@ def resize_if_needed(frame, width:int, height:int):
 
    logger.debug(f"resizing from {frame.shape=} to {target_width=}x{target_height=}")
    frame = cv2.resize(frame, (target_width,target_height))
-
 
 def main():
     args = docopt.docopt(__doc__)
@@ -104,11 +126,13 @@ def main():
     ENDPOINT = args['--endpoint']
     TOKEN = args['--token']
     DETECTOR = args['--detector']
+
     STREAM = args['--stream']
     try:
         STREAM = int(STREAM)
     except ValueError as e:
         logger.debug(f'{STREAM=} is not an int, so it must be a filename or url.')
+
     FPS = args['--fps']
     try:
        FPS = float(FPS)
@@ -116,6 +140,10 @@ def main():
     except ValueError as e:
        logger.error(f'Invalid argument {FPS=}. Must be a number.')
        exit(-1)
+    if FPS == 0:
+       worker_thread_count = 10
+    else:
+       worker_thread_count = math.ceil(FPS)
 
     if args.get('--motion'):
       motion_detect = True
@@ -146,14 +174,12 @@ def main():
     gl = Groundlight(endpoint=ENDPOINT, api_token=TOKEN)
     grabber = FrameGrabber.create_grabber(stream=STREAM, fps_target=FPS)
     q = Queue()
+    tc = ThreadControl()
     m = MotionDetector(pct_threshold = motion_threshold)
     workers = []
-    if FPS == 0:
-       worker_thread_count = 10
-    else:
-       worker_thread_count = math.ceil(FPS)
+
     for i in range(worker_thread_count):
-       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR))
+       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR, control = tc))
        workers.append(thread)
        thread.start()
 
@@ -171,6 +197,7 @@ def main():
          if frame is None:
             logger.warning(f'No frame captured! {frame=}')
             continue
+
 
          now = time.time()
          logger.info(f'captured a new frame after {now-start:.3}. of size {frame.shape=} ')
@@ -201,19 +228,16 @@ def main():
          now = time.time()
          if desired_delay > 0:
             actual_delay = desired_delay - (now-start)
-            logger.debug(f'waiting for {actual_delay=} to capture the next frame.')
+            logger.debug(f'waiting for {actual_delay=:.3} to capture the next frame.')
             if actual_delay < 0:
-               logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {now-start}s. The queue contains {q.qsize()} frames.')
+               logger.warning(f'Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {(now-start):.3}s. The queue contains {q.qsize()} frames.')
                actual_delay = 0
             time.sleep(actual_delay)
 
     except KeyboardInterrupt:
-      logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c several times to kill the worker threads")
-  
-      for thread in workers:
-         thread.join(timeout=1)
-      quit()
-
+       logger.info("exiting with KeyboardInterrupt.")
+       tc.force_exit()
+       exit(-1)
 
 if __name__ == '__main__':
     main()
