@@ -12,7 +12,6 @@ options:
   -t, --token=TOKEN      api token to authenticate with the groundlight api
   -v, --verbose          enable debug logs
   --noresize             upload images in full original resolution instead of 480x272
-  --multithread          use additional threads as necessary to reach target FPS (suggested at > 1 FPS)
 '''
 from asyncio import QueueEmpty
 import io
@@ -44,35 +43,37 @@ class ThreadControl():
       logger.debug('Attempting force exit of all threads')
       self.exit_all_threads = True
 
-def process_frame(q:Queue, client:Groundlight, detector:str, resize:bool):
-   try:
-      frame = q.get(timeout=1) # locks
-   except Empty:
-      return
-   # prepare image
-   start = time.time()
-   logger.debug(f"Original {frame.shape=}")
-   if resize:
-      frame = cv2.resize(frame, (480,270))
-   logger.debug(f"Resized {frame.shape=}")
-   is_success, buffer = cv2.imencode(".jpg", frame)
-   io_buf = io.BytesIO(buffer)
-   end = time.time()
-   logger.info(f"Prepared the image in {1000*(end-start):.1f}ms")
-   # send image query
-   image_query = client.submit_image_query(detector_id=detector, image=io_buf)
-   logger.debug(f'{image_query=}')
-   start = end
-   end = time.time()
-   logger.info(f"API time for image {1000*(end-start):.1f}ms")
 
 def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool, control:ThreadControl):
     logger.debug(f'frame_processor({q=}, {client=}, {detector=})')
+    global thread_control_request_exit
     while True:
       if control.exit_all_threads:
          logger.debug('exiting worker thread.')
          break
-      process_frame(q, client, detector, resize)
+      try:
+         frame = q.get(timeout=1) # timeout avoids deadlocked orphan when main process dies
+      except Empty:
+         continue
+      try:
+         # prepare image
+         start = time.time()
+         logger.debug(f"Original {frame.shape=}")
+         if resize:
+            frame = cv2.resize(frame, (480,270))
+         logger.debug(f"Resized {frame.shape=}")
+         is_success, buffer = cv2.imencode(".jpg", frame)
+         io_buf = io.BytesIO(buffer)
+         end = time.time()
+         logger.info(f"Prepared the image in {1000*(end-start):.1f}ms")
+         # send image query
+         image_query = client.submit_image_query(detector_id=detector, image=io_buf)
+         logger.debug(f'{image_query=}')
+         start = end
+         end = time.time()
+         logger.info(f"API time for image {1000*(end-start):.1f}ms")
+      except Exception as e:
+         logger.debug(f'Exception while processing frame : {e}')
 
 def main():
     args = docopt.docopt(__doc__)
@@ -88,11 +89,13 @@ def main():
     ENDPOINT = args['--endpoint']
     TOKEN = args['--token']
     DETECTOR = args['--detector']
+
     STREAM = args['--stream']
     try:
         STREAM = int(STREAM)
     except ValueError as e:
         logger.debug(f'{STREAM=} is not an int, so it must be a filename or url.')
+
     FPS = args['--fps']
     try:
        FPS = float(FPS)
@@ -100,14 +103,10 @@ def main():
     except ValueError as e:
        logger.error(f'Invalid argument {FPS=}. Must be a number.')
        exit(-1)
-
-    if args.get('--multithread'):
-       if FPS == 0:
-          worker_thread_count = 10
-       else:
-          worker_thread_count = math.ceil(FPS)
+    if FPS == 0:
+       worker_thread_count = 10
     else:
-       worker_thread_count = 0
+       worker_thread_count = math.ceil(FPS)
 
     logger.debug(f'creating groundlight client with {ENDPOINT=} and {TOKEN=}')
     gl = Groundlight(endpoint=ENDPOINT, api_token=TOKEN)
@@ -139,8 +138,6 @@ def main():
             continue
 
          q.put(frame)
-         if worker_thread_count == 0:
-            process_frame(q=q, client=gl, detector=DETECTOR, resize=resize_images)
 
          now = time.time()
          if desired_delay > 0:
@@ -152,12 +149,9 @@ def main():
             time.sleep(actual_delay)
 
     except KeyboardInterrupt:
-      if worker_thread_count > 0:
-        logger.info("exiting with KeyboardInterrupt.  you will may have to hit ctrl-c several times or wait to end the worker threads")
-        tc.force_exit()
-      else:
-        logger.info("exiting with KeyboardInterrupt.") 
-      exit(-1)
+       logger.info("exiting with KeyboardInterrupt.")
+       tc.force_exit()
+       exit(-1)
 
 if __name__ == '__main__':
     main()
