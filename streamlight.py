@@ -11,13 +11,19 @@ options:
   -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
   -t, --token=TOKEN      api token to authenticate with the groundlight api
   -v, --verbose          enable debug logs
-  --noresize             upload images in full original resolution instead of 480x272
+  -w, --width=WIDTH      resize images to w pixels wide (and scale height proportionately if not set explicitly)
+  -y, --height=HEIGHT    resize images to y pixels high (and scale width proportionately if not set explicitly)
+  -m, --motion                 enable motion detection with pixel change threshold percentage (disabled by default)
+  -r, --threshold=THRESHOLD    set detection threshold for motion detection [default: 1]
+  -p, --postmotion=POSTMOTION  minimum number of seconds to capture for every motion detection [default: 1]
+  -i, --maxinterval=MAXINT     maximum number of seconds before sending frames even without motion [default: 1000]
 '''
 from asyncio import QueueEmpty
 import io
 import logging
 from logging.config  import dictConfig
 import math
+from operator import truediv
 import os
 from queue import Empty, Queue
 import time
@@ -29,6 +35,7 @@ import docopt
 import yaml
 
 from grabber import FrameGrabber
+from motion import MotionDetector
 from groundlight import Groundlight
 
 
@@ -44,7 +51,7 @@ class ThreadControl():
       self.exit_all_threads = True
 
 
-def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool, control:ThreadControl):
+def frame_processor(q:Queue, client:Groundlight, detector:str, control:ThreadControl):
     logger.debug(f'frame_processor({q=}, {client=}, {detector=})')
     global thread_control_request_exit
     while True:
@@ -75,16 +82,46 @@ def frame_processor(q:Queue, client:Groundlight, detector:str, resize:bool, cont
       except Exception as e:
          logger.debug(f'Exception while processing frame : {e}')
 
+
+def resize_if_needed(frame, width:int, height:int):
+   #scales cv2 image frame to widthxheight pixels
+   #values of 0 for width or height will keep proportional.
+
+   if ((width==0) & (height==0)):
+      return
+   
+   image_height, image_width, _ =frame.shape
+   if width > 0 :
+      target_width = width
+   else:
+      target_width = int(image_width * (height/image_height))
+   if height > 0:
+      target_height = height
+   else:
+      target_height = int(image_height * (width/image_width))
+
+   logger.debug(f"resizing from {frame.shape=} to {target_width=}x{target_height=}")
+   frame = cv2.resize(frame, (target_width,target_height))
+
 def main():
     args = docopt.docopt(__doc__)
     if args.get('--verbose'):
         logger.level = logging.DEBUG
         logger.debug(f'{args=}')
 
-    if args.get('--noresize'):
-        resize_images = False
-    else:
-        resize_images = True
+    resize_width = 0
+    if args.get('--width'):
+      try:
+         resize_width = int(args['--width'])
+      except ValueError as e:
+         logger.warning(f'invalid width parameter: {args["--width"]} ignoring --width argument.')
+   
+    resize_height = 0
+    if args.get('--height'):
+      try:
+         resize_height = int(args['--height'])
+      except ValueError as e:
+         logger.warning(f'invalid height parameter: {args["--height"]} ignoring --height argument.')
 
     ENDPOINT = args['--endpoint']
     TOKEN = args['--token']
@@ -108,15 +145,41 @@ def main():
     else:
        worker_thread_count = math.ceil(FPS)
 
+    if args.get('--motion'):
+      motion_detect = True
+      MOTION_THRESHOLD = args['--threshold']
+      POST_MOTION = args['--postmotion']
+      MAX_INTERVAL = args['--maxinterval']
+      try:
+         motion_threshold = int(MOTION_THRESHOLD)
+      except ValueError as e:
+         logger.error(f'Invalid arguement {MOTION_THRESHOLD=} must be an integer')
+         exit(-1)
+      try:
+         post_motion_time = float(POST_MOTION)
+      except ValueError as e:
+         logger.error(f'Invalid arguement {POST_MOTION=} must be a number')
+         exit(-1)
+      try:
+         max_frame_interval = float(MAX_INTERVAL)
+      except ValueError as e:
+         logger.error(f'Invalid arguement {MAX_INTERVAL=} must be a number')
+         exit(-1)
+      logger.info(f'Motion detection enabled with {MOTION_THRESHOLD=} and post-motion capture of {POST_MOTION=} and max interval of {MAX_INTERVAL=}')
+    else:
+      motion_detect = False
+      logger.info(f'Motion detection disabled.')
+
     logger.debug(f'creating groundlight client with {ENDPOINT=} and {TOKEN=}')
     gl = Groundlight(endpoint=ENDPOINT, api_token=TOKEN)
     grabber = FrameGrabber.create_grabber(stream=STREAM, fps_target=FPS)
     q = Queue()
     tc = ThreadControl()
+    m = MotionDetector(pct_threshold = motion_threshold)
     workers = []
 
     for i in range(worker_thread_count):
-       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR, resize=resize_images, control = tc))
+       thread = Thread(target=frame_processor, kwargs=dict(q=q, client=gl, detector=DETECTOR, control = tc))
        workers.append(thread)
        thread.start()
 
@@ -127,17 +190,40 @@ def main():
        logger.debug(f'FPS set to 0.  Using maximum stream rate')
     start = time.time()
 
+    last_frame_time = time.time()
     try:
       while True:
          frame = grabber.grab()
-         now = time.time()
-         logger.info(f'captured a new frame after {now-start}.')
-         start = now
          if frame is None:
-            logger.warning(f'continuing because {frame=}')
+            logger.warning(f'No frame captured! {frame=}')
             continue
 
-         q.put(frame)
+
+         now = time.time()
+         logger.info(f'captured a new frame after {now-start:.3}. of size {frame.shape=} ')
+         start = now
+
+         if motion_detect:
+            if m.motion_detected(frame):
+               motion_start = time.time()
+               add_frame_to_queue = True
+            elif time.time() - motion_start < post_motion_time:
+               logger.debug(f'adding post motion frame after {(time.time() - motion_start):.3} with {post_motion_time=}')
+               add_frame_to_queue = True
+            elif time.time() - last_frame_time > max_frame_interval:
+               logger.debug(f'adding frame after {(time.time()-last_frame_time):.3}s for {max_frame_interval=}s')
+               add_frame_to_queue = True
+            else:
+               logger.debug(f'skipping frame per motion detection settings')
+               add_frame_to_queue = False
+         else:
+            add_frame_to_queue = True
+         
+         if add_frame_to_queue:
+             resize_if_needed(frame, resize_width, resize_height)
+             q.put(frame)
+             last_frame_time = time.time()
+             logger.debug('added frame to queue!')
 
          now = time.time()
          if desired_delay > 0:
