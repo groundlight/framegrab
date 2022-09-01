@@ -99,14 +99,17 @@ def main():
          motion_threshold = int(MOTION_THRESHOLD)
       except ValueError as e:
          logger.error(f'Invalid arguement {MOTION_THRESHOLD=} must be an integer')
+         exit(-1)
       try:
          post_motion_time = float(POST_MOTION)
       except ValueError as e:
          logger.error(f'Invalid arguement {POST_MOTION=} must be a number')
+         exit(-1)
       try:
          max_frame_interval = float(MAX_INTERVAL)
       except ValueError as e:
          logger.error(f'Invalid arguement {MAX_INTERVAL=} must be a number')
+         exit(-1)
       logger.info(f'Motion detection enabled with {MOTION_THRESHOLD=} and post-motion capture of {POST_MOTION=} and max interval of {MAX_INTERVAL=}')
     else:
       motion_detect = False

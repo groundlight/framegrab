@@ -12,6 +12,10 @@ class MotionDetector():
 # Defaults to 1% pixel difference threshold (good for many applications)
 
     def __init__(self, pct_threshold:int=1, val_threshold:int=50) -> bool:
+        """
+    :param val_threshold: The minimum brightness change for a pixel for it to be considered changed
+    :param pct_threshold: Percent of pixels needed to change before motion is detected
+        """
         self.unused = True
         self.threshold = 50
         self.pixel_val_threshold = 50
@@ -34,7 +38,7 @@ class MotionDetector():
                 logger.debug(f"No motion detected: {pct_hi:.2f}% < {self.pixel_pct_threshold}%")
             return False
 
-    def motion_detected(self, new_img:np.ndarray):
+    def motion_detected(self, new_img:np.ndarray) -> bool:
 
         if self.unused:
             self.base_img = new_img
@@ -48,7 +52,7 @@ class MotionDetector():
 
         self.base2 = self.base_img
         self.base_img = new_img
-        binarized = (diff1 & diff2) * 255
+        binarized = (diff1 & diff2) * 255 # The 255 here guarantees that every pixel which is detected to have changed is > pixel_val_threshold.
 
         motion_detected = self.pixel_threshold(binarized)
         motion_detected = not not motion_detected  # normalize a numpy.bool_ if needed
