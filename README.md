@@ -21,13 +21,18 @@ usage: streamlight [options] -t TOKEN -d DETECTOR
 
 options:
   -d, --detector=ID      detector id to which the image queries are sent
-  -e, --endpoint=URL     api endpoint [default: https://device.positronix.ai/device-api]
+  -e, --endpoint=URL     api endpoint [default: https://api.groundlight.ai/device-api]
   -f, --fps=FPS          number of frames to capture per second. 0 to use maximum rate possible. [default: 5]
   -h, --help             show this message.
   -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
   -t, --token=TOKEN      api token to authenticate with the groundlight api
   -v, --verbose          enable debug logs
-  --noresize             upload images in full original resolution instead of 480x272
+  -w, --width=WIDTH      resize images to w pixels wide (and scale height proportionately if not set explicitly)
+  -y, --height=HEIGHT    resize images to y pixels high (and scale width proportionately if not set explicitly)
+  -m, --motion                 enable motion detection with pixel change threshold percentage (disabled by default)
+  -r, --threshold=THRESHOLD    set detection threshold for motion detection [default: 1]
+  -p, --postmotion=POSTMOTION  minimum number of seconds to capture for every motion detection [default: 1]
+  -i, --maxinterval=MAXINT     maximum number of seconds before sending frames even without motion [default: 1000]
 ```
 and pass an actual token and detector
 ``` shell
