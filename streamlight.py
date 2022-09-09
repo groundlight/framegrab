@@ -65,10 +65,6 @@ def frame_processor(q:Queue, client:Groundlight, detector:str, control:ThreadCon
       try:
          # prepare image
          start = time.time()
-         logger.debug(f"Original {frame.shape=}")
-         if resize:
-            frame = cv2.resize(frame, (480,270))
-         logger.debug(f"Resized {frame.shape=}")
          is_success, buffer = cv2.imencode(".jpg", frame)
          io_buf = io.BytesIO(buffer)
          end = time.time()
@@ -175,7 +171,8 @@ def main():
     grabber = FrameGrabber.create_grabber(stream=STREAM, fps_target=FPS)
     q = Queue()
     tc = ThreadControl()
-    m = MotionDetector(pct_threshold = motion_threshold)
+    if motion_detect:
+      m = MotionDetector(pct_threshold = motion_threshold)
     workers = []
 
     for i in range(worker_thread_count):
