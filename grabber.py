@@ -68,7 +68,7 @@ class FileStreamFrameGrabber(FrameGrabber):
             for i in range(round(drop_frames)):
                 ret, frame = self.capture.read()
             self.remainder = round(drop_frames - round(drop_frames), 2)
-            logger.debug(f'dropped {round(drop_frames)} frames to meet {self.fps_target} FPS target from {self.fps_source} FPS source (off by {self.remainder} frames)')
+            logger.info(f'dropped {round(drop_frames)} frames to meet {self.fps_target} FPS target from {self.fps_source} FPS source (off by {self.remainder} frames)')
         else:
             logger.debug(f'frame dropping disabled for {self.fps_target} FPS target from {self.fps_source} FPS source')
 
@@ -76,7 +76,7 @@ class FileStreamFrameGrabber(FrameGrabber):
         if not ret:
             raise RuntimeWarning('could not read frame from {self.capture=}.  possible end of file.')
         now = time.time()
-        logger.info(f'read the frame in {now-start}s.')
+        logger.debug(f'read the frame in {1000*(now-start):.1f}ms')
         return frame
 
 class DeviceFrameGrabber(FrameGrabber):
@@ -108,7 +108,7 @@ class DeviceFrameGrabber(FrameGrabber):
         if not ret:
             raise RuntimeWarning('could not read frame from {self.capture=}')
         now = time.time()
-        logger.info(f'read the frame in {now-start}s.')
+        logger.debug(f'read the frame in {1000*(now-start):.1f}ms')
         return frame
 
 class RTSPFrameGrabber(FrameGrabber):
@@ -139,7 +139,7 @@ class RTSPFrameGrabber(FrameGrabber):
             if not ret:
                 logger.error(f'could not read frame from {self.capture=}')
             now = time.time()
-            logger.info(f'read the frame in {now-start}s.')
+            logger.debug(f'read the frame in {1000*(now-start):.1f}ms')
             return frame
 
 
@@ -188,7 +188,7 @@ class YouTubeFrameGrabber(FrameGrabber):
             if not ret:
                 logger.error(f'failed to effectively reset stream {self.stream=} / {self.best_video.url=}')
         now = time.time()
-        logger.info(f'read the frame in {now-start}s.')
+        logger.debug(f'read the frame in {1000*(now-start):.1f}ms')
         self.capture.release()
         return frame
 

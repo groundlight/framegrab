@@ -1,7 +1,23 @@
 # documentation https://docs.python.org/3/library/logging.config.html#logging-config-dictschema
 version: 1
+handlers:
+  console:
+    level: DEBUG
+    # Change the formatter to detailed or JSON as desired.
+    formatter: simple
+    class: logging.StreamHandler
+    stream: ext://sys.stdout
 formatters:
+  # Pick the format you like
+  simple:
+    # A clean simple log for humans
+    format: '%(message)s'
+  detailed:
+    # A traditional informational log like a web-server might produce
+    format: '%(asctime)s %(levelname)-8s %(name)-15s %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
   json:
+    # A full-featured, complex log - great with an enterprise structured log service
     class: jsonformatter.JsonFormatter
     # attributes documented https://docs.python.org/3.9/library/logging.html#logrecord-attributes
     format: |-
@@ -16,17 +32,11 @@ formatters:
       "created":"created",
       "message":"message"
       }
-handlers:
-  json:
-    class: logging.StreamHandler
-    level: DEBUG
-    formatter: json
-    stream: ext://sys.stdout
 loggers:
   groundlight:
     level: INFO
-    handlers: [json]
+    handlers: [console]
     propagate: false
 root:
   level: INFO
-  handlers: [json]
+  handlers: [console]
