@@ -1,8 +1,8 @@
 docopt==0.6.2
-groundlight==0.3.0
+groundlight==0.5.4
 jsonformatter==0.3.1
 numpy==1.21.2
 opencv-python-headless==4.5.5.64
 PyYAML==6.0
-youtube-dl==2020.12.2
+youtube-dl==2021.12.17
 pafy==0.5.5
