@@ -8,7 +8,7 @@ options:
   -e, --endpoint=URL     api endpoint [default: https://api.groundlight.ai/device-api]
   -f, --fps=FPS          number of frames to capture per second. 0 to use maximum rate possible. [default: 5]
   -h, --help             show this message.
-  -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params) [default: 0]
+  -s, --stream=STREAM    id, filename or URL of a video stream (e.g. rtsp://host:port/script?params OR movie.mp4 OR *.jpg) [default: 0]
   -t, --token=TOKEN      api token to authenticate with the groundlight api
   -v, --verbose          enable debug logs
   -w, --width=WIDTH      resize images to w pixels wide (and scale height proportionately if not set explicitly)
@@ -70,7 +70,7 @@ def frame_processor(q:Queue, client:Groundlight, detector:str, control:ThreadCon
          end = time.time()
          logger.info(f"Prepared the image in {1000*(end-start):.1f}ms")
          # send image query
-         image_query = client.submit_image_query(detector_id=detector, image=io_buf)
+         image_query = client.submit_image_query(detector=detector, image=io_buf)
          logger.debug(f"{image_query=}")
          start = end
          end = time.time()
