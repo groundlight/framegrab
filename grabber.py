@@ -5,6 +5,9 @@ from threading import Thread, Lock
 import time
 from pathlib import Path
 import urllib
+import random
+import os
+import fnmatch
 
 import cv2
 import pafy
@@ -20,6 +23,9 @@ class FrameGrabber(metaclass=ABCMeta):
         logger.debug(f'Input {stream=}')
         if type(stream) == int:
             return DeviceFrameGrabber(stream=stream)
+        elif type(stream) == str and stream.find('*') != -1:
+            logger.debug(f'Found wildcard file {stream=}')
+            return DirectoryFrameGrabber(stream=stream)
         elif type(stream) == str and stream[:4] == 'rtsp':
             logger.debug(f'found rtsp stream {stream=}')
             return RTSPFrameGrabber(stream=stream)
@@ -39,6 +45,36 @@ class FrameGrabber(metaclass=ABCMeta):
     @abstractmethod
     def grab():
         pass
+
+class DirectoryFrameGrabber(FrameGrabber):
+
+    def __init__(self, stream=None, fps_target = 0):
+        '''stream must be an file mask'''
+        try:
+            self.filename_list = []
+            for filename in os.listdir():
+                if fnmatch.fnmatch(filename, stream):
+                    self.filename_list.append(filename)
+            logger.debug(f'found {len(self.filename_list)} files matching {stream=}')
+            random.shuffle(self.filename_list)
+        except Exception as e:
+            logger.error(f'could not initialize DirectoryFrameGrabber: {stream=} filename is invalid or read error')
+            raise e
+        if len(self.filename_list) == 0:
+            logger.warning(f'no files found matching {stream=}')
+
+    def grab(self):
+
+        if len(self.filename_list) == 0:
+            raise RuntimeWarning('could not read frame from {self.capture=}.  possible end of file.')
+
+        start = time.time()
+        frame = cv2.imread(self.filename_list[0], cv2.IMREAD_GRAYSCALE)
+        self.filename_list.pop(0)
+        logger.debug(f'read the frame in {1000*(time.time()-start):.1f}ms')
+
+        return frame
+
 
 class FileStreamFrameGrabber(FrameGrabber):
 
