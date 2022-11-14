@@ -20,22 +20,23 @@ class FrameGrabber(metaclass=ABCMeta):
 
     @staticmethod
     def create_grabber(stream=None, **kwargs):
-        logger.debug(f'Input {stream=}')
+        logger.debug(f'Input {stream=} (type {type(stream)}')
         if type(stream) == int:
+            logger.debug('Looking for camera {stream=}')
             return DeviceFrameGrabber(stream=stream)
-        elif type(stream) == str and stream.find('*') != -1:
+        elif (type(stream) == str) and (stream.find('*') != -1):
             logger.debug(f'Found wildcard file {stream=}')
             return DirectoryFrameGrabber(stream=stream)
-        elif type(stream) == str and stream[:4] == 'rtsp':
+        elif (type(stream) == str) and (stream[:4] == 'rtsp'):
             logger.debug(f'found rtsp stream {stream=}')
             return RTSPFrameGrabber(stream=stream)
-        elif type(stream) == str and stream.find("youtube.com") > 0:
+        elif (type(stream) == str) and (stream.find("youtube.com") > 0):
             logger.debug(f'found youtube stream {stream=}')
             return YouTubeFrameGrabber(stream=stream)
-        elif type(stream) == str and Path(stream).is_file():
+        elif (type(stream) == str) and Path(stream).is_file():
             logger.debug(f'found filename stream {stream=}')
             return FileStreamFrameGrabber(stream=stream, **kwargs)
-        elif type(stream) == str and stream[:4] == 'http':
+        elif (type(stream) == str) and (stream[:4] == 'http'):
             logger.debug(f'found image url {stream=}')
             return ImageURLFrameGrabber(url=stream, **kwargs)
         else:
