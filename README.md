@@ -40,6 +40,6 @@ docker run stream:local -t api_29imQxusKndanuiigGzLqAoL3Zj_AD2VFYi191ghbUJeLHJ11
 ```
 
 note that if you are using a local file with docker, you need to map the volume in the docker run line, e.g.
-''' shell
+``` shell
 docker run -v /usr/me/wheremyfilesare:/videos stream:local -t api_29imQxusKndanuiigGzLqAoL3Zj_AD2VFYi191ghbUJeLHJ11GDfVCjfa55JCS -d 772d549499394726b06fd6e36ec41153 -s "/videos/testvideo.mp4"
-'''
+```
