@@ -76,7 +76,7 @@ def frame_processor(q:Queue, client:Groundlight, detector:str, control:ThreadCon
          end = time.time()
          logger.info(f"API time for image {1000*(end-start):.1f}ms")
       except Exception as e:
-         logger.debug(f"Exception while processing frame : {e}")
+         logger.error(f"Exception while processing frame : {e}")
 
 
 def resize_if_needed(frame, width:int, height:int):
@@ -85,7 +85,7 @@ def resize_if_needed(frame, width:int, height:int):
 
    if ((width==0) & (height==0)):
       return
-   
+
    image_height, image_width, _ =frame.shape
    if width > 0 :
       target_width = width
@@ -111,7 +111,7 @@ def main():
          resize_width = int(args["--width"])
       except ValueError as e:
          raise ValueError(f"invalid width parameter: {args['--width']}")
-   
+
     resize_height = 0
     if args.get("--height"):
       try:
@@ -216,7 +216,7 @@ def main():
                add_frame_to_queue = False
          else:
             add_frame_to_queue = True
-         
+
          if add_frame_to_queue:
              resize_if_needed(frame, resize_width, resize_height)
              q.put(frame)
