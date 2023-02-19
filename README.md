@@ -43,3 +43,13 @@ note that if you are using a local file with docker, you need to map the volume 
 ``` shell
 docker run -v /usr/me/wheremyfilesare:/videos stream:local -t api_29imQxusKndanuiigGzLqAoL3Zj_AD2VFYi191ghbUJeLHJ11GDfVCjfa55JCS -d 772d549499394726b06fd6e36ec41153 -s "/videos/testvideo.mp4"
 ```
+
+
+# Video Stream types
+
+## Unifi Protect Cameras
+
+To get an RTSP stream from a Unifi Protect camera, first open the Unifi Protect web application.
+Then select "Unifi Devices", and find the device you want to connect to.  In the right-panel, select "Settings"
+Open the Advanced section, and you will find an RTSP section.  Pick a resolution to stream at, and enable the stream.  Then an RTSP url will appear below your selection.
+
