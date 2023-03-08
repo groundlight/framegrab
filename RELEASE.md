@@ -5,15 +5,19 @@ release process here instead of the README.md so the latter only
 contains info that can be used on dockerhub and pypi for potential
 users.
 
-# steps
+# build steps
 We follow a standard process of build, tag, auth, push where the only
 external dependency is dockerhub
 
-## build
+## multi-architecture build
+To build simultaneously for x86 and two ARM platforms, use these commands:
 from the root of this repository
 ``` shell
-docker build -t stream:local .
+docker buildx create --name multibuilder --driver docker-container --bootstrap
+docker buildx use multibuilder
+docker buildx build --platform linux/arm/v7,linux/arm64,linux/amd64 -t stream:local .
 ```
+
 ## tag
 we need to tag the locally build image to include the full url of the
 registry to which it will be pushed
