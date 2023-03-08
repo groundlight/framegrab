@@ -12,7 +12,7 @@ docker buildx build \
     -t groundlight/stream:VERSION .
 ```
 
-replacing `VERSION` with the current version number.
+replacing `VERSION` with the current version number, like `0.1.1`.  DO NOT include a `v` in the version.
 
 To update the `:latest` tag, run the same command without the version specified:
 
@@ -24,6 +24,10 @@ docker buildx build \
 ```
 
 (We should consider adding `linux/arm/v7` as another supported arch.)
+
+## Checking the build
+
+See the page on dockerhub: [https://hub.docker.com/r/groundlight/stream/tags](https://hub.docker.com/r/groundlight/stream/tags)
 
 ## authenticating to dockerhub
 
