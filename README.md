@@ -36,7 +36,7 @@ options:
 ```
 and pass an actual token and detector
 ``` shell
-docker run groundlight/streamlight \
+docker run groundlight/stream \
     -t api_29imQxusKndanuiigGzLqAoL3Zj_example \
     -d det_2MiD5Elu8bza7sil9l7KPpr69aa \
     -s rtsp://admin:password@192.168.0.29:554/cam/realmonitor?channel=1&subtype=0
@@ -45,7 +45,7 @@ docker run groundlight/streamlight \
 note that if you are using a local file with docker, you need to map the volume in the docker run line, e.g.
 ``` shell
 docker run -v /usr/me/wheremyfilesare:/videos \
-    groundlight/streamlight \
+    groundlight/stream \
     -t api_29imQxusKndanuiigGzLqAoL3Zj_example \
     -d det_2MiD5Elu8bza7sil9l7KPpr69aa \
     -s "/videos/testvideo.mp4"
