@@ -1,36 +1,31 @@
-This project is meant to be public and available to potential
-customers to get started using our API, so we publish the image to
-dockerhub.com instead of AWS like our internal images. We document the
-release process here instead of the README.md so the latter only
-contains info that can be used on dockerhub and pypi for potential
-users.
-
-# build steps
+# Multi-arch Build
 We follow a standard process of build, tag, auth, push where the only
 external dependency is dockerhub
 
-## multi-architecture build
-To build simultaneously for x86 and two ARM platforms, use these commands:
-from the root of this repository
-``` shell
+```
+docker login
 docker buildx create --name multibuilder --driver docker-container --bootstrap
 docker buildx use multibuilder
-docker buildx build --platform linux/arm/v7,linux/arm64,linux/amd64 -t stream:local .
+docker buildx build \
+    --platform linux/arm64,linux/amd64 \
+    --push \
+    -t groundlight/stream:VERSION .
 ```
 
-## tag
-we need to tag the locally build image to include the full url of the
-registry to which it will be pushed
+replacing `VERSION` with the current version number.
 
-``` shell
-docker tag stream:local groundlight/stream:test
+To update the `:latest` tag, run the same command without the version specified:
+
+```
+docker buildx build \
+    --platform linux/arm64,linux/amd64 \
+    --push \
+    -t groundlight/stream .
 ```
 
-replace `test` with the actual release version. See [recent
-tags](https://hub.docker.com/repository/docker/groundlight/stream/tags?page=1&ordering=last_updated)
-and pick an appropriate [semantic version](https://semver.org/)
+(We should consider adding `linux/arm/v7` as another supported arch.)
 
-## authenticate
+## authenticating to dockerhub
 
 ``` shell
 docker login
@@ -53,18 +48,3 @@ Server:
  Registry: https://index.docker.io/v1/
  ...
 ```
-## push
-You need to be part of the [devs
-team](https://hub.docker.com/orgs/groundlight/teams/devs/members) in
-the groundlight organization to be able to push images to the
-streamlight repository. Ask to be added in the #engineering channel on
-slack. Note: this is a one time step and won't be necessary once we
-push images from a github action instead of this manual process.
-
-push using the actual tag created previous instead of just `test`
-``` shell
-docker push groundlight/stream:test
-```
-you can verify that the new image was pushed on the
-[tags](https://hub.docker.com/repository/docker/groundlight/stream/tags?page=1&ordering=last_updated)
-page
