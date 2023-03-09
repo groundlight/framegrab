@@ -1,6 +1,7 @@
 name: Publish Docker image
 
 on:
+  pull_request:
   release:
     types: [published]
 
@@ -23,11 +24,36 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: groundlight/stream
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx for multi-arch
+        id: buildx
+        uses: docker/setup-buildx-action@v2
       
-      - name: Build and push Docker image
+      - name: Build one arch first to test.
         uses: docker/build-push-action@v4
         with:
           context: .
-          push: true
+          push: false
+          platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Specify output so we can run a test against it
+          outputs: type=docker
+
+      - name: Run basic test
+        run: |
+          set -ex
+          # Just check that python command runs at all
+          docker run ${DOCKER_METADATA_OUTPUT_TAGS} --help
+
+      - name: Build multi-arch and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+

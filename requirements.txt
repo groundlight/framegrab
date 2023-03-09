@@ -1,5 +1,5 @@
+groundlight
 docopt==0.6.2
-groundlight==0.5.4
 jsonformatter==0.3.1
 numpy==1.21.2
 opencv-python-headless==4.5.5.64
