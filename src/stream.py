@@ -13,6 +13,7 @@ options:
   -v, --verbose          enable debug logs
   -w, --width=WIDTH      resize images to w pixels wide (and scale height proportionately if not set explicitly)
   -y, --height=HEIGHT    resize images to y pixels high (and scale width proportionately if not set explicitly)
+  -c, --crop=[x,y,w,h]   crop image to box before resizing. x,y,w,h are fractions from 0-1.  [Default:"0,0,1,1"]
   -m, --motion                 enable motion detection with pixel change threshold percentage (disabled by default)
   -r, --threshold=THRESHOLD    detection threshold for motion detection - percent of changed pixels [default: 1]
   -p, --postmotion=POSTMOTION  minimum number of seconds to capture for every motion detection [default: 1]
@@ -28,6 +29,7 @@ from logging.config import dictConfig
 from operator import truediv
 from queue import Empty, Queue
 from threading import Thread
+from typing import Tuple
 from xmlrpc.client import Boolean
 
 import cv2
@@ -101,6 +103,42 @@ def resize_if_needed(frame, width: int, height: int):
     frame = cv2.resize(frame, (target_width, target_height))
 
 
+def crop_frame(frame, crop_region: Tuple[float, float, float, float]):
+    """Returns a cropped version of the frame."""
+    (img_height, img_width, _) = frame.shape
+    x1 = int(img_width * crop_region[0])
+    y1 = int(img_height * crop_region[1])
+    x2 = x1 + int(img_width * crop_region[2])
+    y2 = y1 + int(img_height * crop_region[3])
+
+    out = frame[y1:y2, x1:x2, :]
+    return out
+
+
+def parse_crop_string(crop_string: str) -> Tuple[float, float, float, float]:
+    """Parses a string like "0.25,0.25,0.5,0.5" to a tuple like (0.25,0.25,0.5,0.5)
+    Also validates that numbers are between 0-1, and that it doesn't go off the edge.
+    """
+    parts = crop_string.split(",")
+    if len(parts) != 4:
+        raise ValueError("Expected crop to be list of four floating point numbers.")
+    numbers = tuple([float(n) for n in parts])
+
+    for n in numbers:
+        if (n < 0) or (n > 1):
+            raise ValueError("All numbers must be between 0 and 1, showing relative position in image")
+
+    if numbers[0] + numbers[2] > 1.0:
+        raise ValueError("Invalid crop: x+w is greater than 1.")
+    if numbers[1] + numbers[3] > 1.0:
+        raise ValueError("Invalid crop: y+h is greater than 1.")
+
+    if numbers[2] * numbers[3] == 0:
+        raise ValueError("Width and Height must both be >0")
+
+    return numbers
+
+
 def main():
     args = docopt.docopt(__doc__)
     if args.get("--verbose"):
@@ -120,6 +158,11 @@ def main():
             resize_height = int(args["--height"])
         except ValueError as e:
             raise ValueError(f"invalid height parameter: {args['--height']}")
+
+    if args.get("--crop"):
+        crop_region = parse_crop_string(args["--crop"])
+    else:
+        crop_region = None
 
     ENDPOINT = args["--endpoint"]
     TOKEN = args["--token"]
@@ -202,6 +245,10 @@ def main():
 
             now = time.time()
             logger.debug(f"captured a new frame after {now-start:.3f}s of size {frame.shape=} ")
+
+            if crop_region:
+                frame = crop_frame(frame, crop_region)
+                logger.debug(f"Cropped to {frame.shape=}")
 
             if motion_detect:
                 if m.motion_detected(frame):
