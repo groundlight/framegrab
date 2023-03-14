@@ -10,7 +10,7 @@ class MotionDetector:
     # commonly attributed to Collins, et. al A system for video surveillance and monitoring. Technical report, 2000
     # Defaults to 1% pixel difference threshold (good for many applications)
 
-    def __init__(self, pct_threshold: int = 1, val_threshold: int = 50) -> bool:
+    def __init__(self, pct_threshold: float = 1, val_threshold: int = 50) -> bool:
         """
         :param val_threshold: The minimum brightness change for a pixel for it to be considered changed
         :param pct_threshold: Percent of pixels needed to change before motion is detected
@@ -29,11 +29,11 @@ class MotionDetector:
         hi_pixels = np.sum(img > threshold_val)
         pct_hi = float(hi_pixels) / float(total_pixels) * 100
         if pct_hi > self.pixel_pct_threshold:
-            logger.debug(f"Motion detected with {pct_hi:.2f}% pixels changed")
+            logger.debug(f"Motion detected with {pct_hi:.3f}% pixels changed")
             return True
         else:
             if self.log_pixel_percent:
-                logger.debug(f"No motion detected: {pct_hi:.2f}% < {self.pixel_pct_threshold}%")
+                logger.debug(f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%")
             return False
 
     def motion_detected(self, new_img: np.ndarray) -> bool:

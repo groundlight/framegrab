@@ -14,7 +14,7 @@ options:
   -w, --width=WIDTH      resize images to w pixels wide (and scale height proportionately if not set explicitly)
   -y, --height=HEIGHT    resize images to y pixels high (and scale width proportionately if not set explicitly)
   -m, --motion                 enable motion detection with pixel change threshold percentage (disabled by default)
-  -r, --threshold=THRESHOLD    set detection threshold for motion detection [default: 1]
+  -r, --threshold=THRESHOLD    detection threshold for motion detection - percent of changed pixels [default: 1]
   -p, --postmotion=POSTMOTION  minimum number of seconds to capture for every motion detection [default: 1]
   -i, --maxinterval=MAXINT     maximum number of seconds before sending frames even without motion [default: 1000]
 """
@@ -149,9 +149,9 @@ def main():
         POST_MOTION = args["--postmotion"]
         MAX_INTERVAL = args["--maxinterval"]
         try:
-            motion_threshold = int(MOTION_THRESHOLD)
+            motion_threshold = float(MOTION_THRESHOLD)
         except ValueError as e:
-            logger.error(f"Invalid arguement {MOTION_THRESHOLD=} must be an integer")
+            logger.error(f"Invalid arguement {MOTION_THRESHOLD=} must be a number")
             exit(-1)
         try:
             post_motion_time = float(POST_MOTION)
@@ -194,14 +194,14 @@ def main():
     last_frame_time = time.time()
     try:
         while True:
+            start = time.time()
             frame = grabber.grab()
             if frame is None:
                 logger.warning(f"No frame captured! {frame=}")
                 continue
 
             now = time.time()
-            logger.debug(f"captured a new frame after {now-start:.3}s. of size {frame.shape=} ")
-            start = now
+            logger.debug(f"captured a new frame after {now-start:.3f}s of size {frame.shape=} ")
 
             if motion_detect:
                 if m.motion_detected(frame):
@@ -214,7 +214,9 @@ def main():
                     )
                     add_frame_to_queue = True
                 elif time.time() - last_frame_time > max_frame_interval:
-                    logger.debug(f"adding frame after {(time.time()-last_frame_time):.3}s for {max_frame_interval=}s")
+                    logger.debug(
+                        f"adding frame after {(time.time()-last_frame_time):.3}s because {max_frame_interval=}s"
+                    )
                     add_frame_to_queue = True
                 else:
                     logger.debug(f"skipping frame per motion detection settings")
@@ -230,13 +232,13 @@ def main():
             now = time.time()
             if desired_delay > 0:
                 actual_delay = desired_delay - (now - start)
-                logger.debug(f"waiting for {actual_delay=:.3} to capture the next frame.")
                 if actual_delay < 0:
                     logger.warning(
-                        f"Falling behind the desired {FPS=}! looks like putting frames into the worker queue is taking too long: {(now-start):.3}s. The queue contains {q.qsize()} frames."
+                        f"Falling behind the desired {FPS=}.  Either grabbing frames or putting them into output queue (length={q.qsize()}) is taking too long."
                     )
-                    actual_delay = 0
-                time.sleep(actual_delay)
+                else:
+                    logger.debug(f"waiting for {actual_delay=:.3}s to capture the next frame.")
+                    time.sleep(actual_delay)
 
     except KeyboardInterrupt:
         logger.info("exiting with KeyboardInterrupt.")
