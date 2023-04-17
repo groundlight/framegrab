@@ -99,6 +99,6 @@ Replace the RTSP URL with the one specific to your camera or streaming device.
 
 ## Further Reading
 
-* [Camera types](https://github.com/groundlight/stream/blob/main/CAMERAS.md) shows how to get RTSP stream URLs for many popular camera brands.
-* [Developing](https://github.com/groundlight/stream/blob/main/DEVELOPING.md) discusses how this code is built and maintained.
+* [Camera types](CAMERAS.md) shows how to get RTSP stream URLs for many popular camera brands.
+* [Developing](DEVELOPING.md) discusses how this code is built and maintained.
 
