@@ -15,6 +15,7 @@ pillow = "^9.5.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
+pytest = "^7.0.1"
 
 [build-system]
 requires = ["poetry-core"]
