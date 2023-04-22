@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "framegrab"
+version = "0.1.0"
+description = "Easily grab frames from cameras or streams"
+authors = ["Groundlight <info@groundlight.ai>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+opencv-python = "^4.7.0.72"
+youtube-dl = "^2021.12.17"
+groundlight = "^0.7.8"
+pillow = "^9.5.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
