@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 import pafy
 
-logger = logging.getLogger("groundlight.stream")
+logger = logging.getLogger(__name__)
 
 
 class FrameGrabber(metaclass=ABCMeta):

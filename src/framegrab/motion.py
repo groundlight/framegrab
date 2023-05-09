@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 
-logger = logging.getLogger("groundlight.stream")
+logger = logging.getLogger(__name__)
 
 
 class MotionDetector:
@@ -21,7 +21,7 @@ class MotionDetector:
         self.pixel_pct_threshold = pct_threshold
         self.log_pixel_percent = True
 
-    def pixel_threshold(self, img: np.ndarray, threshold_val: float = None):
+    def pixel_threshold(self, img: np.ndarray, threshold_val: float = None) -> bool:
         """Returns true if more then pixel_pct_threshold% of pixels have value greater than pixel_val_threshold"""
         if threshold_val is None:
             threshold_val = self.pixel_val_threshold
