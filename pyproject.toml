@@ -10,7 +10,7 @@ readme = "README.md"
 python = "^3.7"
 opencv-python = "^4.7.0.72"
 youtube-dl = "^2021.12.17"
-groundlight = "^0.7.8"
+groundlight = "^0.9.0"
 pillow = "^9.5.0"
 
 [tool.poetry.group.dev.dependencies]
