@@ -12,9 +12,9 @@ from threading import Lock, Thread
 import cv2
 import numpy as np
 import pafy
+import subprocess
 
 logger = logging.getLogger(__name__)
-
 
 class FrameGrabber(metaclass=ABCMeta):
     @staticmethod
@@ -44,6 +44,42 @@ class FrameGrabber(metaclass=ABCMeta):
     @abstractmethod
     def grab():
         pass
+
+    def find_webcam_serial_numbers() -> dict: 
+        """Finds all plugged in webcams and returns a dictionary where the keys are serial numbers
+        and the values are device paths that can be passed to OpenCV to initialize a VideoCapture.
+        This function only works on Linux, and was specifically tested on an Nvidia Jetson.
+        """
+
+        # ls /dev/video* returns device paths for all plugged in webcams
+        command = 'ls /dev/video*'
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        stdout, _ = process.communicate()
+        output = stdout.decode('utf-8')
+        devices = output.strip().split('\n')
+
+        plugged_in_devices = {}
+        for devpath in devices:
+            # ls -l /sys/class/video4linux/video0/device returns a path that points back into the /sys/bus/usb/devices/
+            # directory where can determine the serial number.
+            # e.g. /sys/bus/usb/devices/2-3.2:1.0 -> /sys/bus/usb/devices/<bus>-<port>.<subport>:<config>.<interface>
+            devname = devpath.split('/')[-1]
+            command = f'ls -l /sys/class/video4linux/{devname}/device'
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            stdout, _ = process.communicate()
+            output = stdout.decode('utf-8')
+            bus_port_subport = output.split('/')[-1].split(':')[0]
+
+            # find the serial number
+            command = f'cat /sys/bus/usb/devices/{bus_port_subport}/serial'
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            stdout, _ = process.communicate()
+            serial_number = stdout.decode('utf-8').strip()
+
+            if serial_number:
+                plugged_in_devices[serial_number] = devpath
+
+        return plugged_in_devices
 
 
 class DirectoryFrameGrabber(FrameGrabber):
