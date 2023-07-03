@@ -1,6 +1,7 @@
 import fnmatch
 import logging
 import os
+import platform
 import random
 import re
 import time
@@ -19,6 +20,9 @@ from typing import List
 
 logger = logging.getLogger(__name__)
 
+OPERATING_SYSTEM = platform.system()
+DIGITAL_ZOOM_MAX = 4
+
 class InputTypes(Enum):
     WEBCAM = 'webcam'
     RTSP = 'rtsp'
@@ -26,8 +30,16 @@ class InputTypes(Enum):
     YOUTUBE = 'youtube'
 
 class FrameGrabber(ABC):
+    unnamed_grabber_count = 0
+
     @staticmethod
     def create_grabbers(configs: List[dict]) -> dict:
+        
+        # Sort the configs such that configs with serial_number attributes appear first
+        # This will ensure that they are able to connect to the camera with the specified 
+        # serial number, and that no other FrameGrabbers claim that camera first.
+        configs.sort(key=lambda config: 'serial_number' not in config)
+
         grabbers = {}
         for config in configs:
             grabber = FrameGrabber.create_grabber(config)
@@ -43,6 +55,13 @@ class FrameGrabber(ABC):
                 f'No input_type provided. Valid types are {[i.value for i in InputTypes]}'
                 )
 
+        # If a name wasn't supplied, create one
+        if not config.get('name', False):
+            FrameGrabber.unnamed_grabber_count += 1
+            count = FrameGrabber.unnamed_grabber_count
+            config['name'] = f'Unnamed Camera {count} ({input_type})'
+
+        # Based on input_type, create correct type of FrameGrabber
         if input_type == InputTypes.WEBCAM.value:
             return WebcamFrameGrabber(config)
         elif input_type == InputTypes.RTSP.value:
@@ -64,7 +83,7 @@ class FrameGrabber(ABC):
         return {}
 
     def _postprocess(self, frame: np.ndarray) -> np.ndarray:
-        # just return in the input if there are no postprocessing options provided.
+        # just return the input if there are no postprocessing options provided.
         options = self.config.get('options', None)
         if not options:
             return frame
@@ -75,6 +94,22 @@ class FrameGrabber(ABC):
         bottom = options.get('crop_bottom', frame.shape[0])
         right = options.get('crop_right', frame.shape[1])
         frame = frame[top:bottom,left:right]
+
+        # digital zoom
+        digital_zoom = options.get('digital_zoom', None)
+        if digital_zoom is None:
+            pass
+        elif digital_zoom < 1 or digital_zoom > DIGITAL_ZOOM_MAX:
+            raise ValueError(
+                f'Invalid value for digital_zoom ({digital_zoom}). '
+                f'Digital zoom cannot be greater than {DIGITAL_ZOOM_MAX}.'
+            )
+        else:
+            top = (frame.shape[0] - frame.shape[0] / digital_zoom) / 2 
+            bottom = frame.shape[0] - top
+            left = (frame.shape[1] - frame.shape[1] / digital_zoom) / 2 
+            right = frame.shape[1] - left
+            frame = frame[int(top):int(bottom),int(left):int(right)]
 
         return frame
 
@@ -95,22 +130,43 @@ class WebcamFrameGrabber(FrameGrabber):
 
     def __init__(self, config: dict):
         self.config = config
-        self.idx = None
 
-        # assign cameras based on serial number
-        if self.config.get('serial_number', None):
+        name = self.config['name']
+        serial_number = self.config.get('serial_number', False)
+
+        if serial_number and OPERATING_SYSTEM != 'Linux':
+            logger.warning(
+                f'Matching webcams with serial_number is not supported on your operating system, {OPERATING_SYSTEM}. '
+                'Webcams will be sequentially assigned instead.'
+            )
+
+        # assign camera based on serial number if serial was provided
+        if serial_number and OPERATING_SYSTEM == 'Linux':
             found_webcam_devnames = WebcamFrameGrabber._find_webcam_devnames()
-            desired_serial_number = self.config.get('serial_number', None)
-            for devname, serial_number in found_webcam_devnames.items():
-                if serial_number == desired_serial_number:
-                    self.capture = cv2.VideoCapture(devname)
-                    break
+            for devname, curr_serial_number in found_webcam_devnames.items():
+                if curr_serial_number == serial_number:
+
+                    # Extract the index from the device name, e.g. /dev/video0 -> 0
+                    # This might only work on Linux, and should be re-evaluated if we add serial number
+                    # recognition for other operating systems 
+                    idx = int(re.findall(r'\d+', devname)[-1])
+
+                    if idx in WebcamFrameGrabber.indices_in_use:
+                        raise ValueError(
+                            f'Webcam index {idx} already in use. '
+                            f'Did you use the same serial number ({serial_number}) for two different cameras?'
+                            )
+
+                    capture = cv2.VideoCapture(idx)
+                    if capture.isOpened():
+                        break
+                        
             else:
                 raise Exception(
-                    f'Unable to find webcam with the specified serial_number: {desired_serial_number}. '
-                    'Please ensure that the serial number is correct and that it is plugged in.'
+                    f'Unable to find webcam with the specified serial_number: {serial_number}. '
+                    'Please ensure that the serial number is correct and that the webcam is plugged in.'
                     )
-        # since no serial number is provided, just assign the next available camera
+        # If no serial number was provided, just assign the next available camera by index
         else:
             for idx in range(20):
                 if idx in WebcamFrameGrabber.indices_in_use:
@@ -118,17 +174,23 @@ class WebcamFrameGrabber(FrameGrabber):
                     continue
 
                 capture = cv2.VideoCapture(idx)
-                ret, _ = capture.read()
-                if ret and capture.isOpened():
-                    logger.info(f'Connected to webcam index {idx}.')
-                    self.capture = capture
-                    self.idx = idx
-                    WebcamFrameGrabber.indices_in_use.add(idx)
+                if capture.isOpened():
                     break
             else:
                 raise Exception(
                     'Unable to connect to webcam by index. Is your webcam plugged in?'
                 )
+
+        # A valid capture has been found, saving it for later
+        self.capture = capture
+
+        # Log the current webcam index as 'in use' to prevent other WebcamFrameGrabbers from stepping on it
+        self.idx = idx
+        WebcamFrameGrabber.indices_in_use.add(idx)
+
+        logger.info(
+            f'Webcam (name={name}, serial_number={serial_number}) connected with index {idx}.'
+            )
 
         # set the buffer size to 1 to always get the most recent frame
         self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
@@ -141,8 +203,7 @@ class WebcamFrameGrabber(FrameGrabber):
 
     def release(self) -> None:
         self.capture.release()
-        if self.idx:
-            WebcamFrameGrabber.indices_in_use.remove(self.idx)
+        WebcamFrameGrabber.indices_in_use.remove(self.idx)
 
     def _apply_options(self, frame: np.ndarray) -> np.ndarray:
         """just a stub
@@ -208,9 +269,13 @@ class RTSPFrameGrabber(FrameGrabber):
         stream = config['address']
         self.capture = cv2.VideoCapture(stream)
 
-        logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
         if not self.capture.isOpened():
-            raise ValueError(f"could not open RTSP stream: {stream}")
+            raise ValueError(
+                f"Could not open RTSP stream: {stream}. "
+                "Is RSTP URL correct? Is the camera connected to the network?"
+                )
+
+        logger.debug(f"Initialized video capture with backend={self.capture.getBackendName()}")
         
         self.run = True
         self.lock = Lock()
@@ -219,12 +284,12 @@ class RTSPFrameGrabber(FrameGrabber):
     def read(self) -> np.ndarray:
         start = time.time()
         with self.lock:
-            logger.debug(f"grabbed lock to read frame from buffer")
+            logger.debug(f"Grabbed lock to read frame from buffer")
             ret, frame = self.capture.read()  # grab and decode since we want this frame
             if not ret:
-                logger.error(f"could not read frame from {self.capture}")
+                logger.error(f"Could not read frame from {self.capture}")
             now = time.time()
-            logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
+            logger.debug(f"Read the frame in {1000*(now-start):.1f}ms")
 
             frame = self._postprocess(frame)
 
@@ -234,10 +299,12 @@ class RTSPFrameGrabber(FrameGrabber):
         self.run = False # to stop the buffer drain thread
 
     def _apply_options() -> None:
+        """There likely aren't any camera-specific options that could be applied to
+        an RTSP feed.
+        """
         pass
 
     def _drain(self) -> None:
-        logger.debug(f"starting thread to drain the video capture buffer")
         while self.run:
             with self.lock:
                 ret = self.capture.grab()  # just grab and don't decode
@@ -245,6 +312,56 @@ class RTSPFrameGrabber(FrameGrabber):
         # release the stream on the way out
         self.capture.release()
 
+class RealSenseFrameGrabber(FrameGrabber):
+    """Intel RealSense Depth Camera
+    """
+
+    def __init__(self, config: dict):
+        self.config = config
+
+    def read(self) -> np.ndarray:
+        pass
+
+    def release(self) -> None:
+        pass
+
+    def _apply_options() -> None:
+        pass
+
+class BaslerUSBFrameGrabber(FrameGrabber):
+    """Basler USB Camera
+    """
+
+    def __init__(self, config: dict):
+        self.config = config
+
+    def read(self) -> np.ndarray:
+        pass
+
+    def release(self) -> None:
+        pass
+
+    def _apply_options() -> None:
+        pass
+
+class GigEFrameGrabber(FrameGrabber):
+    """GigE Camera
+    """
+
+    def __init__(self, config: dict):
+        self.config = config
+
+    def read(self) -> np.ndarray:
+        pass
+
+    def release(self) -> None:
+        pass
+
+    def _apply_options() -> None:
+        pass
+
+
+# TODO update this class
 class DirectoryFrameGrabber(FrameGrabber):
     def __init__(self, stream=None, fps_target=0):
         """stream must be an file mask"""
@@ -272,6 +389,7 @@ class DirectoryFrameGrabber(FrameGrabber):
 
         return frame
 
+# TODO update this class
 class FileStreamFrameGrabber(FrameGrabber):
     def __init__(self, stream=None, fps_target=0):
         """stream must be an filename"""
@@ -312,38 +430,42 @@ class FileStreamFrameGrabber(FrameGrabber):
         logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
         return frame
 
-class DeviceFrameGrabber(FrameGrabber):
-    """Grabs frames directly from a device via a VideoCapture object that
-    is kept open for the lifetime of this instance.
 
-    importantly, this grabber does not buffer frames on behalf of the
-    caller, so each call to grab will directly read a frame from the
-    device
-    """
+# TODO can this class be removed?
+# class DeviceFrameGrabber(FrameGrabber):
+#     """Grabs frames directly from a device via a VideoCapture object that
+#     is kept open for the lifetime of this instance.
 
-    def __init__(self, stream=None):
-        """stream must be an int representing a device id"""
-        try:
-            self.capture = cv2.VideoCapture(int(stream))
-            logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
-        except Exception as e:
-            logger.error(
-                f"could not initialize DeviceFrameGrabber: stream: {stream} must be an int corresponding to a valid device id."
-            )
-            raise e
+#     importantly, this grabber does not buffer frames on behalf of the
+#     caller, so each call to grab will directly read a frame from the
+#     device
+#     """
 
-    def grab(self) -> np.ndarray:
-        """consistent with existing behavior based on VideoCapture.read()
-        which may return None when it cannot read a frame.
-        """
-        start = time.time()
-        ret, frame = self.capture.read()
-        if not ret:
-            raise RuntimeWarning("could not read frame from {self.capture}")
-        now = time.time()
-        logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
-        return frame
+#     def __init__(self, stream=None):
+#         """stream must be an int representing a device id"""
+#         try:
+#             self.capture = cv2.VideoCapture(int(stream))
+#             logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
+#         except Exception as e:
+#             logger.error(
+#                 f"could not initialize DeviceFrameGrabber: stream: {stream} must be an int corresponding to a valid device id."
+#             )
+#             raise e
 
+#     def grab(self) -> np.ndarray:
+#         """consistent with existing behavior based on VideoCapture.read()
+#         which may return None when it cannot read a frame.
+#         """
+#         start = time.time()
+#         ret, frame = self.capture.read()
+#         if not ret:
+#             raise RuntimeWarning("could not read frame from {self.capture}")
+#         now = time.time()
+#         logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
+#         return frame
+
+
+# TODO update this class
 class YouTubeFrameGrabber(FrameGrabber):
     """grabs the most recent frame from an YouTube stream. To avoid extraneous bandwidth
     this class tears down the stream between each frame grab.  maximum framerate
@@ -385,7 +507,7 @@ class YouTubeFrameGrabber(FrameGrabber):
         self.capture.release()
         return frame
 
-
+# TODO update this class
 class ImageURLFrameGrabber(FrameGrabber):
     """grabs the current image at a single URL.
     NOTE: if image is expected to be refreshed or change with a particular frequency,
