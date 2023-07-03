@@ -5,7 +5,7 @@ import random
 import re
 import time
 import urllib
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from pathlib import Path
 from threading import Lock, Thread
 
@@ -14,38 +14,199 @@ import numpy as np
 import pafy
 import subprocess
 
+from enum import Enum
+from typing import List
+
 logger = logging.getLogger(__name__)
 
-class FrameGrabber(metaclass=ABCMeta):
+class InputTypes(Enum):
+    WEBCAM = 'webcam'
+    RTSP = 'rtsp'
+    REALSENSE = 'realsense'
+    YOUTUBE = 'youtube'
+
+class FrameGrabber(ABC):
     @staticmethod
-    def create_grabber(stream=None, **kwargs):
-        logger.debug(f"Input {stream=} (type {type(stream)}")
-        if type(stream) == int:
-            logger.debug("Looking for camera {stream=}")
-            return DeviceFrameGrabber(stream=stream)
-        elif (type(stream) == str) and (stream.find("*") != -1):
-            logger.debug(f"Found wildcard file {stream=}")
-            return DirectoryFrameGrabber(stream=stream)
-        elif (type(stream) == str) and (stream[:4] == "rtsp"):
-            logger.debug(f"found rtsp stream {stream=}")
-            return RTSPFrameGrabber(stream=stream)
-        elif (type(stream) == str) and (stream.find("youtube.com") > 0):
-            logger.debug(f"found youtube stream {stream=}")
-            return YouTubeFrameGrabber(stream=stream)
-        elif (type(stream) == str) and Path(stream).is_file():
-            logger.debug(f"found filename stream {stream=}")
-            return FileStreamFrameGrabber(stream=stream, **kwargs)
-        elif (type(stream) == str) and (stream[:4] == "http"):
-            logger.debug(f"found image url {stream=}")
-            return ImageURLFrameGrabber(url=stream, **kwargs)
+    def create_grabbers(configs: List[dict]) -> dict:
+        grabbers = {}
+        for config in configs:
+            grabber = FrameGrabber.create_grabber(config)
+            grabbers[config['name']] = grabber
+        return grabbers
+
+    @staticmethod
+    def create_grabber(config: dict):
+
+        input_type = config.get('input_type', None)
+        if input_type is None:
+            raise ValueError(
+                f'No input_type provided. Valid types are {[i.value for i in InputTypes]}'
+                )
+
+        if input_type == InputTypes.WEBCAM.value:
+            return WebcamFrameGrabber(config)
+        elif input_type == InputTypes.RTSP.value:
+            return RTSPFrameGrabber(config)
+        elif input_type == InputTypes.REALSENSE.value:
+            return None
+        elif input_type == InputTypes.YOUTUBE.value:
+            return None
         else:
-            raise ValueError(f"cannot create a frame grabber from {stream=}")
+            raise ValueError(f'Unable to determine input_type. Valid types are {[i.value for i in InputTypes]}')
+
+    def _postprocess(self, frame: np.ndarray) -> np.ndarray:
+        # just return in the input if there are no postprocessing options provided.
+        options = self.config.get('options', None)
+        if not options:
+            return frame
+
+        # crop the frame
+        top = options.get('crop_top', 0)
+        left = options.get('crop_left', 0)
+        bottom = options.get('crop_bottom', frame.shape[0])
+        right = options.get('crop_right', frame.shape[1])
+        frame = frame[top:bottom,left:right]
+
+        return frame
 
     @abstractmethod
-    def grab():
+    def read():
         pass
 
-    def find_webcam_serial_numbers() -> dict: 
+    @abstractmethod
+    def release():
+        pass
+
+
+class DirectoryFrameGrabber(FrameGrabber):
+    def __init__(self, stream=None, fps_target=0):
+        """stream must be an file mask"""
+        try:
+            self.filename_list = []
+            for filename in os.listdir():
+                if fnmatch.fnmatch(filename, stream):
+                    self.filename_list.append(filename)
+            logger.debug(f"found {len(self.filename_list)} files matching stream: {stream}")
+            random.shuffle(self.filename_list)
+        except Exception as e:
+            logger.error(f"could not initialize DirectoryFrameGrabber: stream: {stream} filename is invalid or read error")
+            raise e
+        if len(self.filename_list) == 0:
+            logger.warning(f"no files found matching stream: {stream}")
+
+    def grab(self):
+        if len(self.filename_list) == 0:
+            raise RuntimeWarning(f"could not read frame from {self.capture}.  possible end of file.")
+
+        start = time.time()
+        frame = cv2.imread(self.filename_list[0], cv2.IMREAD_GRAYSCALE)
+        self.filename_list.pop(0)
+        logger.debug(f"read the frame in {1000*(time.time()-start):.1f}ms")
+
+        return frame
+
+class FileStreamFrameGrabber(FrameGrabber):
+    def __init__(self, stream=None, fps_target=0):
+        """stream must be an filename"""
+        try:
+            self.capture = cv2.VideoCapture(stream)
+            logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
+            ret, frame = self.capture.read()
+            self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
+            self.fps_target = fps_target
+            logger.debug(f"source FPS : {self.fps_source}  / target FPS : {self.fps_target}")
+            self.remainder = 0.0
+        except Exception as e:
+            logger.error(f"could not initialize DeviceFrameGrabber: stream: {stream} filename is invalid or read error")
+            raise e
+
+    def read(self) -> np.ndarray:
+        """decimates stream to self.fps_target, 0 fps to use full original stream.
+        consistent with existing behavior based on VideoCapture.read()
+        which may return None when it cannot read a frame.
+        """
+        start = time.time()
+
+        if self.fps_target > 0 and self.fps_target < self.fps_source:
+            drop_frames = (self.fps_source / self.fps_target) - 1 + self.remainder
+            for i in range(round(drop_frames)):
+                ret, frame = self.capture.read()
+            self.remainder = round(drop_frames - round(drop_frames), 2)
+            logger.info(
+                f"dropped {round(drop_frames)} frames to meet {self.fps_target} FPS target from {self.fps_source} FPS source (off by {self.remainder} frames)"
+            )
+        else:
+            logger.debug(f"frame dropping disabled for {self.fps_target} FPS target from {self.fps_source} FPS source")
+
+        ret, frame = self.capture.read()
+        if not ret:
+            raise RuntimeWarning(f"could not read frame from {self.capture}.  possible end of file.")
+        now = time.time()
+        logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
+        return frame
+
+class DeviceFrameGrabber(FrameGrabber):
+    """Grabs frames directly from a device via a VideoCapture object that
+    is kept open for the lifetime of this instance.
+
+    importantly, this grabber does not buffer frames on behalf of the
+    caller, so each call to grab will directly read a frame from the
+    device
+    """
+
+    def __init__(self, stream=None):
+        """stream must be an int representing a device id"""
+        try:
+            self.capture = cv2.VideoCapture(int(stream))
+            logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
+        except Exception as e:
+            logger.error(
+                f"could not initialize DeviceFrameGrabber: stream: {stream} must be an int corresponding to a valid device id."
+            )
+            raise e
+
+    def grab(self):
+        """consistent with existing behavior based on VideoCapture.read()
+        which may return None when it cannot read a frame.
+        """
+        start = time.time()
+        ret, frame = self.capture.read()
+        if not ret:
+            raise RuntimeWarning("could not read frame from {self.capture}")
+        now = time.time()
+        logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
+        return frame
+
+class WebcamFrameGrabber(FrameGrabber):
+    capture_idx = 0
+
+    def __init__(self, config: dict):
+        self.config = config
+
+        found_webcam_serial_numbers = WebcamFrameGrabber._find_webcam_serial_numbers()
+        print(f'found_webcam_serial_numbers: {found_webcam_serial_numbers}')
+        desired_serial_number = self.config.get('serial_number', None)
+        for serial_number, devname in found_webcam_serial_numbers.items():
+            if serial_number == desired_serial_number:
+                self.capture = cv2.VideoCapture(devname)
+                self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                break
+        else:
+            logger.warning(
+                f'Unable to find webcam with the specified serial_number: {desired_serial_number}. '
+                'Is it plugged in?'
+                )
+
+    def read(self) -> np.ndarray:
+        ret, frame = self.capture.read()
+        frame = self._postprocess(frame)
+        return frame
+
+    def release(self) -> None:
+        self.capture.release()
+
+    @staticmethod
+    def _find_webcam_serial_numbers() -> dict: 
         """Finds all plugged in webcams and returns a dictionary where the keys are serial numbers
         and the values are device paths that can be passed to OpenCV to initialize a VideoCapture.
         This function only works on Linux, and was specifically tested on an Nvidia Jetson.
@@ -81,109 +242,6 @@ class FrameGrabber(metaclass=ABCMeta):
 
         return plugged_in_devices
 
-
-class DirectoryFrameGrabber(FrameGrabber):
-    def __init__(self, stream=None, fps_target=0):
-        """stream must be an file mask"""
-        try:
-            self.filename_list = []
-            for filename in os.listdir():
-                if fnmatch.fnmatch(filename, stream):
-                    self.filename_list.append(filename)
-            logger.debug(f"found {len(self.filename_list)} files matching {stream=}")
-            random.shuffle(self.filename_list)
-        except Exception as e:
-            logger.error(f"could not initialize DirectoryFrameGrabber: {stream=} filename is invalid or read error")
-            raise e
-        if len(self.filename_list) == 0:
-            logger.warning(f"no files found matching {stream=}")
-
-    def grab(self):
-        if len(self.filename_list) == 0:
-            raise RuntimeWarning("could not read frame from {self.capture=}.  possible end of file.")
-
-        start = time.time()
-        frame = cv2.imread(self.filename_list[0], cv2.IMREAD_GRAYSCALE)
-        self.filename_list.pop(0)
-        logger.debug(f"read the frame in {1000*(time.time()-start):.1f}ms")
-
-        return frame
-
-
-class FileStreamFrameGrabber(FrameGrabber):
-    def __init__(self, stream=None, fps_target=0):
-        """stream must be an filename"""
-        try:
-            self.capture = cv2.VideoCapture(stream)
-            logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
-            ret, frame = self.capture.read()
-            self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
-            self.fps_target = fps_target
-            logger.debug(f"source FPS : {self.fps_source=}  / target FPS : {self.fps_target}")
-            self.remainder = 0.0
-        except Exception as e:
-            logger.error(f"could not initialize DeviceFrameGrabber: {stream=} filename is invalid or read error")
-            raise e
-
-    def grab(self):
-        """decimates stream to self.fps_target, 0 fps to use full original stream.
-        consistent with existing behavior based on VideoCapture.read()
-        which may return None when it cannot read a frame.
-        """
-        start = time.time()
-
-        if self.fps_target > 0 and self.fps_target < self.fps_source:
-            drop_frames = (self.fps_source / self.fps_target) - 1 + self.remainder
-            for i in range(round(drop_frames)):
-                ret, frame = self.capture.read()
-            self.remainder = round(drop_frames - round(drop_frames), 2)
-            logger.info(
-                f"dropped {round(drop_frames)} frames to meet {self.fps_target} FPS target from {self.fps_source} FPS source (off by {self.remainder} frames)"
-            )
-        else:
-            logger.debug(f"frame dropping disabled for {self.fps_target} FPS target from {self.fps_source} FPS source")
-
-        ret, frame = self.capture.read()
-        if not ret:
-            raise RuntimeWarning("could not read frame from {self.capture=}.  possible end of file.")
-        now = time.time()
-        logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
-        return frame
-
-
-class DeviceFrameGrabber(FrameGrabber):
-    """Grabs frames directly from a device via a VideoCapture object that
-    is kept open for the lifetime of this instance.
-
-    importantly, this grabber does not buffer frames on behalf of the
-    caller, so each call to grab will directly read a frame from the
-    device
-    """
-
-    def __init__(self, stream=None):
-        """stream must be an int representing a device id"""
-        try:
-            self.capture = cv2.VideoCapture(int(stream))
-            logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
-        except Exception as e:
-            logger.error(
-                f"could not initialize DeviceFrameGrabber: {stream=} must be an int corresponding to a valid device id."
-            )
-            raise e
-
-    def grab(self):
-        """consistent with existing behavior based on VideoCapture.read()
-        which may return None when it cannot read a frame.
-        """
-        start = time.time()
-        ret, frame = self.capture.read()
-        if not ret:
-            raise RuntimeWarning("could not read frame from {self.capture=}")
-        now = time.time()
-        logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
-        return frame
-
-
 class RTSPFrameGrabber(FrameGrabber):
     """grabs the most recent frame from an rtsp stream. The RTSP capture
     object has a non-configurable built-in buffer, so just calling
@@ -193,33 +251,44 @@ class RTSPFrameGrabber(FrameGrabber):
     latest frame when explicitly requested.
     """
 
-    def __init__(self, stream=None):
-        self.lock = Lock()
-        self.stream = stream
-        self.capture = cv2.VideoCapture(self.stream)
+    def __init__(self, config: dict):
+        self.config = config
+
+        stream = config['address']
+        self.capture = cv2.VideoCapture(stream)
+
         logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
         if not self.capture.isOpened():
-            raise ValueError(f"could not open {self.stream=}")
-        self.thread = Thread(target=self._drain, name="drain_thread")
+            raise ValueError(f"could not open RTSP stream: {stream}")
+        
+        self.run = True
+        self.lock = Lock()
+        self.thread = Thread(target=self._drain)
         self.thread.start()
 
-    def grab(self):
+    def read(self):
         start = time.time()
         with self.lock:
             logger.debug(f"grabbed lock to read frame from buffer")
             ret, frame = self.capture.read()  # grab and decode since we want this frame
             if not ret:
-                logger.error(f"could not read frame from {self.capture=}")
+                logger.error(f"could not read frame from {self.capture}")
             now = time.time()
             logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
+
+            frame = self._postprocess(frame)
+
             return frame
+
+    def release(self):
+        self.run = False # to stop the buffer drain thread
+        self.capture.release()
 
     def _drain(self):
         logger.debug(f"starting thread to drain the video capture buffer")
-        while True:
+        while self.run:
             with self.lock:
                 ret = self.capture.grab()  # just grab and don't decode
-
 
 class YouTubeFrameGrabber(FrameGrabber):
     """grabs the most recent frame from an YouTube stream. To avoid extraneous bandwidth
@@ -234,7 +303,7 @@ class YouTubeFrameGrabber(FrameGrabber):
         self.capture = cv2.VideoCapture(self.best_video.url)
         logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
         if not self.capture.isOpened():
-            raise ValueError(f"could not initially open {self.stream=}")
+            raise ValueError(f"could not initially open {self.stream}")
         self.capture.release()
 
     def reset_stream(self):
@@ -243,7 +312,7 @@ class YouTubeFrameGrabber(FrameGrabber):
         self.capture = cv2.VideoCapture(self.best_video.url)
         logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
         if not self.capture.isOpened():
-            raise ValueError(f"could not initially open {self.stream=}")
+            raise ValueError(f"could not initially open {self.stream}")
         self.capture.release()
 
     def grab(self):
@@ -251,12 +320,12 @@ class YouTubeFrameGrabber(FrameGrabber):
         self.capture = cv2.VideoCapture(self.best_video.url)
         ret, frame = self.capture.read()  # grab and decode since we want this frame
         if not ret:
-            logger.error(f"could not read frame from {self.capture=}. attempting to reset stream")
+            logger.error(f"could not read frame from {self.capture}. attempting to reset stream")
             self.reset_stream()
             self.capture = cv2.VideoCapture(self.best_video.url)
             ret, frame = self.capture.read()
             if not ret:
-                logger.error(f"failed to effectively reset stream {self.stream=} / {self.best_video.url=}")
+                logger.error(f"failed to effectively reset stream {self.stream} / {self.best_video.url}")
         now = time.time()
         logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
         self.capture.release()
