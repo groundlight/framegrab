@@ -1,10 +1,10 @@
 import logging
-
-import numpy as np
 from typing import Union
-from PIL import Image
+
 import cv2
+import numpy as np
 import requests
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +47,7 @@ class MotionDetector:
             return True
         else:
             if self.log_pixel_percent:
-                logger.debug(
-                    f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%"
-                )
+                logger.debug(f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%")
             return False
 
     def motion_detected(self, new_img: Union[str, np.ndarray]) -> bool:
