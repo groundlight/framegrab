@@ -1,6 +1,10 @@
 import logging
 
 import numpy as np
+from typing import Union
+from PIL import Image
+import cv2
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +25,16 @@ class MotionDetector:
         self.pixel_pct_threshold = pct_threshold
         self.log_pixel_percent = True
 
+    @staticmethod
+    def get_numpy_array(filename: str) -> np.ndarray:
+        if filename.startswith("http"):
+            image = Image.open(requests.get(filename, stream=True).raw)
+            return np.array(image)
+        elif filename.endswith("jpeg"):
+            # Return a numpy array in BGR format since the SDK
+            # assumes this ordering for now.
+            return cv2.imread(filename=filename)
+
     def pixel_threshold(self, img: np.ndarray, threshold_val: float = None) -> bool:
         """Returns true if more then pixel_pct_threshold% of pixels have value greater than pixel_val_threshold"""
         if threshold_val is None:
@@ -33,10 +47,18 @@ class MotionDetector:
             return True
         else:
             if self.log_pixel_percent:
-                logger.debug(f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%")
+                logger.debug(
+                    f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%"
+                )
             return False
 
-    def motion_detected(self, new_img: np.ndarray) -> bool:
+    def motion_detected(self, new_img: Union[str, np.ndarray]) -> bool:
+        """
+        Returns true if motion is detected by comparing the new image and a previous baseline.
+        :param new_img: New image as either a URL, local filepath or a Numpy array
+        """
+        if isinstance(new_img, str):
+            new_img = self.get_numpy_array(filename=new_img)
         if self.unused:
             self.base_img = new_img
             self.base2 = self.base_img
