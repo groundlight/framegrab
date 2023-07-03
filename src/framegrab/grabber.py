@@ -19,6 +19,7 @@ from typing import List
 
 logger = logging.getLogger(__name__)
 
+
 class InputTypes(Enum):
     WEBCAM = 'webcam'
     RTSP = 'rtsp'
