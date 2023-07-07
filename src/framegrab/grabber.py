@@ -152,9 +152,9 @@ class FrameGrabber(ABC):
                     name = grabber.config['name']
                     grabbers[name] = grabber
                 except (ValueError, ImportError):
-                    # ValueError is taken to mean that we have reached the end of enumeration for the current input_type
-                    # ImportError means the requisite packages aren't installed for the current input_type
-                    # In both cases, it's time to move on to the next input_type
+                    # ValueError is taken to mean that we have reached the end of enumeration for the current input_type.
+                    # ImportError means the requisite packages aren't installed for the current input_type.
+                    # In both cases, it's time to move on to the next input_type.
                     break
 
         return grabbers
