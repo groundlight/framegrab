@@ -36,9 +36,9 @@ config = {
 grabber = FrameGrabber.create_grabber(config)
 
 ```
-`config` can contain many details and settings about your camera, but the only required parameter is `input_type`. Available `input_types` are: `webcam`, `rtsp`, `realsense` and `basler_usb`.
+`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `webcam`, `rtsp`, `realsense` and `basler_usb`.
 
-Using a single webcam with several options would look something like this:
+Here's an example of a single webcam configured with several options:
 ```
 config = {
     'name': 'front door camera',
@@ -90,9 +90,9 @@ When you are done with the camera, release the resource by running:
 grabber.release()
 ```
 
-You might have several cameras of different types that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.create_grabbers`.
+You might have several cameras that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.create_grabbers`.
 
-If you have multiple cameras of the same type plugged in, it's recommended to provide serial numbers in your configurations; this will ensure that each configuration is paired with the correct camera. If you don't provide serial numbers in your configurations, configurations will be paired with cameras in a sequential manner. 
+If you have multiple cameras of the same type plugged in, it's recommended to provide serial numbers in the configurations; this ensures that each configuration is paired with the correct camera. If you don't provide serial numbers in your configurations, configurations will be paired with cameras in a sequential manner.
 
 Below is a sample yaml file containing configurations for three different cameras.
 ```
@@ -108,7 +108,7 @@ GL_CAMERAS: |
   - name: conference room
       input_type: rtsp
       address: 
-        rtsp_url: <YOUR RTSP URL>
+        rtsp_url: rtsp://admin:password@192.168.1.20/cam/realmonitor?channel=1&subtype=0
       options:
         crop:
           absolute:
@@ -121,7 +121,7 @@ GL_CAMERAS: |
     id:
       serial_number: B77D3A8F
 ```
-You can load the configurations and use the cameras in the following manner.
+You can load the configurations from the yaml file and use the cameras in the following manner.
 ```
 from framegrab import FrameGrabber
 import yaml
@@ -141,7 +141,7 @@ for grabber in grabbers.values():
     display_image(frame)
     grabber.release()
 ```
-It is also possible to call `FrameGrabber.autodiscover`. This will find all available cameras and return them with default configurations. This method does not work with RTSP cameras.
+It is also possible to 'autodiscover' cameras. This will automatically connect to all cameras that are plugged into your machine, such as `webcam`, `realsense` and `basler_usb` cameras. Default configurations will be loaded for each camera. Please note that RTSP streams cannot be discovered in this manner; RTSP URLs must be specified in the configurations.
 ```
 grabbers = FrameGrabber.autodiscover()
 ```
