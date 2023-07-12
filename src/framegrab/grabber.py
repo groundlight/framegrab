@@ -277,7 +277,7 @@ class WebcamFrameGrabber(FrameGrabber):
 
         # Find the serial number of connected webcams. Currently only works on Linux.
         if OPERATING_SYSTEM == "Linux":
-            found_webcams = WebcamFrameGrabber._find_webcam_devnames()
+            found_webcams = WebcamFrameGrabber._find_webcam_serial_numbers()
         else:
             found_webcams = {}
 
@@ -343,9 +343,9 @@ class WebcamFrameGrabber(FrameGrabber):
         self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
     @staticmethod
-    def _find_webcam_devnames() -> dict:
-        """Finds all plugged in webcams and returns a dictionary mapping device names to
-        to serial numbers. This is useful for connecting the dots between user provided configurations
+    def _find_webcam_serial_numbers() -> dict:
+        """Finds all plugged in webcams and returns a dictionary mapping serial_numbers to details about the device.
+        This is useful for connecting the dots between user provided configurations
         and actual plugged in devices.
 
         This function only works on Linux, and was specifically tested on an Nvidia Jetson.
