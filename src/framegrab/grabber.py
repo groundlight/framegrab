@@ -10,22 +10,32 @@ from typing import Dict, List
 import cv2
 import numpy as np
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO) # not sure if this is the right long term solution
+
 # Optional imports
 try:
     from pypylon import pylon
 except ImportError:
+    logger.warning(
+        'Dependency for Basler cameras (pypylon) not found. '
+        'If you are not trying to use a Basler camera, you can ignore this message. '
+        'If you are trying to use a Basler camera, you will need to install pypylon.'
+    )
     pylon = None
 
 try:
     from pyrealsense2 import pyrealsense2 as rs
 except ImportError:
+    logger.warning(
+        'Dependency for Intel RealSense cameras (pyrealsense2) not found. '
+        'If you are not trying to use a RealSense camera, you can ignore this message. '
+        'If you are trying to use a RealSense camera, you will need to install pyrealsense2.'
+    )
     rs = None
-
-logger = logging.getLogger(__name__)
 
 OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
-
 
 class InputTypes:
     """Defines the available input types from FrameGrabber objects"""
@@ -33,7 +43,7 @@ class InputTypes:
     WEBCAM = "webcam"
     RTSP = "rtsp"
     REALSENSE = "realsense"
-    BASLER_USB = "basler_usb"
+    BASLER = "basler"
 
     def get_options() -> list:
         """Get a list of the available InputType options"""
@@ -43,7 +53,6 @@ class InputTypes:
             if "__" not in attr_name and isinstance(attr_value, str):
                 output.append(attr_value)
         return output
-
 
 class FrameGrabber(ABC):
     # for naming FrameGrabber objects that have no user-defined name
@@ -90,7 +99,8 @@ class FrameGrabber(ABC):
         grabbers = {}
         for config in configs:
             grabber = FrameGrabber.create_grabber(config)
-            grabbers[config["name"]] = grabber
+            name = grabber.config['name']
+            grabbers[name] = grabber
 
         return grabbers
 
@@ -111,8 +121,8 @@ class FrameGrabber(ABC):
             grabber = WebcamFrameGrabber(config)
         elif input_type == InputTypes.RTSP:
             grabber = RTSPFrameGrabber(config)
-        elif input_type == InputTypes.BASLER_USB:
-            grabber = BaslerUSBFrameGrabber(config)
+        elif input_type == InputTypes.BASLER:
+            grabber = BaslerFrameGrabber(config)
         elif input_type == InputTypes.REALSENSE:
             grabber = RealSenseFrameGrabber(config)
         else:
@@ -124,7 +134,7 @@ class FrameGrabber(ABC):
         if not config.get("name", False):
             FrameGrabber.unnamed_grabber_count += 1
             count = FrameGrabber.unnamed_grabber_count
-            config["name"] = f"Unnamed Camera {count} ({input_type})"
+            config["name"] = f"Camera {count} ({input_type})"
 
         # Apply the options so that resolution, exposure, etc. is correct
         grabber.apply_options(config["options"])
@@ -137,7 +147,7 @@ class FrameGrabber(ABC):
         autodiscoverable_input_types = (
             InputTypes.REALSENSE,
             InputTypes.WEBCAM,
-            InputTypes.BASLER_USB,
+            InputTypes.BASLER,
         )
 
         grabbers = {}
@@ -209,8 +219,6 @@ class FrameGrabber(ABC):
 
         if digital_zoom is None:
             pass
-        # TODO this condition for checking digital_zoom should eventually be moved to a
-        # function that validates the whole dictionary of options, perhaps using pydantic. Will add this later.
         elif digital_zoom < 1 or digital_zoom > DIGITAL_ZOOM_MAX:
             raise ValueError(
                 f"Invalid value for digital_zoom ({digital_zoom}). "
@@ -253,6 +261,7 @@ class FrameGrabber(ABC):
 class WebcamFrameGrabber(FrameGrabber):
     """For any generic webcam"""
 
+    # keep track of the webcams that are already in use so that we don't try to connect to them twice
     indices_in_use = set()
 
     def __init__(self, config: dict):
@@ -266,27 +275,25 @@ class WebcamFrameGrabber(FrameGrabber):
                 "Webcams will be sequentially assigned instead."
             )
 
-        # Assign camera based on serial number if serial was provided
-        if serial_number and OPERATING_SYSTEM == "Linux":
-            found_webcam_devnames = WebcamFrameGrabber._find_webcam_devnames()
-            for devname, curr_serial_number in found_webcam_devnames.items():
-                if curr_serial_number == serial_number:
-                    # Extract the index from the device name, e.g. /dev/video0 -> 0
-                    # This might only work on Linux, and should be re-evaluated if we add serial number
-                    # recognition for other operating systems
-                    idx = int(re.findall(r"\d+", devname)[-1])
+        # Find the serial number of connected webcams. Currently only works on Linux.
+        if OPERATING_SYSTEM == "Linux":
+            found_webcams = WebcamFrameGrabber._find_webcam_devnames()
+        else:
+            found_webcams = {}
 
-                    if idx in WebcamFrameGrabber.indices_in_use:
-                        raise ValueError(
-                            f"Webcam index {idx} already in use. "
-                            f"Did you use the same serial number ({serial_number}) for two different cameras?"
-                        )
+        # Assign camera based on serial number if 1) serial was provided and 2) we know the 
+        # serial numbers of plugged in devices
+        if found_webcams.get('serial_number', False):
+            idx = found_webcams.get('idx')
 
-                    capture = cv2.VideoCapture(idx)
-                    if capture.isOpened():
-                        break  # Found a valid capture, no need to look any further
+            if idx in WebcamFrameGrabber.indices_in_use:
+                raise ValueError(
+                    f"Webcam index {idx} already in use. "
+                    f"Did you use the same serial number ({serial_number}) for two different cameras?"
+                )
 
-            else:
+            capture = cv2.VideoCapture(idx)
+            if not capture.isOpened():
                 raise ValueError(
                     f"Unable to find webcam with the specified serial_number: {serial_number}. "
                     "Please ensure that the serial number is correct and that the webcam is plugged in."
@@ -302,6 +309,14 @@ class WebcamFrameGrabber(FrameGrabber):
                     break  # Found a valid capture, no need to look any further
             else:
                 raise ValueError(f"Unable to connect to webcam by index. Is your webcam plugged in?")
+            
+        # If a serial_number wasn't provided, attempt to find one and add it to the config
+        if not serial_number:
+            for serial_number, values in found_webcams.items():
+                curr_idx = values['idx']
+                if idx == curr_idx:
+                    self.config['id']['serial_number'] = serial_number
+                    break
 
         # A valid capture has been found, saving it for later
         self.capture = capture
@@ -343,7 +358,7 @@ class WebcamFrameGrabber(FrameGrabber):
         output = stdout.decode("utf-8")
         devices = output.strip().split("\n")
 
-        plugged_in_devices = {}
+        found_webcams = {}
         for devpath in devices:
             # ls -l /sys/class/video4linux/video0/device returns a path that points back into the /sys/bus/usb/devices/
             # directory where can determine the serial number.
@@ -361,10 +376,16 @@ class WebcamFrameGrabber(FrameGrabber):
             stdout, _ = process.communicate()
             serial_number = stdout.decode("utf-8").strip()
 
-            if serial_number:
-                plugged_in_devices[devpath] = serial_number
+            # find the index
+            idx = int(re.findall(r"\d+", devname)[-1])
 
-        return plugged_in_devices
+            if serial_number:
+                found_webcams[serial_number] = {
+                    'devname': devname,
+                    'idx': idx,
+                }
+
+        return found_webcams
 
 
 class RTSPFrameGrabber(FrameGrabber):
@@ -432,15 +453,15 @@ class RTSPFrameGrabber(FrameGrabber):
                 _ = self.capture.grab()
             time.sleep(self.drain_rate)
 
-class BaslerUSBFrameGrabber(FrameGrabber):
-    """Basler USB Camera"""
+class BaslerFrameGrabber(FrameGrabber):
+    """Basler USB and GigE Cameras"""
 
     serial_numbers_in_use = set()
 
     def __init__(self, config: dict):
         if pylon is None:
             raise ImportError(
-                "Using Basler USB cameras requires the pypylon package, which is not installed on this system. "
+                "Using Basler cameras requires the pypylon package, which is not installed on this system. "
                 "Please install pypylon and try again."
             )
 
@@ -450,31 +471,31 @@ class BaslerUSBFrameGrabber(FrameGrabber):
         devices = tlf.EnumerateDevices()
 
         if not devices:
-            raise ValueError("No Basler USB cameras were found. Is your camera plugged in?")
+            raise ValueError("No Basler cameras were found. Is your camera connected?")
 
         # Attempt to match the provided serial number with a plugged in device. If no serial number was provided, just
         # pick the first found device that is not currently in use.
         serial_number = config.get("id", {}).get("serial_number")
         for device in devices:
             curr_serial_number = device.GetSerialNumber()
-            if curr_serial_number in BaslerUSBFrameGrabber.serial_numbers_in_use:
+            if curr_serial_number in BaslerFrameGrabber.serial_numbers_in_use:
                 continue
             if serial_number is None or serial_number == curr_serial_number:
                 camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateDevice(device))
                 camera.Open()
-                logger.info(f"Connected to Basler USB camera with serial number {curr_serial_number}.")
+                logger.info(f"Connected to Basler camera with serial number {curr_serial_number}.")
                 break
         else:
             raise ValueError(
-                f"Unable to connect to Basler USB camera with serial number: {serial_number}. "
-                "Please verify that the camera is plugged in and that the serial number is correct."
+                f"Unable to connect to Basler camera with serial number: {serial_number}. "
+                "Please verify that the camera is connected and that the serial number is correct."
             )
 
         # A valid camera has been found, remember the serial_number to prevent
         # other FrameGrabbers from using it
         self.camera = camera
         self.serial_number = curr_serial_number
-        BaslerUSBFrameGrabber.serial_numbers_in_use.add(self.serial_number)
+        BaslerFrameGrabber.serial_numbers_in_use.add(self.serial_number)
 
     def grab(self) -> np.ndarray:
         with self.camera.GrabOne(2000) as result:
@@ -492,7 +513,7 @@ class BaslerUSBFrameGrabber(FrameGrabber):
 
     def release(self) -> None:
         self.camera.Close()
-        BaslerUSBFrameGrabber.serial_numbers_in_use.remove(self.serial_number)
+        BaslerFrameGrabber.serial_numbers_in_use.remove(self.serial_number)
 
     def apply_options(self, options: dict) -> None:
         self.config["options"] = options
@@ -602,24 +623,6 @@ class RealSenseFrameGrabber(FrameGrabber):
 
     def apply_options(self, options: dict) -> None:
         self.config["options"] = options
-
-
-# # TODO create this class
-# class GigEFrameGrabber(FrameGrabber):
-#     """GigE Camera
-#     """
-
-#     def __init__(self, config: dict):
-#         self.config = config
-
-#     def grab(self) -> np.ndarray:
-#         pass
-
-#     def release(self) -> None:
-#         pass
-
-#     def apply_options(self, options: dict) -> None:
-#         self.config['options'] = options
 
 # # TODO update this class to work with the latest updates
 # import os
