@@ -394,11 +394,17 @@ class RTSPFrameGrabber(FrameGrabber):
 
         self.run = True
         self.lock = Lock()
+
+        # The _drain thread needs to periodically wait to avoid overloading the CPU. Ideally this would be done 
+        # at the rate of the RTSP feed's FPS. Unfortunately, OpenCV cannot consistently read the FPS of an RTSP 
+        # feed, so we will assume a high FPS of 60.
+        self.drain_rate = 1 / 60
+
         Thread(target=self._drain).start()
 
     def grab(self) -> np.ndarray:
         with self.lock:
-            ret, frame = self.capture.read()  # grab and decode since we want this frame
+            ret, frame = self.capture.retrieve() # grab and decode since we want this frame
             if not ret:
                 logger.error(f"Could not read frame from {self.capture}")
 
@@ -415,7 +421,6 @@ class RTSPFrameGrabber(FrameGrabber):
 
     def apply_options(self, options: dict) -> None:
         self.config["options"] = options
-        self._set_cv2_resolution()
 
     def _drain(self) -> None:
         """Repeatedly grabs frames without decoding them.
@@ -425,7 +430,7 @@ class RTSPFrameGrabber(FrameGrabber):
         while self.run:
             with self.lock:
                 _ = self.capture.grab()
-
+            time.sleep(self.drain_rate)
 
 class BaslerUSBFrameGrabber(FrameGrabber):
     """Basler USB Camera"""
