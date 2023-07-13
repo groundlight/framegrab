@@ -107,7 +107,7 @@ GL_CAMERAS: |
           right: .8
   - name: conference room
       input_type: rtsp
-      address: 
+      id: 
         rtsp_url: rtsp://admin:password@192.168.1.20/cam/realmonitor?channel=1&subtype=0
       options:
         crop:
