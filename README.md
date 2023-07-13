@@ -36,7 +36,7 @@ config = {
 grabber = FrameGrabber.create_grabber(config)
 
 ```
-`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `webcam`, `rtsp`, `realsense` and `basler_usb`.
+`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `webcam`, `rtsp`, `realsense` and `basler`.
 
 Here's an example of a single webcam configured with several options:
 ```
@@ -141,7 +141,31 @@ for grabber in grabbers.values():
     display_image(frame)
     grabber.release()
 ```
-It is also possible to 'autodiscover' cameras. This will automatically connect to all cameras that are plugged into your machine, such as `webcam`, `realsense` and `basler_usb` cameras. Default configurations will be loaded for each camera. Please note that RTSP streams cannot be discovered in this manner; RTSP URLs must be specified in the configurations.
+### Options
+The table below shows all available options, and the cameras to which they apply.
+| Configuration Name          | Example         | Webcam   | RTSP     | Basler   | Realsense |
+|-----------------------------|-----------------|----------|----------|----------|-----------|
+| name                        | On robot arm    | optional | optional | optional | optional  |
+| input_type                  | webcam          | **required** | **required** | **required** | **required** |
+| id.serial_number            | 23458234        | optional | -        | optional | optional  |
+| id.rtsp_url                 | rtsp://...      | -        | required | -        | -         |
+| options.resolution.height   | 480             | optional | -        | optional | optional  |
+| options.resolution.width    | 640             | optional | -        | optional | optional  |
+| options.zoom.digital        | 1.3             | optional | optional | optional | optional  |
+| options.crop.pixels.top     | 100             | optional | optional | optional | optional  |
+| options.crop.pixels.bottom  | 400             | optional | optional | optional | optional  |
+| options.crop.pixels.left    | 100             | optional | optional | optional | optional  |
+| options.crop.pixels.right   | 400             | optional | optional | optional | optional  |
+| options.crop.relative.top   | 0.1             | optional | optional | optional | optional  |
+| options.crop.relative.bottom| 0.9             | optional | optional | optional | optional  |
+| options.crop.relative.left  | 0.1             | optional | optional | optional | optional  |
+| options.crop.relative.right | 0.9             | optional | optional | optional | optional  |
+| options.depth.side_by_side  | 1               | -        | -        | -        | optional  |
+| options.pixel_format        | RGB8            | -        | -        | optional | -         |
+| options.exposure_us         | 60000           | -        | -        | optional | -         |
+
+### Autodiscovery
+It is also possible to 'autodiscover' cameras. This will automatically connect to all cameras that are plugged into your machine, such as `webcam`, `realsense` and `basler` cameras. Default configurations will be loaded for each camera. Please note that RTSP streams cannot be discovered in this manner; RTSP URLs must be specified in the configurations.
 ```
 grabbers = FrameGrabber.autodiscover()
 ```
