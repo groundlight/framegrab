@@ -38,7 +38,7 @@ except ImportError as e:
 
 OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
-NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8) # in case a camera can't get a
+NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8) # in case a camera can't get a frame
 
 class InputTypes:
     """Defines the available input types from FrameGrabber objects"""
@@ -550,6 +550,13 @@ class BaslerFrameGrabber(FrameGrabber):
             if serial_number is None or serial_number == curr_serial_number:
                 camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateDevice(device))
                 camera.Open()
+                camera.MaxNumBuffer = 10
+                # camera.Width.SetValue(1286)
+                # camera.Height.SetValue(962)
+                # camera.GevSCPSPacketSize.SetValue(500)  # Adjust the value as needed.
+                # try changing interpacket delay
+                # self.camera.GevSCPD.SetValue(1000)
+                camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
                 logger.info(f"Connected to Basler camera with serial number {curr_serial_number}.")
                 break
         else:
@@ -568,40 +575,76 @@ class BaslerFrameGrabber(FrameGrabber):
         self.camera = camera
         BaslerFrameGrabber.serial_numbers_in_use.add(self.config['id']['serial_number'])
 
-
     def grab(self) -> np.ndarray:
-        with self.camera.GrabOne(20000) as result:
-            if result.GrabSucceeded():
-                # Convert the image to BGR for OpenCV
-                image = self.converter.Convert(result)
-                frame = image.GetArray()
+        if not self.camera.IsGrabbing():
+            raise Exception("Camera is not grabbing")
+        
+        result = self.camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+        if result.GrabSucceeded():
+            # Convert the image to BGR for OpenCV
+            image = self.converter.Convert(result)
+            frame = image.GetArray()
 
-                # crop and zoom
-                frame = self._crop(frame)
-                frame = self._digital_zoom(frame)
-            else:
-                error_info = {
-                    'ErrorCode': result.GetErrorCode(),
-                    'PayloadSize': result.GetPayloadSize(),
-                    'ID': result.GetID(),
-                    'BlockID': result.GetBlockID(),
-                    'Width': result.GetWidth(),
-                    'Height': result.GetHeight(),
-                    'PixelType': result.GetPixelType(),
-                    'ErrorDescription': result.GetErrorDescription(),
-                }
+            # crop and zoom
+            frame = self._crop(frame)
+            frame = self._digital_zoom(frame)
+        else:   
+            error_info = {
+                'ErrorCode': result.GetErrorCode(),
+                'PayloadSize': result.GetPayloadSize(),
+                'ID': result.GetID(),
+                'BlockID': result.GetBlockID(),
+                'Width': result.GetWidth(),
+                'Height': result.GetHeight(),
+                'PixelType': result.GetPixelType(),
+                'ErrorDescription': result.GetErrorDescription(),
+            }
 
-                error_message = '\n'.join(f'{k}: {v}' for k, v in error_info.items())
+            error_message = '\n'.join(f'{k}: {v}' for k, v in error_info.items())
 
-                logger.warning(
-                            f"Could not grab a frame from {self.config['name']}\n"
-                            f'{error_message}\n'
-                            f'---------------------------------------------------\n'
-                            )
-                
-                frame = NOISE
+            logger.warning(
+                        f"Could not grab a frame from {self.config['name']}\n"
+                        f'{error_message}\n'
+                        f'---------------------------------------------------\n'
+                        )
+            
+            frame = NOISE
 
         return frame
+    
+    # def grab(self) -> np.ndarray:
+    #     with self.camera.GrabOne(2000) as result:
+    #         if result.GrabSucceeded():
+    #             # Convert the image to BGR for OpenCV
+    #             image = self.converter.Convert(result)
+    #             frame = image.GetArray()
+
+    #             # crop and zoom
+    #             frame = self._crop(frame)
+    #             frame = self._digital_zoom(frame)
+    #         else:
+    #             error_info = {
+    #                 'ErrorCode': result.GetErrorCode(),
+    #                 'PayloadSize': result.GetPayloadSize(),
+    #                 'ID': result.GetID(),
+    #                 'BlockID': result.GetBlockID(),
+    #                 'Width': result.GetWidth(),
+    #                 'Height': result.GetHeight(),
+    #                 'PixelType': result.GetPixelType(),
+    #                 'ErrorDescription': result.GetErrorDescription(),
+    #             }
+
+    #             error_message = '\n'.join(f'{k}: {v}' for k, v in error_info.items())
+
+    #             logger.warning(
+    #                         f"Could not grab a frame from {self.config['name']}\n"
+    #                         f'{error_message}\n'
+    #                         f'---------------------------------------------------\n'
+    #                         )
+                
+    #             frame = NOISE
+
+    #     return frame
 
     def release(self) -> None:
         self.camera.Close()
@@ -617,16 +660,6 @@ class BaslerFrameGrabber(FrameGrabber):
         exposure_us = options.get("exposure_us")
         if exposure_us:
             self.camera.ExposureTime.SetValue(exposure_us)
-
-        # # Print all node names
-        # nodemap = self.camera.GetNodeMap()
-        # nodes = nodemap.GetAllNodes()
-        # print(nodes)
-        # for node in nodes:
-        #     print(node.GetName())
-
-        # # testing...
-        # self.camera.GevSCPD.SetValue(5000)
 
 class RealSenseFrameGrabber(FrameGrabber):
     """Intel RealSense Depth Camera"""
