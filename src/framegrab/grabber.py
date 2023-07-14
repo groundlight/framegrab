@@ -11,7 +11,6 @@ import cv2
 import numpy as np
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO) # not sure if this is the right long-term solution
 
 # Optional imports
 try:
@@ -260,8 +259,6 @@ class FrameGrabber(ABC):
         camera-specific options.
         """
 
-        self.config['options'] = options
-
         # Ensure that the user hasn't provided pixel cropping parameters and relative cropping parameters
         pixel_crop_params = options.get("crop", {}).get("pixels", {})
         relative_crop_params = options.get("crop", {}).get("relative", {})
@@ -291,6 +288,9 @@ class FrameGrabber(ABC):
 
         # Apply camera specific options
         self._apply_camera_specific_options(options)
+
+        # Save the options to the config
+        self.config['options'] = options
 
     @abstractmethod
     def _apply_camera_specific_options(options: dict) -> None:
