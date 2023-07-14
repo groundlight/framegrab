@@ -21,9 +21,9 @@ pip install framegrab
 ```
 
 ## Optional Dependencies
-To use a Basler USB or GigE camera, you must separately install the pypylon package.
+To use a Basler USB or GigE camera, you must separately install the `pypylon` package.
 
-Similarly, to use Intel RealSense cameras, you must install pyrealsense2. 
+Similarly, to use Intel RealSense cameras, you must install `pyrealsense2`. 
 
 If you don't intend to use these camera types, you don't need to install any of these extra packages. 
 
@@ -45,7 +45,7 @@ grabber = FrameGrabber.create_grabber(config)
 ```
 `config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense` and `basler`.
 
-Here's an example of a single webcam configured with several options:
+Here's an example of a single USB camera configured with several options:
 ```
 config = {
     'name': 'Front Door Camera',
@@ -99,7 +99,7 @@ grabber.release()
 
 You might have several cameras that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.create_grabbers`.
 
-If you have multiple cameras of the same type plugged in, it's recommended to provide serial numbers in the configurations; this ensures that each configuration is paired with the correct camera. If you don't provide serial numbers in your configurations, configurations will be paired with cameras in a sequential manner.
+If you have multiple cameras of the same type plugged in, it's recommended that you include serial numbers in the configurations; this ensures that each configuration is paired with the correct camera. If you don't provide serial numbers in your configurations, configurations will be paired with cameras in a sequential manner.
 
 Below is a sample yaml file containing configurations for three different cameras.
 ```
@@ -148,8 +148,8 @@ for grabber in grabbers.values():
     display_image(frame) # substitute this line for your preferred method for displaying images, such as cv2.imshow
     grabber.release()
 ```
-### Options
-The table below shows all available options, and the cameras to which they apply.
+### Configurations
+The table below shows all available configurations and the cameras to which they apply.
 | Configuration Name         | Example         | Webcam     | RTSP      | Basler    | Realsense |
 |----------------------------|-----------------|------------|-----------|-----------|-----------|
 | name                       | On Robot Arm    | optional   | optional  | optional  | optional  |
@@ -169,9 +169,10 @@ The table below shows all available options, and the cameras to which they apply
 | options.crop.relative.right | 0.9            | optional   | optional  | optional  | optional  |
 | options.depth.side_by_side | 1              | -          | -         | -         | optional  |
 
+In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
 
 ### Autodiscovery
-It is also possible to 'autodiscover' cameras. This will automatically connect to all cameras that are plugged into your machine, including `generic_usb`, `realsense` and `basler` cameras. Default configurations will be loaded for each camera. Please note that RTSP streams cannot be discovered in this manner; RTSP URLs must be specified in the configurations.
+Autodiscovery automatically connects to all cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense` and `basler` cameras. Default configurations will be loaded for each camera. Please note that RTSP streams cannot be discovered in this manner; RTSP URLs must be specified in the configurations.
 
 Autodiscovery is great for simple applications where you don't need to set any special options on your cameras. It's also a convenient method for finding the serial numbers of your cameras (if the serial number isn't printed on the camera).
 ```
