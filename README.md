@@ -25,7 +25,7 @@ To use a Basler USB or GigE camera, you must separately install the `pypylon` pa
 
 Similarly, to use Intel RealSense cameras, you must install `pyrealsense2`. 
 
-If you don't intend to use these camera types, you don't need to install any of these extra packages. 
+If you don't intend to use these camera types, you don't need to install these extra packages. 
 
 ## Usage
 
