@@ -33,9 +33,7 @@ class MotionDetector:
             return True
         else:
             if self.log_pixel_percent:
-                logger.debug(
-                    f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%"
-                )
+                logger.debug(f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%")
             return False
 
     def motion_detected(self, new_img: np.ndarray) -> bool:
