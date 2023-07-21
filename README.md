@@ -145,7 +145,7 @@ grabbers = FrameGrabber.create_grabbers(configs)
 for grabber in grabbers.values():
     print(grabber.config)
     frame = grabber.grab()
-    display_image(frame) # substitute this line for your preferred method for displaying images, such as cv2.imshow
+    display_image(frame) # substitute this line for your preferred method of displaying images, such as cv2.imshow
     grabber.release()
 ```
 ### Configurations
@@ -155,7 +155,7 @@ The table below shows all available configurations and the cameras to which they
 | name                       | On Robot Arm    | optional   | optional  | optional  | optional  |
 | input_type                 | generic_usb    | required   | required  | required  | required  |
 | id.serial_number           | 23458234       | optional   | -         | optional  | optional  |
-| id.rtsp_rul                | rtsp://…        | -          | required  | -         | -         |
+| id.rtsp_url                | rtsp://…        | -          | required  | -         | -         |
 | options.resolution.height  | 480            | optional   | -         | -         | optional  |
 | options.resolution.width   | 640            | optional   | -         | -         | optional  |
 | options.zoom.digital       | 1.3            | optional   | optional  | optional  | optional  |
