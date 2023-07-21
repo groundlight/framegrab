@@ -10,35 +10,24 @@ from typing import Dict, List
 import cv2
 import numpy as np
 
+from .unavailable_module import UnavailableModule
+
 logger = logging.getLogger(__name__)
 
 # Optional imports
 try:
     from pypylon import pylon
 except ImportError as e:
-    logger.warning(
-        "Dependency for Basler cameras (pypylon) not found. "
-        "If you are not trying to use a Basler camera, you can ignore this message. "
-        "If you are trying to use a Basler camera, you will need to install pypylon. "
-        f"{e} "
-    )
-    pylon = None
+    pylon = UnavailableModule(e)
 
 try:
     from pyrealsense2 import pyrealsense2 as rs
 except ImportError as e:
-    logger.warning(
-        "Dependency for Intel RealSense cameras (pyrealsense2) not found. "
-        "If you are not trying to use a RealSense camera, you can ignore this message. "
-        "If you are trying to use a RealSense camera, you will need to install pyrealsense2. "
-        f"{e} "
-    )
-    rs = None
+    rs = UnavailableModule(e)
 
 OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
-
 
 class InputTypes:
     """Defines the available input types from FrameGrabber objects"""
@@ -47,6 +36,7 @@ class InputTypes:
     RTSP = "rtsp"
     REALSENSE = "realsense"
     BASLER = "basler"
+    MOCK = "mock"
 
     def get_options() -> list:
         """Get a list of the available InputType options"""
@@ -56,7 +46,6 @@ class InputTypes:
             if "__" not in attr_name and isinstance(attr_value, str):
                 output.append(attr_value)
         return output
-
 
 class FrameGrabber(ABC):
     # for naming FrameGrabber objects that have no user-defined name
@@ -137,6 +126,8 @@ class FrameGrabber(ABC):
             grabber = BaslerFrameGrabber(config)
         elif input_type == InputTypes.REALSENSE:
             grabber = RealSenseFrameGrabber(config)
+        elif input_type == InputTypes.MOCK:
+            grabber = MockFrameGrabber(config)
         else:
             raise ValueError(
                 f"The provided input_type ({input_type}) is not valid. Valid types are {InputTypes.get_options()}"
@@ -164,9 +155,7 @@ class FrameGrabber(ABC):
 
         grabbers = {}
         for input_type in autodiscoverable_input_types:
-            for _ in range(
-                100
-            ):  # an arbitrarily high value so that we look for enough cameras, but this never becomes an infinite loop
+            for _ in range(100):  # an arbitrarily high value so that we look for enough cameras, but this never becomes an infinite loop
                 try:
                     config = {"input_type": input_type}
                     grabber = FrameGrabber.create_grabber(config)
@@ -520,11 +509,6 @@ class BaslerFrameGrabber(FrameGrabber):
     serial_numbers_in_use = set()
 
     def __init__(self, config: dict):
-        if pylon is None:
-            raise ImportError(
-                "Using Basler cameras requires the pypylon package, which is not installed on this system. "
-                "Please install pypylon and try again."
-            )
 
         self.config = config
 
@@ -619,11 +603,6 @@ class RealSenseFrameGrabber(FrameGrabber):
     """Intel RealSense Depth Camera"""
 
     def __init__(self, config: dict):
-        if rs is None:
-            raise ImportError(
-                "Using IntelRealSense cameras requires the pyrealsense2 package, which is not installed on this system. "
-                "Please install pyrealsense2 and try again."
-            )
 
         self.config = config
 
@@ -722,6 +701,54 @@ class RealSenseFrameGrabber(FrameGrabber):
             # If the user didn't provide a resolution, do nothing
             pass
 
+class MockFrameGrabber(FrameGrabber):
+    """A mock camera class for testing purposes"""
+
+    # Represents the serial numbers of the mock cameras that are discoverable
+    available_serial_numbers = ('123', '456', '789')
+
+    # Keeps track of the available serial numbers so that we don't try to connect to them twice
+    serial_numbers_in_use = set()
+
+    def __init__(self, config: dict):
+
+        self.config = config
+
+        provided_serial_number = self.config.get("id", {}).get("serial_number")
+
+        # Iterate through each detected camera and attempt to match it with the provided camera config
+        for curr_serial_number in MockFrameGrabber.available_serial_numbers:
+            if curr_serial_number in MockFrameGrabber.serial_numbers_in_use:
+                continue # this camera is already in use, moving on to the next
+            if provided_serial_number is None or curr_serial_number == provided_serial_number:
+                break  # succesfully connected, breaking out of loop
+        else:
+            raise ValueError(
+                f"Unable to connect to MockFrameGrabber with serial_number: {provided_serial_number}. "
+                f"Is the serial number correct? Available serial numbers are {MockFrameGrabber.available_serial_numbers}"
+            )
+        
+        MockFrameGrabber.serial_numbers_in_use.add(curr_serial_number)
+
+        # In case the serial_number wasn't provided by the user, add it to the config
+        self.config["id"] = {"serial_number": curr_serial_number}
+
+    def grab(self) -> np.ndarray:
+        width = self.config.get("options", {}).get("resolution", {}).get("width", 640)
+        height = self.config.get("options", {}).get("resolution", {}).get("height", 480)
+        
+        frame = np.zeros((height, width, 3), dtype=np.uint8)
+
+        frame = self._crop(frame)
+        frame = self._digital_zoom(frame)
+
+        return frame
+
+    def release(self) -> None:
+        MockFrameGrabber.serial_numbers_in_use.remove(self.config["id"]["serial_number"])
+
+    def _apply_camera_specific_options(self, options: dict) -> None:
+        pass # no action necessary for mock camera
 
 # # TODO update this class to work with the latest updates
 # import os
