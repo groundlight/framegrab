@@ -44,6 +44,10 @@ class MotionDetector:
             return True
 
         new_img16 = new_img.astype(np.int16)
+
+        if new_img16.shape != self.base_img.shape:
+            return True
+
         diff1 = np.abs(new_img16 - self.base_img) > self.threshold
         diff2 = np.abs(new_img16 - self.base2) > self.threshold
 
