@@ -272,12 +272,13 @@ class FrameGrabber(ABC):
         return frame
 
     def _rotate(self, frame: np.ndarray) -> np.ndarray:
-        """Rotates the provided frame 90 degrees clockwise"""
+        """Rotates the provided frame a specified number of 90 degree rotations clockwise
+        """
 
         num_90_deg_rotations = self.config.get("options", {}).get("num_90_deg_rotations", 0)
 
         for n in range(num_90_deg_rotations):
-            frame = np.rot90(frame)  # np.rot90(frame, 3)
+            frame = np.rot90(frame)
 
         return frame
 
