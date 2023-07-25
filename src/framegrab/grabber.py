@@ -71,7 +71,7 @@ class FrameGrabber(ABC):
             output_config["options"] = {}
 
         return output_config
-    
+
     @staticmethod
     def create_grabbers(configs: List[dict]) -> dict:
         """
@@ -108,7 +108,7 @@ class FrameGrabber(ABC):
         grabbers = FrameGrabber.grabbers_to_dict(grabber_list)
 
         return grabbers
-    
+
     @staticmethod
     def grabbers_to_dict(grabber_list: list) -> dict:
         """Converts a list of FrameGrabber objects into a dictionary where the keys are the camera names.
@@ -117,12 +117,11 @@ class FrameGrabber(ABC):
         """
 
         # Sort the grabbers by serial_number to make sure they always come up in the same order
-        grabber_list = sorted(grabber_list, key=lambda grabber: grabber.config.get('id', {}).get("serial_number", ''))
+        grabber_list = sorted(grabber_list, key=lambda grabber: grabber.config.get("id", {}).get("serial_number", ""))
 
         # Create the grabbers dictionary, autogenerating names for any unnamed grabbers
         grabbers = {}
         for grabber in grabber_list:
-
             # If a name wasn't provided, autogenerate one
             if not grabber.config.get("name"):
                 grabber._autoassign_name()
@@ -132,7 +131,7 @@ class FrameGrabber(ABC):
             grabbers[grabber_name] = grabber
 
         return grabbers
-    
+
     @staticmethod
     def create_grabber(config: dict, autogenerate_name: bool = True):
         """Returns a single FrameGrabber object given a configuration dictionary."""
@@ -209,12 +208,12 @@ class FrameGrabber(ABC):
 
     def _autoassign_name(self) -> None:
         """For generating and assigning unique names for unnamed FrameGrabber objects.
-        Increments the counter and assigns a name based on that counter. 
+        Increments the counter and assigns a name based on that counter.
         """
         FrameGrabber.unnamed_grabber_count += 1
         count = FrameGrabber.unnamed_grabber_count
         input_type = self.config["input_type"]
-        self.config["name"] = f'Unnamed Camera {count} ({input_type})'
+        self.config["name"] = f"Unnamed Camera {count} ({input_type})"
 
     def _crop(self, frame: np.ndarray) -> np.ndarray:
         """Looks at FrameGrabber's options and decides to either crop by pixels or
@@ -271,14 +270,14 @@ class FrameGrabber(ABC):
             frame = frame[int(top) : int(bottom), int(left) : int(right)]
 
         return frame
-    
+
     def _rotate(self, frame: np.ndarray) -> np.ndarray:
         """Rotates the provided frame 90 degrees clockwise"""
 
         num_90_deg_rotations = self.config.get("options", {}).get("num_90_deg_rotations", 0)
 
         for n in range(num_90_deg_rotations):
-            frame = np.rot90(frame) # np.rot90(frame, 3)
+            frame = np.rot90(frame)  # np.rot90(frame, 3)
 
         return frame
 
@@ -423,7 +422,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
         # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
         # Assuming buffer size of 1, we need to read twice to get the current frame.
-        for _ in range (2):
+        for _ in range(2):
             _, frame = self.capture.read()
 
         frame = self._crop(frame)
@@ -544,9 +543,7 @@ class RTSPFrameGrabber(FrameGrabber):
     def _apply_camera_specific_options(self, options: dict) -> None:
         if options.get("resolution"):
             camera_name = self.config.get("name", "Unnamed RTSP Stream")
-            raise ValueError(
-                f"Resolution was set for {camera_name}, but resolution cannot be set for RTSP streams."
-            )
+            raise ValueError(f"Resolution was set for {camera_name}, but resolution cannot be set for RTSP streams.")
 
     def _drain(self) -> None:
         """Repeatedly grabs frames without decoding them.
@@ -656,6 +653,7 @@ class BaslerFrameGrabber(FrameGrabber):
         for property_name, value in basler_options.items():
             node = node_map.GetNode(property_name)
             node.SetValue(value)
+
 
 class RealSenseFrameGrabber(FrameGrabber):
     """Intel RealSense Depth Camera"""
