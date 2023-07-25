@@ -420,7 +420,12 @@ class GenericUSBFrameGrabber(FrameGrabber):
         GenericUSBFrameGrabber.indices_in_use.add(idx)
 
     def grab(self) -> np.ndarray:
-        _, frame = self.capture.read()
+        # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
+        # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
+        # Assuming buffer size of 1, we need to read twice to get the current frame.
+        for _ in range (2):
+            _, frame = self.capture.read()
+
         frame = self._crop(frame)
         frame = self._digital_zoom(frame)
         frame = self._rotate(frame)
