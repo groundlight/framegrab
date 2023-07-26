@@ -5,7 +5,7 @@ import subprocess
 import time
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
-from typing import Dict, List
+from typing import Dict, List, Type
 
 import cv2
 import numpy as np
@@ -134,7 +134,21 @@ class FrameGrabber(ABC):
 
     @staticmethod
     def create_grabber(config: dict, autogenerate_name: bool = True):
-        """Returns a single FrameGrabber object given a configuration dictionary."""
+        """Create a FrameGrabber object based on the provided configuration.
+
+        Parameters:
+            config (dict): A dictionary containing configuration settings for the FrameGrabber.
+
+            autogenerate_name (bool, optional): A flag to indicate whether to automatically
+                generate a name for the FrameGrabber object if not explicitly provided. Defaults
+                to True.
+
+        Returns:
+                An instance of a FrameGrabber subclass based on the provided
+                configuration. The specific subclass will be determined by the content of the
+                configuration dictionary.
+
+        """
 
         # Ensure the config is properly constructed and typed
         config = FrameGrabber._validate_config(config)
@@ -160,11 +174,11 @@ class FrameGrabber(ABC):
                 f"The provided input_type ({input_type}) is not valid. Valid types are {InputTypes.get_options()}"
             )
 
-        # If a name wasn't supplied, create one
+        # If a name wasn't supplied and autogenerate_name is True, autogenerate a name
         if not config.get("name", False) and autogenerate_name:
             grabber._autoassign_name()
 
-        # Apply the options so that resolution, exposure, etc. is correct
+        # Apply the options so that resolution, exposure, etc. are correct
         grabber.apply_options(config["options"])
 
         return grabber
