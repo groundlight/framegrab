@@ -5,7 +5,7 @@ import subprocess
 import time
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
-from typing import Dict, List
+from typing import Dict, List, Type
 
 import cv2
 import numpy as np
@@ -99,17 +99,56 @@ class FrameGrabber(ABC):
                 f"Provided camera names: {names}"
             )
 
-        grabbers = {}
+        # Create the grabbers
+        grabber_list = []
         for config in configs:
-            grabber = FrameGrabber.create_grabber(config)
-            name = grabber.config["name"]
-            grabbers[name] = grabber
+            grabber = FrameGrabber.create_grabber(config, autogenerate_name=False)
+            grabber_list.append(grabber)
+
+        grabbers = FrameGrabber.grabbers_to_dict(grabber_list)
 
         return grabbers
 
     @staticmethod
-    def create_grabber(config: dict):
-        """Returns a single FrameGrabber object given a configuration dictionary."""
+    def grabbers_to_dict(grabber_list: list) -> dict:
+        """Converts a list of FrameGrabber objects into a dictionary where the keys are the camera names.
+        Sorts the grabbers by serial_number to make sure they always come up in the same order.
+        Autogenerates names for any unnamed grabbers.
+        """
+
+        # Sort the grabbers by serial_number to make sure they always come up in the same order
+        grabber_list = sorted(grabber_list, key=lambda grabber: grabber.config.get("id", {}).get("serial_number", ""))
+
+        # Create the grabbers dictionary, autogenerating names for any unnamed grabbers
+        grabbers = {}
+        for grabber in grabber_list:
+            # If a name wasn't provided, autogenerate one
+            if not grabber.config.get("name"):
+                grabber._autoassign_name()
+
+            # Add the grabber to the dictionary
+            grabber_name = grabber.config["name"]
+            grabbers[grabber_name] = grabber
+
+        return grabbers
+
+    @staticmethod
+    def create_grabber(config: dict, autogenerate_name: bool = True):
+        """Create a FrameGrabber object based on the provided configuration.
+
+        Parameters:
+            config (dict): A dictionary containing configuration settings for the FrameGrabber.
+
+            autogenerate_name (bool, optional): A flag to indicate whether to automatically
+                generate a name for the FrameGrabber object if not explicitly provided. Defaults
+                to True.
+
+        Returns:
+                An instance of a FrameGrabber subclass based on the provided
+                configuration. The specific subclass will be determined by the content of the
+                configuration dictionary.
+
+        """
 
         # Ensure the config is properly constructed and typed
         config = FrameGrabber._validate_config(config)
@@ -135,13 +174,11 @@ class FrameGrabber(ABC):
                 f"The provided input_type ({input_type}) is not valid. Valid types are {InputTypes.get_options()}"
             )
 
-        # If a name wasn't supplied, create one
-        if not config.get("name", False):
-            FrameGrabber.unnamed_grabber_count += 1
-            count = FrameGrabber.unnamed_grabber_count
-            config["name"] = f"Unnamed Camera {count} ({input_type})"
+        # If a name wasn't supplied and autogenerate_name is True, autogenerate a name
+        if not config.get("name", False) and autogenerate_name:
+            grabber._autoassign_name()
 
-        # Apply the options so that resolution, exposure, etc. is correct
+        # Apply the options so that resolution, exposure, etc. are correct
         grabber.apply_options(config["options"])
 
         return grabber
@@ -155,21 +192,23 @@ class FrameGrabber(ABC):
             InputTypes.BASLER,
         )
 
-        grabbers = {}
+        # Autodiscover the grabbers
+        grabber_list = []
         for input_type in autodiscoverable_input_types:
             for _ in range(
                 100
             ):  # an arbitrarily high value so that we look for enough cameras, but this never becomes an infinite loop
                 try:
                     config = {"input_type": input_type}
-                    grabber = FrameGrabber.create_grabber(config)
-                    name = grabber.config["name"]
-                    grabbers[name] = grabber
+                    grabber = FrameGrabber.create_grabber(config, autogenerate_name=False)
+                    grabber_list.append(grabber)
                 except (ValueError, ImportError):
                     # ValueError is taken to mean that we have reached the end of enumeration for the current input_type.
                     # ImportError means the requisite packages aren't installed for the current input_type.
                     # In both cases, it's time to move on to the next input_type.
                     break
+
+        grabbers = FrameGrabber.grabbers_to_dict(grabber_list)
 
         return grabbers
 
@@ -180,6 +219,15 @@ class FrameGrabber(ABC):
         Returns a frame.
         """
         pass
+
+    def _autoassign_name(self) -> None:
+        """For generating and assigning unique names for unnamed FrameGrabber objects.
+        Increments the counter and assigns a name based on that counter.
+        """
+        FrameGrabber.unnamed_grabber_count += 1
+        count = FrameGrabber.unnamed_grabber_count
+        input_type = self.config["input_type"]
+        self.config["name"] = f"Unnamed Camera {count} ({input_type})"
 
     def _crop(self, frame: np.ndarray) -> np.ndarray:
         """Looks at FrameGrabber's options and decides to either crop by pixels or
@@ -237,6 +285,16 @@ class FrameGrabber(ABC):
 
         return frame
 
+    def _rotate(self, frame: np.ndarray) -> np.ndarray:
+        """Rotates the provided frame a specified number of 90 degree rotations clockwise"""
+
+        num_90_deg_rotations = self.config.get("options", {}).get("num_90_deg_rotations", 0)
+
+        for n in range(num_90_deg_rotations):
+            frame = np.rot90(frame)
+
+        return frame
+
     def _set_cv2_resolution(self) -> None:
         """Set the resolution of the cv2.VideoCapture object based on the FrameGrabber's config.
         If the FrameGrabber lacks both of these properties (height and width), this method
@@ -260,9 +318,10 @@ class FrameGrabber(ABC):
         pixel_crop_params = options.get("crop", {}).get("pixels", {})
         relative_crop_params = options.get("crop", {}).get("relative", {})
         if pixel_crop_params and relative_crop_params:
+            camera_name = self.config.get("name", "Unnamed Camera")
             raise ValueError(
                 f"Pixel cropping parameters and relative cropping parameters were set for "
-                f"{self.config['name']}. Pixel cropping and absolute cropping cannot be "
+                f"{camera_name}. Pixel cropping and relative cropping cannot be "
                 f"used together. Please adjust your configurations to use one or the other."
             )
 
@@ -374,9 +433,15 @@ class GenericUSBFrameGrabber(FrameGrabber):
         GenericUSBFrameGrabber.indices_in_use.add(idx)
 
     def grab(self) -> np.ndarray:
-        _, frame = self.capture.read()
+        # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
+        # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
+        # Assuming buffer size of 1, we need to read twice to get the current frame.
+        for _ in range(2):
+            _, frame = self.capture.read()
+
         frame = self._crop(frame)
         frame = self._digital_zoom(frame)
+        frame = self._rotate(frame)
         return frame
 
     def release(self) -> None:
@@ -479,6 +544,7 @@ class RTSPFrameGrabber(FrameGrabber):
 
         frame = self._crop(frame)
         frame = self._digital_zoom(frame)
+        frame = self._rotate(frame)
 
         return frame
 
@@ -490,9 +556,8 @@ class RTSPFrameGrabber(FrameGrabber):
 
     def _apply_camera_specific_options(self, options: dict) -> None:
         if options.get("resolution"):
-            raise ValueError(
-                f"Resolution was set for {self.config['name']}, but resolution cannot be set for RTSP streams."
-            )
+            camera_name = self.config.get("name", "Unnamed RTSP Stream")
+            raise ValueError(f"Resolution was set for {camera_name}, but resolution cannot be set for RTSP streams.")
 
     def _drain(self) -> None:
         """Repeatedly grabs frames without decoding them.
@@ -560,9 +625,10 @@ class BaslerFrameGrabber(FrameGrabber):
                 image = self.converter.Convert(result)
                 frame = image.GetArray()
 
-                # crop and zoom
+                # crop, zoom, rotate as needed
                 frame = self._crop(frame)
                 frame = self._digital_zoom(frame)
+                frame = self._rotate(frame)
             else:
                 error_info = {
                     "ErrorCode": result.GetErrorCode(),
@@ -577,8 +643,9 @@ class BaslerFrameGrabber(FrameGrabber):
 
                 error_message = "\n".join(f"{k}: {v}" for k, v in error_info.items())
 
+                camera_name = self.config.get("name", "Unnamed Basler Camera")
                 logger.warning(
-                    f"Could not grab a frame from {self.config['name']}\n"
+                    f"Could not grab a frame from {camera_name}\n"
                     f"{error_message}\n"
                     f"---------------------------------------------------\n"
                 )
@@ -650,8 +717,11 @@ class RealSenseFrameGrabber(FrameGrabber):
         # Convert color images to numpy arrays and convert from RGB to BGR
         color_frame = frames.get_color_frame()
         color_image = cv2.cvtColor(np.asanyarray(color_frame.get_data()), cv2.COLOR_BGR2RGB)
+
+        # Crop, zoom and rotate as needed
         color_image = self._crop(color_image)
         color_image = self._digital_zoom(color_image)
+        color_image = self._rotate(color_image)
 
         # If side_by_side is enabled, get a depth frame and horizontally stack it with color frame
         display_side_by_side = self.config.get("options", {}).get("depth", {}).get("side_by_side")
@@ -660,6 +730,7 @@ class RealSenseFrameGrabber(FrameGrabber):
             depth_image = np.asanyarray(depth_frame.get_data())
             depth_image = self._crop(depth_image)
             depth_image = self._digital_zoom(depth_image)
+            depth_image = self._rotate(depth_image)
             return self._horizontally_stack(depth_image, color_image)
         else:
             return color_image
@@ -741,8 +812,10 @@ class MockFrameGrabber(FrameGrabber):
 
         frame = np.zeros((height, width, 3), dtype=np.uint8)
 
+        # Crop, zoom and rotate as needed
         frame = self._crop(frame)
         frame = self._digital_zoom(frame)
+        frame = self._rotate(frame)
 
         return frame
 

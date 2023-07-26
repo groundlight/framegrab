@@ -168,6 +168,7 @@ The table below shows all available configurations and the cameras to which they
 | options.crop.relative.left | 0.1            | optional   | optional  | optional  | optional  |
 | options.crop.relative.right | 0.9            | optional   | optional  | optional  | optional  |
 | options.depth.side_by_side | 1              | -          | -         | -         | optional  |
+| options.num_90_deg_rotations | 2              | optional          | optional         | optional         | optional  |
 
 In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
 
