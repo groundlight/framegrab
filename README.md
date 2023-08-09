@@ -150,7 +150,7 @@ for grabber in grabbers.values():
 ```
 ### Configurations
 The table below shows all available configurations and the cameras to which they apply.
-| Configuration Name         | Example         | Webcam     | RTSP      | Basler    | Realsense |
+| Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense |
 |----------------------------|-----------------|------------|-----------|-----------|-----------|
 | name                       | On Robot Arm    | optional   | optional  | optional  | optional  |
 | input_type                 | generic_usb    | required   | required  | required  | required  |
@@ -242,6 +242,6 @@ We welcome contributions to FrameGrab! If you would like to contribute, please f
 
 ## License
 
-FrameGrab is released under the MIT License. For more information, please refer to the [LICENSE](LICENSE) file.
+FrameGrab is released under the MIT License. For more information, please refer to the [LICENSE.txt](LICENSE.txt) file.
 
 
