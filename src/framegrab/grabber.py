@@ -478,7 +478,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         found_cams = []
         for device_path in device_paths:
             # ls -l /sys/class/video4linux/video0/device returns a path that points back into the /sys/bus/usb/devices/
-            # directory where can determine the serial number.
+            # directory where we can determine the serial number.
             # e.g. /sys/bus/usb/devices/2-3.2:1.0 -> /sys/bus/usb/devices/<bus>-<port>.<subport>:<config>.<interface>
             devname = device_path.split("/")[-1]
             command = f"ls -l /sys/class/video4linux/{devname}/device"
