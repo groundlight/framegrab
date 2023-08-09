@@ -469,7 +469,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         stdout, _ = process.communicate()
 
-        if len(stdout) == 0: # len is zero when no cameras are plugged in
+        if len(stdout) == 0:  # len is zero when no cameras are plugged in
             device_paths = []
         else:
             output = stdout.decode("utf-8")
