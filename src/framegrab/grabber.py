@@ -468,15 +468,19 @@ class GenericUSBFrameGrabber(FrameGrabber):
         command = "ls /dev/video*"
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         stdout, _ = process.communicate()
-        output = stdout.decode("utf-8")
-        devices = output.strip().split("\n")
+
+        if len(stdout) == 0:  # len is zero when no cameras are plugged in
+            device_paths = []
+        else:
+            output = stdout.decode("utf-8")
+            device_paths = output.strip().split("\n")
 
         found_cams = []
-        for devpath in devices:
+        for device_path in device_paths:
             # ls -l /sys/class/video4linux/video0/device returns a path that points back into the /sys/bus/usb/devices/
-            # directory where can determine the serial number.
+            # directory where we can determine the serial number.
             # e.g. /sys/bus/usb/devices/2-3.2:1.0 -> /sys/bus/usb/devices/<bus>-<port>.<subport>:<config>.<interface>
-            devname = devpath.split("/")[-1]
+            devname = device_path.split("/")[-1]
             command = f"ls -l /sys/class/video4linux/{devname}/device"
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             stdout, _ = process.communicate()
@@ -496,7 +500,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
                 found_cams.append(
                     {
                         "serial_number": serial_number,
-                        "devname": f"/dev/{devname}",
+                        "device_path": device_path,
                         "idx": idx,
                     }
                 )
