@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Finds a single USB camera (or built-in webcam) and displays its feed in a window. 
 Press 'q' to quit.
 """
