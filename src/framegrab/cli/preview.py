@@ -3,6 +3,7 @@ import click
 import cv2
 from framegrab import FrameGrabber
 from imgcat import imgcat
+from PIL import Image
 import yaml
 
 
@@ -21,8 +22,10 @@ def cv2_preview(name: str, frame):
 def ascii_preview(name: str, frame):
     """Displays the given frame in the terminal using ascii art."""
     print(f"Grabbed frame from {name}")
-    out = ascii_magic.from_image(frame)
-    out.to_terminal()
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    pil_image = Image.fromarray(frame_rgb)
+    out = ascii_magic.from_pillow_image(pil_image)
+    out.to_terminal(columns=80)
 
 
 def get_image_sources_from_config(config: str) -> list:
