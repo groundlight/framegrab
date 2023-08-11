@@ -10,6 +10,7 @@ readme = "README.md"
 python = "^3.7"
 opencv-python = "^4.4.0.46"
 pyyaml = "^6.0.1"
+imgcat = "^0.5.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
