@@ -7,7 +7,7 @@ import cv2
 # load the configurations from yaml
 config_path = 'sample_config.yaml'
 with open(config_path, 'r') as f:
-    configs = yaml.safe_load(f)['cameras']
+    configs = yaml.safe_load(f)['image_sources']
 
 print('Loaded the following configurations from yaml:')
 print(configs)
