@@ -29,6 +29,16 @@ If you don't intend to use these camera types, you don't need to install these e
 
 ## Usage
 
+### Command line interface (CLI)
+
+There is a simple CLI for `framegrab` to discover and preview configurations.
+
+```
+framegrab
+```
+
+lists the sub-commands, including `autodiscover` and `preview`.
+
 ### Frame Grabbing
 
 Simple usage with a single USB camera would look something like the following:
