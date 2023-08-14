@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "framegrab"
-version = "0.3.2"
+version = "0.4.0"
 description = "Easily grab frames from cameras or streams"
 authors = ["Groundlight <info@groundlight.ai>"]
 license = "MIT"
@@ -23,4 +23,5 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
+# This defines the CLI command `framegrab` and its python entrypoint
 framegrab = "framegrab.cli.main:climain"
