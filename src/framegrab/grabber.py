@@ -195,6 +195,7 @@ class FrameGrabber(ABC):
         # Autodiscover the grabbers
         grabber_list = []
         for input_type in autodiscoverable_input_types:
+            logger.info(f"Autodiscovering {input_type} cameras...")
             for _ in range(
                 100
             ):  # an arbitrarily high value so that we look for enough cameras, but this never becomes an infinite loop
