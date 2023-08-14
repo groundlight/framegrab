@@ -23,4 +23,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-framegrab-cli = "framegrab.cli.main:main"
+framegrab = "framegrab.cli.main:climain"

@@ -6,7 +6,7 @@ from . import autodiscover, preview
 
 @click.group()
 def climain():
-    """Framegrab CLI."""
+    """Command-line interface to Framegrab library."""
     pass
 
 

@@ -31,25 +31,32 @@ def ascii_preview(name: str, frame):
 
 def get_image_sources_from_config(config: str) -> list:
     """Returns a dictionary of image sources from the given configuration file."""
-    with open(config, 'r') as f:
+    with open(config, "r") as f:
         configs = yaml.safe_load(f)
-    if 'image_sources' not in configs:
-        raise click.BadParameter('Configuration file must contain an image_sources section.')
-    return configs['image_sources']
+    if "image_sources" not in configs:
+        raise click.BadParameter(
+            "Configuration file must contain an image_sources section."
+        )
+    return configs["image_sources"]
+
 
 @click.command()
-#@click.argument('config', type=click.Path(exists=True), help="Path to the configuration file.")
-@click.argument('config', type=click.Path(exists=True))
-@click.argument('output', type=click.Choice(['imgcat', 'cv2', 'ascii'], case_sensitive=False), default='imgcat')
+# @click.argument('config', type=click.Path(exists=True), help="Path to the configuration file.")
+@click.argument("config", type=click.Path(exists=True))
+@click.argument(
+    "output",
+    type=click.Choice(["imgcat", "cv2", "ascii"], case_sensitive=False),
+    default="imgcat",
+)
 def preview(config: str, output: str):
     """Previews images from each of the configured sources."""
     image_sources = get_image_sources_from_config(config)
     grabbers = FrameGrabber.create_grabbers(image_sources)
 
     preview_command = {
-        'imgcat': imgcat_preview,
-        'cv2': cv2_preview,
-        'ascii': ascii_preview,
+        "imgcat": imgcat_preview,
+        "cv2": cv2_preview,
+        "ascii": ascii_preview,
     }[output]
 
     try:
