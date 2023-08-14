@@ -3,10 +3,11 @@ import shutil
 import ascii_magic
 import click
 import cv2
-from framegrab import FrameGrabber
+import yaml
 from imgcat import imgcat
 from PIL import Image
-import yaml
+
+from framegrab import FrameGrabber
 
 
 def imgcat_preview(name: str, frame):
@@ -34,9 +35,7 @@ def get_image_sources_from_config(config: str) -> list:
     with open(config, "r") as f:
         configs = yaml.safe_load(f)
     if "image_sources" not in configs:
-        raise click.BadParameter(
-            "Configuration file must contain an image_sources section."
-        )
+        raise click.BadParameter("Configuration file must contain an image_sources section.")
     return configs["image_sources"]
 
 
