@@ -428,10 +428,20 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
         # A valid capture has been found, saving it for later
         self.capture = capture
+        self.do_warmup_delay()
 
         # Log the current camera index as 'in use' to prevent other GenericUSBFrameGrabbers from stepping on it
         self.idx = idx
         GenericUSBFrameGrabber.indices_in_use.add(idx)
+
+    def do_warmup_delay(self) -> None:
+        """Wait for the camera to warm up. This is necessary for many USB cameras.
+        Without this delay, the first few frames will be dark, or out of focus."""
+        warmup_delay = float(self.config.get("options", {}).get("warmup_delay", 1.0))
+        # Log a message to make it clear how to undo this delay if it's not needed
+        logger.info(f"Waiting {warmup_delay} seconds for camera to warm up (adjustable via config options.warmup_delay)")
+        time.sleep(warmup_delay)
+
 
     def grab(self) -> np.ndarray:
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
