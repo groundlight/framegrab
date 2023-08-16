@@ -16,9 +16,11 @@ def imgcat_preview(name: str, frame):
 
 
 def cv2_preview(name: str, frame):
-    """Displays the given frame in a cv2 window."""
+    """Displays the given frame in a cv2 window, and wait for a key."""
     cv2.imshow(name, frame)
-    key = cv2.waitKey(30)
+    print(f"Previewing image in cv2 window. Select the window and press any key to continue.")
+    _ = cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
 def ascii_preview(name: str, frame):
