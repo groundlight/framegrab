@@ -438,9 +438,10 @@ class GenericUSBFrameGrabber(FrameGrabber):
         """Wait for the camera to warm up. This is necessary for many USB cameras.
         Without this delay, the first few frames will be dark, or out of focus."""
         warmup_delay = float(self.config.get("options", {}).get("warmup_delay", 1.0))
-        # Log a message to make it clear how to undo this delay if it's not needed
-        logger.info(f"Waiting {warmup_delay} seconds for camera to warm up (adjustable via config options.warmup_delay)")
-        time.sleep(warmup_delay)
+        if warmup_delay > 0:
+            # Log a message to make it clear how to undo this delay if it's not needed
+            logger.info(f"Waiting {warmup_delay} seconds for camera to warm up (adjustable via config options.warmup_delay)")
+            time.sleep(warmup_delay)
 
 
     def grab(self) -> np.ndarray:
