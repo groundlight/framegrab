@@ -440,9 +440,10 @@ class GenericUSBFrameGrabber(FrameGrabber):
         warmup_delay = float(self.config.get("options", {}).get("warmup_delay", 1.0))
         if warmup_delay > 0:
             # Log a message to make it clear how to undo this delay if it's not needed
-            logger.info(f"Waiting {warmup_delay} seconds for camera to warm up (adjustable via config options.warmup_delay)")
+            logger.info(
+                f"Waiting {warmup_delay} seconds for camera to warm up (adjustable via config options.warmup_delay)"
+            )
             time.sleep(warmup_delay)
-
 
     def grab(self) -> np.ndarray:
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
