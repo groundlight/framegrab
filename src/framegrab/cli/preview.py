@@ -12,7 +12,9 @@ from framegrab import FrameGrabber
 
 def imgcat_preview(name: str, frame):
     """Displays the given frame in the terminal using imgcat."""
-    imgcat(frame)
+    print("Previewing image from camera {name} in terminal. This requires an advanced terminal like iTerm2.")
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    imgcat(frame_rgb)
 
 
 def cv2_preview(name: str, frame):
