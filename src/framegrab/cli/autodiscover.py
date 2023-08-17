@@ -12,7 +12,7 @@ def autodiscover():
     grabbers = FrameGrabber.autodiscover()
 
     yaml_config = {
-        'image_sources': [],
+        "image_sources": [],
     }
 
     # Get a frame from each camera
@@ -21,7 +21,7 @@ def autodiscover():
 
         print(f"Grabbed frame from {camera_name} with shape {frame.shape}")
         print(grabber.config)
-        yaml_config['image_sources'].append(grabber.config)
+        yaml_config["image_sources"].append(grabber.config)
 
         grabber.release()
 
