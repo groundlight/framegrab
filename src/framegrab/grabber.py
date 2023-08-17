@@ -212,8 +212,14 @@ class FrameGrabber(ABC):
         return grabber
 
     @staticmethod
-    def autodiscover() -> dict:
-        """Autodiscovers cameras and returns a dictionary of FrameGrabber objects"""
+    def autodiscover(warmup_delay: float = 1.0) -> dict:
+        """Autodiscovers cameras and returns a dictionary of FrameGrabber objects
+        
+            warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
+                cameras often need a moment to warm up before they can be used; grabbing frames too early
+                might result in dark or blurry images. 
+                Defaults to 1.0. Only applicable to generic_usb cameras.
+                """
         autodiscoverable_input_types = (
             InputTypes.REALSENSE,
             InputTypes.GENERIC_USB,
@@ -229,7 +235,7 @@ class FrameGrabber(ABC):
             ):  # an arbitrarily high value so that we look for enough cameras, but this never becomes an infinite loop
                 try:
                     config = {"input_type": input_type}
-                    grabber = FrameGrabber.create_grabber(config, autogenerate_name=False)
+                    grabber = FrameGrabber.create_grabber(config, autogenerate_name=False, warmup_delay=0)
                     grabber_list.append(grabber)
                 except (ValueError, ImportError):
                     # ValueError is taken to mean that we have reached the end of enumeration for the current input_type.
@@ -238,6 +244,15 @@ class FrameGrabber(ABC):
                     break
 
         grabbers = FrameGrabber.grabbers_to_dict(grabber_list)
+
+        # Do the warmup delay if necessary
+        grabber_types = set([grabber.config["input_type"] for grabber in grabbers.values()])
+        if InputTypes.GENERIC_USB in grabber_types and warmup_delay > 0:
+            logger.info(
+                f"Waiting {warmup_delay} seconds for camera(s) to warm up. " 
+                "Pass in warmup_delay = 0 to suppress this behavior."
+            )
+            time.sleep(warmup_delay)
 
         return grabbers
 
