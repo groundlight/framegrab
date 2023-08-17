@@ -84,7 +84,7 @@ class FrameGrabber(ABC):
 
         warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
             cameras often need a moment to warm up before they can be used; grabbing frames too early
-            might result in dark or blurry images. 
+            might result in dark or blurry images.
             Defaults to 1.0. Only applicable to generic_usb cameras.
 
         Returns:
@@ -117,7 +117,7 @@ class FrameGrabber(ABC):
         grabber_types = set([grabber.config["input_type"] for grabber in grabbers.values()])
         if InputTypes.GENERIC_USB in grabber_types and warmup_delay > 0:
             logger.info(
-                f"Waiting {warmup_delay} seconds for camera(s) to warm up. " 
+                f"Waiting {warmup_delay} seconds for camera(s) to warm up. "
                 "Pass in warmup_delay = 0 to suppress this behavior."
             )
             time.sleep(warmup_delay)
@@ -160,7 +160,7 @@ class FrameGrabber(ABC):
 
             warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
                 cameras often need a moment to warm up before they can be used; grabbing frames too early
-                might result in dark or blurry images. 
+                might result in dark or blurry images.
                 Defaults to 1.0. Only applicable to generic_usb cameras.
 
         Returns:
@@ -202,7 +202,7 @@ class FrameGrabber(ABC):
         grabber.apply_options(config["options"])
 
         # Do the warmup delay if necessary
-        if config['input_type'] == InputTypes.GENERIC_USB and warmup_delay > 0:
+        if config["input_type"] == InputTypes.GENERIC_USB and warmup_delay > 0:
             logger.info(
                 f"Waiting {warmup_delay} seconds for camera to warm up. "
                 "Pass in warmup_delay = 0 to suppress this behavior."
@@ -214,12 +214,12 @@ class FrameGrabber(ABC):
     @staticmethod
     def autodiscover(warmup_delay: float = 1.0) -> dict:
         """Autodiscovers cameras and returns a dictionary of FrameGrabber objects
-        
-            warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
-                cameras often need a moment to warm up before they can be used; grabbing frames too early
-                might result in dark or blurry images. 
-                Defaults to 1.0. Only applicable to generic_usb cameras.
-                """
+
+        warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
+            cameras often need a moment to warm up before they can be used; grabbing frames too early
+            might result in dark or blurry images.
+            Defaults to 1.0. Only applicable to generic_usb cameras.
+        """
         autodiscoverable_input_types = (
             InputTypes.REALSENSE,
             InputTypes.GENERIC_USB,
@@ -249,7 +249,7 @@ class FrameGrabber(ABC):
         grabber_types = set([grabber.config["input_type"] for grabber in grabbers.values()])
         if InputTypes.GENERIC_USB in grabber_types and warmup_delay > 0:
             logger.info(
-                f"Waiting {warmup_delay} seconds for camera(s) to warm up. " 
+                f"Waiting {warmup_delay} seconds for camera(s) to warm up. "
                 "Pass in warmup_delay = 0 to suppress this behavior."
             )
             time.sleep(warmup_delay)
@@ -271,10 +271,10 @@ class FrameGrabber(ABC):
         camera name. If no unique identifier is available, a counter is used instead.
         """
 
-        if self.config.get('id', {}).get('serial_number', None):
-            unnamed_grabber_id = self.config['id']['serial_number']
-        elif self.config.get('id', {}).get('rtsp_url', None):
-            rtsp_url = self.config['id']['rtsp_url']
+        if self.config.get("id", {}).get("serial_number", None):
+            unnamed_grabber_id = self.config["id"]["serial_number"]
+        elif self.config.get("id", {}).get("rtsp_url", None):
+            rtsp_url = self.config["id"]["rtsp_url"]
             parsed_url = urlparse(rtsp_url)
             if parsed_url.scheme == "rtsp" and parsed_url.hostname:
                 unnamed_grabber_id = parsed_url.hostname
