@@ -108,7 +108,7 @@ class FrameGrabber(ABC):
         # Create the grabbers
         grabber_list = []
         for config in configs:
-            grabber = FrameGrabber.create_grabber(config, autogenerate_name=False)
+            grabber = FrameGrabber.create_grabber(config, autogenerate_name=False, warmup_delay=0)
             grabber_list.append(grabber)
 
         grabbers = FrameGrabber.grabbers_to_dict(grabber_list)
