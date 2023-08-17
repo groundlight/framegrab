@@ -225,10 +225,19 @@ class FrameGrabber(ABC):
         """For generating and assigning unique names for unnamed FrameGrabber objects.
         Increments the counter and assigns a name based on that counter.
         """
-        FrameGrabber.unnamed_grabber_count += 1
-        count = FrameGrabber.unnamed_grabber_count
+
+        if self.config.get('id', {}).get('serial_number', None):
+            unnamed_grabber_id = self.config['id']['serial_number']
+        elif self.config.get('id', {}).get('rtsp_url', None):
+            rtsp_url = self.config['id']['rtsp_url']
+            unnamed_grabber_id = rtsp_url.split('/')[-1]
+        else:
+            FrameGrabber.unnamed_grabber_count += 1
+            unnamed_grabber_id = FrameGrabber.unnamed_grabber_count
+
         input_type = self.config["input_type"]
-        self.config["name"] = f"Unnamed Camera {count} ({input_type})"
+        autoassigned_name = f"{input_type.upper()} Camera - {unnamed_grabber_id}"
+        self.config["name"] = autoassigned_name
 
     def _crop(self, frame: np.ndarray) -> np.ndarray:
         """Looks at FrameGrabber's options and decides to either crop by pixels or
