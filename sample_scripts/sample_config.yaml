@@ -1,4 +1,4 @@
-GL_CAMERAS: |
+image_sources:
   - name: Front Door
     input_type: generic_usb
     options: 

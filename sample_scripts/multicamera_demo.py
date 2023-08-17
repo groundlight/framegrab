@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from framegrab import FrameGrabber
 import yaml
 import cv2
@@ -5,8 +7,7 @@ import cv2
 # load the configurations from yaml
 config_path = 'sample_config.yaml'
 with open(config_path, 'r') as f:
-    data = yaml.safe_load(f)
-    configs = yaml.safe_load(data['GL_CAMERAS'])
+    configs = yaml.safe_load(f)['image_sources']
 
 print('Loaded the following configurations from yaml:')
 print(configs)
