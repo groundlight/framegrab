@@ -5,7 +5,8 @@ import subprocess
 import time
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
-from typing import Dict, List, Type
+from typing import Dict, List
+from urllib.parse import urlparse
 
 import cv2
 import numpy as np
@@ -73,13 +74,18 @@ class FrameGrabber(ABC):
         return output_config
 
     @staticmethod
-    def create_grabbers(configs: List[dict]) -> dict:
+    def create_grabbers(configs: List[dict], warmup_delay: float = 1.0) -> dict:
         """
         Creates multiple FrameGrab objects based on user-provided configurations
 
         Parameters:
         configs (List[dict]): A list of dictionaries, where each dictionary contains the configuration
                               for a FrameGrabber.
+
+        warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
+            cameras often need a moment to warm up before they can be used; grabbing frames too early
+            might result in dark or blurry images. 
+            Defaults to 1.0. Only applicable to generic_usb cameras.
 
         Returns:
         dict: A dictionary where the keys are the camera names, and the values are FrameGrab
@@ -107,6 +113,15 @@ class FrameGrabber(ABC):
 
         grabbers = FrameGrabber.grabbers_to_dict(grabber_list)
 
+        # Do the warmup delay if necessary
+        grabber_types = set([grabber.config["input_type"] for grabber in grabbers.values()])
+        if InputTypes.GENERIC_USB in grabber_types and warmup_delay > 0:
+            logger.info(
+                f"Waiting {warmup_delay} seconds for camera(s) to warm up. " 
+                "Pass in warmup_delay = 0 to suppress this behavior."
+            )
+            time.sleep(warmup_delay)
+
         return grabbers
 
     @staticmethod
@@ -124,7 +139,7 @@ class FrameGrabber(ABC):
         for grabber in grabber_list:
             # If a name wasn't provided, autogenerate one
             if not grabber.config.get("name"):
-                grabber._autoassign_name()
+                grabber._autogenerate_name()
 
             # Add the grabber to the dictionary
             grabber_name = grabber.config["name"]
@@ -133,7 +148,7 @@ class FrameGrabber(ABC):
         return grabbers
 
     @staticmethod
-    def create_grabber(config: dict, autogenerate_name: bool = True):
+    def create_grabber(config: dict, autogenerate_name: bool = True, warmup_delay: float = 1.0):
         """Create a FrameGrabber object based on the provided configuration.
 
         Parameters:
@@ -142,6 +157,11 @@ class FrameGrabber(ABC):
             autogenerate_name (bool, optional): A flag to indicate whether to automatically
                 generate a name for the FrameGrabber object if not explicitly provided. Defaults
                 to True.
+
+            warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
+                cameras often need a moment to warm up before they can be used; grabbing frames too early
+                might result in dark or blurry images. 
+                Defaults to 1.0. Only applicable to generic_usb cameras.
 
         Returns:
                 An instance of a FrameGrabber subclass based on the provided
@@ -176,10 +196,18 @@ class FrameGrabber(ABC):
 
         # If a name wasn't supplied and autogenerate_name is True, autogenerate a name
         if not config.get("name", False) and autogenerate_name:
-            grabber._autoassign_name()
+            grabber._autogenerate_name()
 
         # Apply the options so that resolution, exposure, etc. are correct
         grabber.apply_options(config["options"])
+
+        # Do the warmup delay if necessary
+        if config['input_type'] == InputTypes.GENERIC_USB and warmup_delay > 0:
+            logger.info(
+                f"Waiting {warmup_delay} seconds for camera to warm up. "
+                "Pass in warmup_delay = 0 to suppress this behavior."
+            )
+            time.sleep(warmup_delay)
 
         return grabber
 
@@ -221,23 +249,29 @@ class FrameGrabber(ABC):
         """
         pass
 
-    def _autoassign_name(self) -> None:
+    def _autogenerate_name(self) -> None:
         """For generating and assigning unique names for unnamed FrameGrabber objects.
-        Increments the counter and assigns a name based on that counter.
+
+        Attempts to incorporate a unique identifier (serial number, url, etc.) into each
+        camera name. If no unique identifier is available, a counter is used instead.
         """
 
         if self.config.get('id', {}).get('serial_number', None):
             unnamed_grabber_id = self.config['id']['serial_number']
         elif self.config.get('id', {}).get('rtsp_url', None):
             rtsp_url = self.config['id']['rtsp_url']
-            unnamed_grabber_id = rtsp_url.split('/')[-1]
+            parsed_url = urlparse(rtsp_url)
+            if parsed_url.scheme == "rtsp" and parsed_url.hostname:
+                unnamed_grabber_id = parsed_url.hostname
+            else:
+                raise ValueError("Invalid RTSP URL format")
         else:
             FrameGrabber.unnamed_grabber_count += 1
             unnamed_grabber_id = FrameGrabber.unnamed_grabber_count
 
         input_type = self.config["input_type"]
-        autoassigned_name = f"{input_type.upper()} Camera - {unnamed_grabber_id}"
-        self.config["name"] = autoassigned_name
+        autogenerated_name = f"{input_type.upper()} Camera - {unnamed_grabber_id}"
+        self.config["name"] = autogenerated_name
 
     def _crop(self, frame: np.ndarray) -> np.ndarray:
         """Looks at FrameGrabber's options and decides to either crop by pixels or
@@ -437,22 +471,10 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
         # A valid capture has been found, saving it for later
         self.capture = capture
-        self.do_warmup_delay()
 
         # Log the current camera index as 'in use' to prevent other GenericUSBFrameGrabbers from stepping on it
         self.idx = idx
         GenericUSBFrameGrabber.indices_in_use.add(idx)
-
-    def do_warmup_delay(self) -> None:
-        """Wait for the camera to warm up. This is necessary for many USB cameras.
-        Without this delay, the first few frames will be dark, or out of focus."""
-        warmup_delay = float(self.config.get("options", {}).get("warmup_delay", 1.0))
-        if warmup_delay > 0:
-            # Log a message to make it clear how to undo this delay if it's not needed
-            logger.info(
-                f"Waiting {warmup_delay} seconds for camera to warm up (adjustable via config options.warmup_delay)"
-            )
-            time.sleep(warmup_delay)
 
     def grab(self) -> np.ndarray:
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
