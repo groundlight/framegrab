@@ -504,8 +504,8 @@ class GenericUSBFrameGrabber(FrameGrabber):
         return frame
 
     def release(self) -> None:
-        self.capture.release()
         GenericUSBFrameGrabber.indices_in_use.remove(self.idx)
+        self.capture.release()
 
     def _apply_camera_specific_options(self, options: dict) -> None:
         self._set_cv2_resolution()
@@ -718,8 +718,8 @@ class BaslerFrameGrabber(FrameGrabber):
         return frame
 
     def release(self) -> None:
-        self.camera.Close()
         BaslerFrameGrabber.serial_numbers_in_use.remove(self.config["id"]["serial_number"])
+        self.camera.Close()
 
     def _apply_camera_specific_options(self, options: dict) -> None:
         if options.get("resolution"):
