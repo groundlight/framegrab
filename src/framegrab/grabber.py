@@ -85,7 +85,7 @@ class FrameGrabber(ABC):
         warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
             cameras often need a moment to warm up before they can be used; grabbing frames too early
             might result in dark or blurry images.
-            Defaults to 1.0. Only applicable to generic_usb cameras.
+            Defaults to 1.0. But only happens if there are any generic_usb cameras in the config list.
 
         Returns:
         dict: A dictionary where the keys are the camera names, and the values are FrameGrab
