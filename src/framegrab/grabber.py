@@ -5,11 +5,12 @@ import subprocess
 import time
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
-from typing import Dict, List
+from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 import cv2
 import numpy as np
+import yaml
 
 from .unavailable_module import UnavailableModule
 
@@ -74,7 +75,7 @@ class FrameGrabber(ABC):
         return output_config
 
     @staticmethod
-    def create_grabbers(configs: List[dict], warmup_delay: float = 1.0) -> dict:
+    def create_grabbers(configs: List[dict], warmup_delay: float = 1.0) -> dict[str, "FrameGrabber"]:
         """
         Creates multiple FrameGrab objects based on user-provided configurations
 
@@ -123,6 +124,31 @@ class FrameGrabber(ABC):
             time.sleep(warmup_delay)
 
         return grabbers
+
+    @staticmethod
+    def from_yaml(filename:Optional[str]=None, yaml_str:Optional[str]=None) -> dict[str, "FrameGrabber"]:
+        """Creates multiple FrameGrab objects based on a YAML file or YAML string.
+        Either filename or yaml_str must be provided, but not both.
+
+        :param filename: The filename of the YAML file to load.
+        :param yaml_str: A YAML string to parse.
+        :return: A dictionary where the keys are the camera names, and the values are FrameGrabber objects.
+        """
+        if filename is None and yaml_str is None:
+            raise ValueError("Either filename or yaml_str must be provided.")
+        if filename is not None and yaml_str is not None:
+            raise ValueError("Only one of filename or yaml_str can be provided.")
+        if filename:
+            with open(filename, "r") as f:
+                yaml_str = f.read()
+        full_config = yaml.safe_load(yaml_str)
+        if "image_sources" not in full_config:
+            raise ValueError("Invalid config file. Camera configs must be under the 'image_sources' key.")
+        image_sources = full_config["image_sources"]
+        # Check that it's a list.
+        if image_sources is None or not isinstance(image_sources, list):
+            raise ValueError("Invalid config file. 'image_sources' must be a list.")
+        return FrameGrabber.create_grabbers(image_sources)
 
     @staticmethod
     def grabbers_to_dict(grabber_list: list) -> dict:
