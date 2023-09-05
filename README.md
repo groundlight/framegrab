@@ -41,41 +41,27 @@ lists the sub-commands, including `autodiscover` and `preview`.
 
 ### Frame Grabbing
 
-Simple usage with a single USB camera would look something like the following:
+Frame Grabbers are defined by a configuration dict which is usually stored as YAML.  The configuration combines the camera type, the camera ID, and the camera options.  The configuration is passed to the `FrameGrabber.create_grabber` method to create a grabber object.  The grabber object can then be used to grab frames from the camera.
 
-```
-from framegrab import FrameGrabber
 
-config = {
-    'input_type': 'generic_usb',
-}
-
-grabber = FrameGrabber.create_grabber(config)
-
-```
-`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense` and `basler`.
+`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense`, and `basler`.
 
 Here's an example of a single USB camera configured with several options:
-```
-config = {
-    'name': 'Front Door Camera',
-    'input_type': 'generic_usb',
-    'id': {
-        'serial_number': 23432570
-    },
-    'options': {
-        'resolution': {
-            'height': 1080,
-            'width': 1920,
-        },
-        'zoom': {
-            'digital': 1.5
-        }
+```python
+config = """
+name: Front Door Camera
+input_type: generic_usb
+id:
+  serial_number: 23432570
+options:
+    resolution:
+        height: 1080
+        width: 1920
+    zoom:
+        digital: 1.5
+"""
 
-    }
-}
-
-grabber = FrameGrabber.create_grabber(config)
+grabber = FrameGrabber.create_grabber_yaml(config)
 ```
 
 To get a frame, simply run:

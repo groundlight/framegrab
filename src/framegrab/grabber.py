@@ -174,6 +174,31 @@ class FrameGrabber(ABC):
         return grabbers
 
     @staticmethod
+    def create_grabber_yaml(yaml_config: str, autogenerate_name: bool = True, warmup_delay: float = 1.0):
+        """Create a FrameGrabber object based on the provided configuration.
+
+        Parameters:
+            config (str): A yaml string containing configuration settings for the FrameGrabber.
+
+            autogenerate_name (bool, optional): A flag to indicate whether to automatically
+                generate a name for the FrameGrabber object if not explicitly provided. Defaults
+                to True.
+
+            warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
+                cameras often need a moment to warm up before they can be used; grabbing frames too early
+                might result in dark or blurry images.
+                Defaults to 1.0. Only applicable to generic_usb cameras.
+
+        Returns:
+                An instance of a FrameGrabber subclass based on the provided
+                configuration. The specific subclass will be determined by the content of the
+                configuration dictionary.
+        """
+        config = yaml.safe_load(yaml_config)
+        grabber = FrameGrabber.create_grabber(config, autogenerate_name, warmup_delay)
+        return grabber
+
+    @staticmethod
     def create_grabber(config: dict, autogenerate_name: bool = True, warmup_delay: float = 1.0):
         """Create a FrameGrabber object based on the provided configuration.
 
