@@ -75,7 +75,7 @@ class FrameGrabber(ABC):
         return output_config
 
     @staticmethod
-    def create_grabbers(configs: List[dict], warmup_delay: float = 1.0) -> dict[str, "FrameGrabber"]:
+    def create_grabbers(configs: List[dict], warmup_delay: float = 1.0) -> Dict[str, "FrameGrabber"]:
         """
         Creates multiple FrameGrab objects based on user-provided configurations
 
@@ -126,7 +126,7 @@ class FrameGrabber(ABC):
         return grabbers
 
     @staticmethod
-    def from_yaml(filename:Optional[str]=None, yaml_str:Optional[str]=None) -> dict[str, "FrameGrabber"]:
+    def from_yaml(filename:Optional[str]=None, yaml_str:Optional[str]=None) -> Dict[str, "FrameGrabber"]:
         """Creates multiple FrameGrab objects based on a YAML file or YAML string.
         Either filename or yaml_str must be provided, but not both.
 
