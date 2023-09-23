@@ -26,6 +26,11 @@ try:
 except ImportError as e:
     rs = UnavailableModule(e)
 
+try:
+    import pafy
+except ImportError as e:
+    pafy = UnavailableModule(e)
+
 OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
@@ -36,6 +41,7 @@ class InputTypes:
 
     GENERIC_USB = "generic_usb"
     RTSP = "rtsp"
+    YOUTUBE = "youtube"
     REALSENSE = "realsense"
     BASLER = "basler"
     MOCK = "mock"
@@ -177,12 +183,15 @@ class FrameGrabber(ABC):
         input_type = config.get("input_type", None)
         if input_type is None:
             raise ValueError(f"No input_type provided. Valid types are {InputTypes.get_options()}")
+        input_type = input_type.lower()
 
         # Based on input_type, create correct type of FrameGrabber
         if input_type == InputTypes.GENERIC_USB:
             grabber = GenericUSBFrameGrabber(config)
         elif input_type == InputTypes.RTSP:
             grabber = RTSPFrameGrabber(config)
+        elif input_type == InputTypes.YOUTUBE:
+            grabber = YouTubeFrameGrabber(config)
         elif input_type == InputTypes.BASLER:
             grabber = BaslerFrameGrabber(config)
         elif input_type == InputTypes.REALSENSE:
@@ -273,6 +282,7 @@ class FrameGrabber(ABC):
 
         if self.config.get("id", {}).get("serial_number", None):
             unnamed_grabber_id = self.config["id"]["serial_number"]
+        # TODO: nice naming of youtube streams
         elif self.config.get("id", {}).get("rtsp_url", None):
             rtsp_url = self.config["id"]["rtsp_url"]
             parsed_url = urlparse(rtsp_url)
@@ -838,6 +848,75 @@ class RealSenseFrameGrabber(FrameGrabber):
             pass
 
 
+class YouTubeFrameGrabber(RTSPFrameGrabber):
+    """grabs the most recent frame from an YouTube stream. To avoid extraneous bandwidth
+    this class tears down the stream between each frame grab.  maximum framerate
+    is likely around 0.5fps in most cases.
+    """
+
+    def __init__(self, config: dict):
+        self.config = config
+        self.stream = self.config.get("id", {}).get("youtube_url")
+        if not self.stream:
+            camera_name = self.config.get("name", "Unnamed YouTube Stream")
+            raise ValueError(
+                f"No YouTube URL provided for {camera_name}. Please add an youtube_url attribute to the configuration."
+            )
+        logger.warning(f"initializing YouTube stream {self.stream}")
+        video = pafy.new(self.stream)
+        best_video = video.getbest(preftype="mp4")
+        self.capture = cv2.VideoCapture(best_video.url)
+
+        if not self.capture.isOpened():
+            raise ValueError(
+                f"Could not open YouTube stream: {self.stream}. "
+                "Is the YouTube URL correct? Is the camera connected to the network?"
+            )
+
+        logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
+
+        self.run = True
+        self.lock = Lock()
+
+        # The _drain thread needs to periodically wait to avoid overloading the CPU.
+        self.drain_rate = 1 / 60
+
+        Thread(target=self._drain).start()
+
+    def grab(self) -> np.ndarray:
+        with self.lock:
+            ret, frame = self.capture.retrieve()  # grab and decode since we want this frame
+            if not ret:
+                logger.error(f"Could not read frame from {self.capture}. Attempting to reset stream")
+                self.reset_stream()
+                ret, frame = self.capture.retrieve()
+                if not ret:
+                    logger.error(f"Failed to effectively reset stream {self.stream} / {self.best_video.url}")
+
+        if ret:
+            frame = self._crop(frame)
+            frame = self._digital_zoom(frame)
+            frame = self._rotate(frame)
+
+        return frame
+
+    def reset_stream(self):
+        video = pafy.new(self.stream)
+        best_video = video.getbest(preftype="mp4")
+        self.capture = cv2.VideoCapture(best_video.url)
+        logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
+        if not self.capture.isOpened():
+            raise ValueError(f"could not initially open {self.stream}")
+        # self.capture.release()
+
+
+    def _apply_camera_specific_options(self, options: dict) -> None:
+        if options.get("resolution"):
+            camera_name = self.config.get("name", "Unnamed YouTube Stream")
+            # Can it be set? At best its not implemented here.
+            raise ValueError(f"Resolution was set for {camera_name}, but resolution cannot be set for YouTube streams.")
+
+
 class MockFrameGrabber(FrameGrabber):
     """A mock camera class for testing purposes"""
 
@@ -961,48 +1040,6 @@ class MockFrameGrabber(FrameGrabber):
 #         logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
 #         return frame
 
-# # TODO update this class to work with the latest updates'
-# import pafy
-# class YouTubeFrameGrabber(FrameGrabber):
-#     """grabs the most recent frame from an YouTube stream. To avoid extraneous bandwidth
-#     this class tears down the stream between each frame grab.  maximum framerate
-#     is likely around 0.5fps in most cases.
-#     """
-
-#     def __init__(self, stream=None):
-#         self.stream = stream
-#         self.video = pafy.new(self.stream)
-#         self.best_video = self.video.getbest(preftype="mp4")
-#         self.capture = cv2.VideoCapture(self.best_video.url)
-#         logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
-#         if not self.capture.isOpened():
-#             raise ValueError(f"could not initially open {self.stream}")
-#         self.capture.release()
-
-#     def reset_stream(self):
-#         self.video = pafy.new(self.stream)
-#         self.best_video = self.video.getbest(preftype="mp4")
-#         self.capture = cv2.VideoCapture(self.best_video.url)
-#         logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
-#         if not self.capture.isOpened():
-#             raise ValueError(f"could not initially open {self.stream}")
-#         self.capture.release()
-
-#     def grab(self):
-#         start = time.time()
-#         self.capture = cv2.VideoCapture(self.best_video.url)
-#         ret, frame = self.capture.read()  # grab and decode since we want this frame
-#         if not ret:
-#             logger.error(f"could not read frame from {self.capture}. attempting to reset stream")
-#             self.reset_stream()
-#             self.capture = cv2.VideoCapture(self.best_video.url)
-#             ret, frame = self.capture.read()
-#             if not ret:
-#                 logger.error(f"failed to effectively reset stream {self.stream} / {self.best_video.url}")
-#         now = time.time()
-#         logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
-#         self.capture.release()
-#         return frame
 
 # # TODO update this class to work with the latest updates
 # import urllib
