@@ -909,7 +909,6 @@ class YouTubeFrameGrabber(RTSPFrameGrabber):
             raise ValueError(f"could not initially open {self.stream}")
         # self.capture.release()
 
-
     def _apply_camera_specific_options(self, options: dict) -> None:
         if options.get("resolution"):
             camera_name = self.config.get("name", "Unnamed YouTube Stream")
