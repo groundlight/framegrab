@@ -126,7 +126,7 @@ class FrameGrabber(ABC):
         return grabbers
 
     @staticmethod
-    def from_yaml(filename:Optional[str]=None, yaml_str:Optional[str]=None) -> Dict[str, "FrameGrabber"]:
+    def from_yaml(filename: Optional[str] = None, yaml_str: Optional[str] = None) -> Dict[str, "FrameGrabber"]:
         """Creates multiple FrameGrab objects based on a YAML file or YAML string.
         Either filename or yaml_str must be provided, but not both.
 
