@@ -126,7 +126,7 @@ class FrameGrabber(ABC):
         return grabbers
 
     @staticmethod
-    def from_yaml(filename: Optional[str] = None, yaml_str: Optional[str] = None) -> Dict[str, "FrameGrabber"]:
+    def from_yaml(filename: Optional[str] = None, yaml_str: Optional[str] = None) -> List["FrameGrabber"]:
         """Creates multiple FrameGrab objects based on a YAML file or YAML string.
         Either filename or yaml_str must be provided, but not both.
 
@@ -148,7 +148,11 @@ class FrameGrabber(ABC):
         # Check that it's a list.
         if image_sources is None or not isinstance(image_sources, list):
             raise ValueError("Invalid config file. 'image_sources' must be a list.")
-        return FrameGrabber.create_grabbers(image_sources)
+        grabber_dict = FrameGrabber.create_grabbers(image_sources)
+        grabber_list = []
+        for _, grabber in grabber_dict.items():
+            grabber_list.append(grabber)
+        return grabber_list
 
     @staticmethod
     def grabbers_to_dict(grabber_list: list) -> dict:
