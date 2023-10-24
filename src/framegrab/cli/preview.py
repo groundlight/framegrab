@@ -12,7 +12,7 @@ from framegrab import FrameGrabber
 
 def imgcat_preview(name: str, frame):
     """Displays the given frame in the terminal using imgcat."""
-    print("Previewing image from camera {name} in terminal. This requires an advanced terminal like iTerm2.")
+    print(f"Previewing image from camera {name} in terminal. This requires an advanced terminal like iTerm2.")
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     imgcat(frame_rgb)
 
@@ -44,7 +44,6 @@ def get_image_sources_from_config(config: str) -> list:
 
 
 @click.command()
-# @click.argument('config', type=click.Path(exists=True), help="Path to the configuration file.")
 @click.argument("config", type=click.Path(exists=True))
 @click.argument(
     "output",
@@ -52,7 +51,9 @@ def get_image_sources_from_config(config: str) -> list:
     default="imgcat",
 )
 def preview(config: str, output: str):
-    """Previews images from each of the configured sources."""
+    """Previews images from each of the configured sources.  Must pass CONFIG: a filename with 
+    a configuration.
+    """
     image_sources = get_image_sources_from_config(config)
     grabbers = FrameGrabber.create_grabbers(image_sources)
 
