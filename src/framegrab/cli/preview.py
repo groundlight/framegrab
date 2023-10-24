@@ -51,7 +51,7 @@ def get_image_sources_from_config(config: str) -> list:
     default="imgcat",
 )
 def preview(config: str, output: str):
-    """Previews images from each of the configured sources.  Must pass CONFIG: a filename with 
+    """Previews images from each of the configured sources.  Must pass CONFIG: a filename with
     a configuration.
     """
     image_sources = get_image_sources_from_config(config)
