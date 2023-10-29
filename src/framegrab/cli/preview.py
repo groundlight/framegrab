@@ -1,3 +1,4 @@
+import logging
 import shutil
 
 import ascii_magic
@@ -38,6 +39,8 @@ def get_image_sources_from_config(config: str) -> list:
     """Returns a dictionary of image sources from the given configuration file."""
     with open(config, "r") as f:
         configs = yaml.safe_load(f)
+    if not configs:
+        raise click.BadParameter(f"Configuration file {config} appears blank. Expecting YAML with an image_sources section.")
     if "image_sources" not in configs:
         raise click.BadParameter("Configuration file must contain an image_sources section.")
     return configs["image_sources"]

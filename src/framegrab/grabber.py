@@ -142,6 +142,10 @@ class FrameGrabber(ABC):
             with open(filename, "r") as f:
                 yaml_str = f.read()
         full_config = yaml.safe_load(yaml_str)
+        if not full_config:
+            raise ValueError(f"Config YAML appears blank. Expecting an image_sources section.")
+        if not isinstance(full_config, dict):
+            raise ValueError(f"Invalid config YAML. Expecting a dict with an image_sources section.")
         if "image_sources" not in full_config:
             raise ValueError("Invalid config file. Camera configs must be under the 'image_sources' key.")
         image_sources = full_config["image_sources"]
