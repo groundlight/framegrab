@@ -682,8 +682,14 @@ class RTSPFrameGrabber(FrameGrabber):
 
     def _apply_camera_specific_options(self, options: dict) -> None:
         if options.get("resolution"):
-            camera_name = self.config.get("name", "Unnamed RTSP Stream")
-            raise ValueError(f"Resolution was set for {camera_name}, but resolution cannot be set for RTSP streams.")
+            logger.warning(f"RTSP camera {self.config['name']} has resolution options set. This will be applied in post-processing.")
+            self._resolution = options.get("resolution")
+
+    def _process_frame(self, frame: np.ndarray) -> np.ndarray:
+        out = super()._process_frame(frame)
+        if self._resolution:
+            out = cv2.resize(out, (self._resolution["width"], self._resolution["height"]))
+        return out
 
     def _drain(self) -> None:
         """Repeatedly grabs frames without decoding them.
