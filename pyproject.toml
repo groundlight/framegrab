@@ -5,6 +5,8 @@ description = "Easily grab frames from cameras or streams"
 authors = ["Groundlight <info@groundlight.ai>"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://www.groundlight.ai/"
+repository = "https://github.com/groundlight/framegrab"
 
 [tool.poetry.dependencies]
 python = "^3.7"
