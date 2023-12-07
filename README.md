@@ -65,11 +65,11 @@ grabber = FrameGrabber.create_grabber_yaml(config)
 ```
 
 To get a frame, simply run:
-```
+```python
 frame = grabber.grab()
 ```
 You can also change the options after the grabber is created.
-```
+```python
 new_options = {
     'resolution': {
         'height': 480,
@@ -89,7 +89,7 @@ grabber.apply_options(new_options)
 ```
 
 When you are done with the camera, release the resource by running:
-```
+```python
 grabber.release()
 ```
 
@@ -98,7 +98,7 @@ You might have several cameras that you want to use in the same application. In 
 If you have multiple cameras of the same type plugged in, it's recommended that you include serial numbers in the configurations; this ensures that each configuration is paired with the correct camera. If you don't provide serial numbers in your configurations, configurations will be paired with cameras in a sequential manner.
 
 Below is a sample yaml file containing configurations for three different cameras.
-```
+```yaml
 GL_CAMERAS: |
   - name: on robot arm
     input_type: realsense
@@ -125,7 +125,7 @@ GL_CAMERAS: |
       serial_number: B77D3A8F
 ```
 You can load the configurations from the yaml file and use the cameras in the following manner.
-```
+```python
 from framegrab import FrameGrabber
 import yaml
 
@@ -172,7 +172,7 @@ In addition to the configurations in the table above, you can set any Basler cam
 Autodiscovery automatically connects to all cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense` and `basler` cameras. Default configurations will be loaded for each camera. Please note that RTSP streams cannot be discovered in this manner; RTSP URLs must be specified in the configurations.
 
 Autodiscovery is great for simple applications where you don't need to set any special options on your cameras. It's also a convenient method for finding the serial numbers of your cameras (if the serial number isn't printed on the camera).
-```
+```python
 grabbers = FrameGrabber.autodiscover()
 
 # Print some information about the discovered cameras
@@ -186,7 +186,7 @@ for grabber in grabbers.values():
 
 To use the built-in motion detection functionality, first create a `MotionDetector` object, specifying the percentage threshold for motion detection:
 
-```
+```python
 from framegrab import MotionDetector
 
 motion_threshold = 1.0
@@ -197,7 +197,7 @@ The motion threshold is defined as the detection threshold for motion detection,
 
 Then, use the `motion_detected()` method with a captured frame to check if motion has been detected:
 
-```
+```python
 if m.motion_detected(frame):
     print("Motion detected!")
 ```
@@ -206,7 +206,7 @@ if m.motion_detected(frame):
 
 Here's an example of using the FrameGrab library to continuously capture frames and detect motion from a video stream:
 
-```
+```python
 from framegrab import FrameGrabber, MotionDetector
 
 motion_threshold = 1.0
