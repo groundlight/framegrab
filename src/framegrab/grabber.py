@@ -663,7 +663,7 @@ class RTSPFrameGrabber(FrameGrabber):
         # This allows the program to exit gracefully when the user presses Ctrl+C.
         # Daemon threads cannot perform clean up operations when they are terminated, but this is okay because the only
         # cleanup we need is to terminate the thread that drains the buffer.
-        thread.daemon = True 
+        thread.daemon = True
         thread.start()
 
     def grab(self) -> np.ndarray:
