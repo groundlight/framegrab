@@ -658,7 +658,13 @@ class RTSPFrameGrabber(FrameGrabber):
         # feed, so we will assume a high FPS of 60.
         self.drain_rate = 1 / 60
 
-        Thread(target=self._drain).start()
+        thread = Thread(target=self._drain)
+        # Setting thread to daemon mode means it will automatically terminate when the main thread terminates.
+        # This allows the program to exit gracefully when the user presses Ctrl+C.
+        # Daemon threads cannot perform clean up operations when they are terminated, but this is okay because the only
+        # cleanup we need is to terminate the thread that drains the buffer.
+        thread.daemon = True
+        thread.start()
 
     def grab(self) -> np.ndarray:
         with self.lock:
@@ -686,6 +692,7 @@ class RTSPFrameGrabber(FrameGrabber):
         This keeps the buffer empty so that when we actually want to read a frame,
         we can get the most current one.
         """
+
         while self.run:
             with self.lock:
                 _ = self.capture.grab()
