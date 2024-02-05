@@ -18,6 +18,7 @@ def cv2_preview(name: str, frame):
     _ = cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+
 def ascii_preview(name: str, frame):
     """Displays the given frame in the terminal using ascii art."""
     columns, _ = shutil.get_terminal_size()
@@ -26,17 +27,18 @@ def ascii_preview(name: str, frame):
     out = ascii_magic.from_pillow_image(pil_image)
     out.to_terminal(columns=columns)
 
+
 def null_preview(name: str, frame):
     """Does nothing."""
     pass
 
 
 _PREVIEW_COMMANDS = {
-        "imgcat": imgcat_preview,
-        "cv2": cv2_preview,
-        "ascii": ascii_preview,
-        "none": null_preview,
-    }
+    "imgcat": imgcat_preview,
+    "cv2": cv2_preview,
+    "ascii": ascii_preview,
+    "none": null_preview,
+}
 
 PREVIEW_COMMAND_CHOICES = list(_PREVIEW_COMMANDS.keys())
 

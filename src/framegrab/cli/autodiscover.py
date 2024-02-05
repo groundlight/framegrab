@@ -1,8 +1,8 @@
 import traceback
 
 import click
-from imgcat import imgcat
 import yaml
+from imgcat import imgcat
 
 from framegrab import FrameGrabber
 from framegrab.cli.clitools import PREVIEW_COMMAND_CHOICES, preview_image
@@ -14,7 +14,7 @@ from framegrab.cli.clitools import PREVIEW_COMMAND_CHOICES, preview_image
     type=click.Choice(PREVIEW_COMMAND_CHOICES, case_sensitive=False),
     default="imgcat",
 )
-def autodiscover(preview:str):
+def autodiscover(preview: str):
     """Automatically discover cameras connected to the current host (e.g. USB)."""
     # Print message to stderr
     click.echo("Discovering cameras...", err=True)

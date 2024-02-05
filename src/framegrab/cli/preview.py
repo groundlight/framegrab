@@ -11,6 +11,7 @@ from PIL import Image
 from framegrab import FrameGrabber
 from framegrab.cli.clitools import PREVIEW_COMMAND_CHOICES, preview_image
 
+
 def get_image_sources_from_config(config: str) -> list:
     """Returns a dictionary of image sources from the given configuration file."""
     with open(config, "r") as f:
