@@ -1,4 +1,5 @@
 import shutil
+import traceback
 
 import ascii_magic
 import click
@@ -66,9 +67,13 @@ def preview(config: str, output: str):
     try:
         # Get a frame from each camera
         for camera_name, grabber in grabbers.items():
-            frame = grabber.grab()
-            print(f"Grabbed frame from {camera_name}")
-            preview_command(camera_name, frame)
+            try:
+                frame = grabber.grab()
+                print(f"Grabbed frame from {camera_name}")
+                preview_command(camera_name, frame)
+            except Exception as e:
+                print(f"Failed to grab frame from {camera_name}: {e}")
+                traceback.print_exc()
     finally:
         for grabber in grabbers.values():
             try:
