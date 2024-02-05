@@ -8,31 +8,7 @@ from imgcat import imgcat
 from PIL import Image
 
 from framegrab import FrameGrabber
-
-
-def imgcat_preview(name: str, frame):
-    """Displays the given frame in the terminal using imgcat."""
-    print(f"Previewing image from camera {name} in terminal. This requires an advanced terminal like iTerm2.")
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    imgcat(frame_rgb)
-
-
-def cv2_preview(name: str, frame):
-    """Displays the given frame in a cv2 window, and wait for a key."""
-    cv2.imshow(name, frame)
-    print(f"Previewing image in cv2 window. Select the window and press any key to continue.")
-    _ = cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
-def ascii_preview(name: str, frame):
-    """Displays the given frame in the terminal using ascii art."""
-    columns, _ = shutil.get_terminal_size()
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    pil_image = Image.fromarray(frame_rgb)
-    out = ascii_magic.from_pillow_image(pil_image)
-    out.to_terminal(columns=columns)
-
+from framegrab.cli.clitools import PREVIEW_COMMAND_CHOICES, preview_image
 
 def get_image_sources_from_config(config: str) -> list:
     """Returns a dictionary of image sources from the given configuration file."""
@@ -47,7 +23,7 @@ def get_image_sources_from_config(config: str) -> list:
 @click.argument("config", type=click.Path(exists=True))
 @click.argument(
     "output",
-    type=click.Choice(["imgcat", "cv2", "ascii"], case_sensitive=False),
+    type=click.Choice(PREVIEW_COMMAND_CHOICES, case_sensitive=False),
     default="imgcat",
 )
 def preview(config: str, output: str):
@@ -57,18 +33,15 @@ def preview(config: str, output: str):
     image_sources = get_image_sources_from_config(config)
     grabbers = FrameGrabber.create_grabbers(image_sources)
 
-    preview_command = {
-        "imgcat": imgcat_preview,
-        "cv2": cv2_preview,
-        "ascii": ascii_preview,
-    }[output]
-
     try:
         # Get a frame from each camera
         for camera_name, grabber in grabbers.items():
             frame = grabber.grab()
+            if frame is None:
+                print(f"Failed to grab frame from {camera_name}.")
+                continue
             print(f"Grabbed frame from {camera_name}")
-            preview_command(camera_name, frame)
+            preview_image(camera_name, frame, output)
     finally:
         for grabber in grabbers.values():
             try:
