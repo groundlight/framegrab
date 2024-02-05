@@ -39,14 +39,15 @@ def preview(config: str, output: str):
         for camera_name, grabber in grabbers.items():
             try:
                 frame = grabber.grab()
-                if frame is None:
-                    print(f"Failed to grab frame from {camera_name}.")
-                    continue
-                print(f"Grabbed frame from {camera_name}")
-                preview_command(camera_name, frame)
             except Exception as e:
-                print(f"Failed to grab frame from {camera_name}: {e}")
+                print(f"Error grabbing preview frame from {camera_name}: {e}")
                 traceback.print_exc()
+                continue
+            if frame is None:
+                print(f"Failed to grab preview frame from {camera_name}.")
+                continue
+            print(f"Grabbed preview frame from {camera_name}")
+            preview_command(camera_name, frame)
     finally:
         for grabber in grabbers.values():
             try:
