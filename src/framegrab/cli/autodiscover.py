@@ -37,7 +37,7 @@ def autodiscover(preview: str):
 
             click.echo(f"Grabbed sample frame from {camera_name} with shape {frame.shape}", err=True)
             click.echo(grabber.config, err=True)
-            preview_image(camera_name, frame, preview)
+            preview_image(frame, camera_name, preview)
 
             grabber.release()
         except Exception:

@@ -43,12 +43,12 @@ _PREVIEW_COMMANDS = {
 PREVIEW_COMMAND_CHOICES = list(_PREVIEW_COMMANDS.keys())
 
 
-def preview_image(name: str, frame, output_type: str):
+def preview_image(frame, title: str, output_type: str):
     """Displays the given frame using the given output method."""
     if output_type not in PREVIEW_COMMAND_CHOICES:
         raise ValueError(f"Invalid output method: {output_type}.  Valid options are {PREVIEW_COMMAND_CHOICES}.")
     command = _PREVIEW_COMMANDS[output_type]
     if frame is None:
-        print(f"Trying to preview None frame from {name}.")
+        print(f"Trying to preview None frame from {title}.")
         return
-    command(name, frame)
+    command(title, frame)

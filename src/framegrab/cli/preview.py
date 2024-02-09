@@ -48,7 +48,7 @@ def preview(config: str, output: str):
                 print(f"Failed to grab preview frame from {camera_name}.")
                 continue
             print(f"Grabbed preview frame from {camera_name}")
-            preview_command(camera_name, frame)
+            preview_image(frame, camera_name, output)
     finally:
         for grabber in grabbers.values():
             try:
