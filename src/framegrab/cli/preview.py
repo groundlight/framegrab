@@ -8,8 +8,7 @@ import yaml
 from imgcat import imgcat
 from PIL import Image
 
-from framegrab import FrameGrabber
-from framegrab.cli.clitools import PREVIEW_COMMAND_CHOICES, preview_image
+from framegrab import FrameGrabber, preview_image
 
 
 def get_image_sources_from_config(config: str) -> list:
@@ -25,7 +24,7 @@ def get_image_sources_from_config(config: str) -> list:
 @click.argument("config", type=click.Path(exists=True))
 @click.argument(
     "output",
-    type=click.Choice(PREVIEW_COMMAND_CHOICES, case_sensitive=False),
+    type=click.Choice(preview_image.OUTPUT_TYPE_CHOICES, case_sensitive=False),
     default="imgcat",
 )
 def preview(config: str, output: str):
