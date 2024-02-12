@@ -1,6 +1,6 @@
+from .cli.clitools import preview_image
 from .grabber import FrameGrabber
 from .motion import MotionDetector
-from .cli.clitools import preview_image
 
 try:
     import importlib.metadata
@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 
 
 __all__ = [
-    "FrameGrabber", 
-    "MotionDetector", 
+    "FrameGrabber",
+    "MotionDetector",
     "preview_image",
 ]
