@@ -1,3 +1,5 @@
+import shutil
+
 import ascii_magic
 import cv2
 from imgcat import imgcat
@@ -5,7 +7,8 @@ from PIL import Image
 
 
 def imgcat_preview(name: str, frame):
-    """Displays the given frame in the terminal using imgcat."""
+    """Displays the given frame in the terminal using imgcat.
+    This requires an advanced terminal like iTerm2."""
     print(f"Previewing image from camera {name} in terminal. This requires an advanced terminal like iTerm2.")
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     imgcat(frame_rgb)
@@ -44,7 +47,12 @@ PREVIEW_COMMAND_CHOICES = list(_PREVIEW_COMMANDS.keys())
 
 
 def preview_image(frame, title: str, output_type: str):
-    """Displays the given frame using the given output method."""
+    """Displays the given frame using the given output method.
+
+    :param frame: The frame to preview.
+    :param title: A string title to display with the preview.
+    :param output_type: The method to use for previewing the frame.  Valid choices for `output_type` can be found in `preview_image.OUTPUT_TYPE_CHOICES`.
+    """
     if output_type not in PREVIEW_COMMAND_CHOICES:
         raise ValueError(f"Invalid output method: {output_type}.  Valid options are {PREVIEW_COMMAND_CHOICES}.")
     command = _PREVIEW_COMMANDS[output_type]
@@ -52,3 +60,6 @@ def preview_image(frame, title: str, output_type: str):
         print(f"Trying to preview None frame from {title}.")
         return
     command(title, frame)
+
+
+preview_image.OUTPUT_TYPE_CHOICES = PREVIEW_COMMAND_CHOICES

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "framegrab"
-version = "0.4.5"
+version = "0.4.6"
 description = "Easily grab frames from cameras or streams"
 authors = ["Groundlight <info@groundlight.ai>"]
 license = "MIT"
