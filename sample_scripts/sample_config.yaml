@@ -7,7 +7,7 @@ image_sources:
   - name: Conference Room
     input_type: rtsp
     id: 
-      rtsp_url: rtsp://admin:password@10.0.0.0/cam/realmonitor?channel=1&subtype=0
+      rtsp_url: rtsp://admin:{{RTSP_PASSWORD}}@10.0.0.0/cam/realmonitor?channel=1&subtype=0
     options:
       crop:
         relative:
