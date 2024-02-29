@@ -673,29 +673,31 @@ class RTSPFrameGrabber(FrameGrabber):
         """
         Substitutes the password placeholder in the rtsp_url with the actual password
         from an environment variable.
-        The URL format should take this format
+        The URL should take this format
             Ex: rtsp://admin:{{MY_PASSWORD}}@10.0.0.0/cam/realmonitor?channel=1&subtype=0
 
-        This function looks for a string between {{ and }} to find an environment variable with that name.
-        If the environment variable is found, its value will be substituted in the rtsp_url.
+        This function looks for an all-uppercase name between {{ and }} to find an environment
+        variable with that name. If the environment variable is found, its value will be 
+        substituted in the rtsp_url.
         NOTE: This can also work for multiple RTSP URLs in the same config file as long
             as each one has a unique password placeholder.
         """
-
-        pattern = r"\{\{(.+?)\}\}"  # Regular expression to find {{ENV_VAR}}
+        
+        # Allow upper case letters, numbers, and underscores
+        pattern = r"\{\{([A-Z_][A-Z0-9_]*?)\}\}"
         rtsp_url = config.get("id", {}).get("rtsp_url", "")
         matches = re.findall(pattern, rtsp_url)
 
-        # Make sure there is one match
+        # Make sure there is just one match
         if len(matches) != 1:
-            raise RuntimeError("RTSP URL should contain exactly one placeholder for the password.")
+            raise ValueError("RTSP URL should contain exactly one placeholder for the password.")
 
         match = matches[0]
         password_env_var = os.environ.get(match)
         if not password_env_var:
-            raise RuntimeError(f"Environment variable {match} not set.")
+            raise ValueError(f"RTSP URL {rtsp_url} references environment variable {match} which is not set")
 
-        placeholder = f"{{{{{match}}}}}"
+        placeholder = "{{" + match + "}}"
         rtsp_url = rtsp_url.replace(placeholder, password_env_var)
         config["id"]["rtsp_url"] = rtsp_url
 
