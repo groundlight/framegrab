@@ -674,7 +674,7 @@ class RTSPFrameGrabber(FrameGrabber):
         Substitutes the password placeholder in the rtsp_url with the actual password
         from an environment variable.
         The URL format should take this format
-            Ex: rtsp://admin:{{RTSP_PASSWORD}}@10.0.0.0/cam/realmonitor?channel=1&subtype=0
+            Ex: rtsp://admin:{{MY_PASSWORD}}@10.0.0.0/cam/realmonitor?channel=1&subtype=0
 
         This function looks for a string between {{ and }} to find an environment variable with that name.
         If the environment variable is found, its value will be substituted in the rtsp_url.
