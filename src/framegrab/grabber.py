@@ -712,6 +712,9 @@ class RTSPFrameGrabber(FrameGrabber):
             if not ret:
                 logger.error(f"Could not read frame from {self.capture}")
 
+        if frame is None:
+            camera_name = self.config.get("name", "Unnamed RTSP Stream")
+            raise ValueError(f"Could not grab a frame from {camera_name}. Is the RTSP stream connected?")
         frame = self._process_frame(frame)
 
         return frame
