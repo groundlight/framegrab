@@ -542,7 +542,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
                 if capture.isOpened():
                     break  # Found a valid capture, no need to look any further
             else:
-                raise ValueError(f"Unable to connect to USB camera by index. Is your camera plugged in?")
+                raise ValueError("Unable to connect to USB camera by index. Is your camera plugged in?")
 
         # If a serial_number wasn't provided by the user, attempt to find it and add it to the config
         if not serial_number:
@@ -633,62 +633,32 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
 
 class RTSPFrameGrabber(FrameGrabber):
-    """Realtime Streaming Protocol Cameras"""
+    """Handles RTSP streams. Can operate in two modes based on the configuration:
+    1. Keeps the connection open for quick frame grabbing.
+    2. Opens the connection only when needed, which might be slower but conserves resources.
+    """
 
     def __init__(self, config: dict):
         self.config = self._substitute_rtsp_password(config)
-        stream = self.config.get("id", {}).get("rtsp_url")
-        if not stream:
+        self.stream = self.config.get("id", {}).get("rtsp_url")
+        if not self.stream:
             camera_name = self.config.get("name", "Unnamed RTSP Stream")
             raise ValueError(
                 f"No RTSP URL provided for {camera_name}. Please add an rtsp_url attribute to the configuration."
             )
-        self.capture = cv2.VideoCapture(stream)
-
-        if not self.capture.isOpened():
-            raise ValueError(
-                f"Could not open RTSP stream: {stream}. "
-                "Is the RSTP URL correct? Is the camera connected to the network?"
-            )
-
-        logger.debug(f"Initialized video capture with backend={self.capture.getBackendName()}")
-
-        self.run = True
         self.lock = Lock()
+        self.run = True
+        self.keep_connection_open = config.get("options", {}).get("keep_connection_open", True)
 
-        # The _drain thread needs to periodically wait to avoid overloading the CPU. Ideally this would be done
-        # at the rate of the RTSP feed's FPS. Unfortunately, OpenCV cannot consistently read the FPS of an RTSP
-        # feed, so we will assume a high FPS of 60.
-        self.drain_rate = 1 / 60
-
-        thread = Thread(target=self._drain)
-        # Setting thread to daemon mode means it will automatically terminate when the main thread terminates.
-        # This allows the program to exit gracefully when the user presses Ctrl+C.
-        # Daemon threads cannot perform clean up operations when they are terminated, but this is okay because the only
-        # cleanup we need is to terminate the thread that drains the buffer.
-        thread.daemon = True
-        thread.start()
+        if self.keep_connection_open:
+            self._open_connection()
+            self._init_drain_thread()
 
     def _substitute_rtsp_password(self, config: dict) -> dict:
-        """
-        Substitutes the password placeholder in the rtsp_url with the actual password
-        from an environment variable.
-        The URL should take this format
-            Ex: rtsp://admin:{{MY_PASSWORD}}@10.0.0.0/cam/realmonitor?channel=1&subtype=0
-
-        This function looks for an all-uppercase name between {{ and }} to find an environment
-        variable with that name. If the environment variable is found, its value will be
-        substituted in the rtsp_url.
-        NOTE: This can also work for multiple RTSP URLs in the same config file as long
-            as each one has a unique password placeholder.
-        """
-
-        # Allow upper case letters, numbers, and underscores
         pattern = r"\{\{([A-Z_][A-Z0-9_]*?)\}\}"
         rtsp_url = config.get("id", {}).get("rtsp_url", "")
         matches = re.findall(pattern, rtsp_url)
 
-        # Make sure there is just one match
         if len(matches) != 1:
             raise ValueError("RTSP URL should contain exactly one placeholder for the password.")
 
@@ -703,41 +673,56 @@ class RTSPFrameGrabber(FrameGrabber):
 
         return config
 
-    def grab(self) -> np.ndarray:
-        with self.lock:
-            (
-                ret,
-                frame,
-            ) = self.capture.retrieve()  # grab and decode since we want this frame
-            if not ret:
-                logger.error(f"Could not read frame from {self.capture}")
-
-        frame = self._process_frame(frame)
-
-        return frame
-
-    def release(self) -> None:
-        self.run = False  # to stop the buffer drain thread
-
-        with self.lock:
-            self.capture.release()
-
     def _apply_camera_specific_options(self, options: dict) -> None:
         if options.get("resolution"):
             camera_name = self.config.get("name", "Unnamed RTSP Stream")
             raise ValueError(f"Resolution was set for {camera_name}, but resolution cannot be set for RTSP streams.")
 
-    def _drain(self) -> None:
-        """Repeatedly grabs frames without decoding them.
-        This keeps the buffer empty so that when we actually want to read a frame,
-        we can get the most current one.
-        """
+    def _open_connection(self):
+        self.capture = cv2.VideoCapture(self.stream)
+        if not self.capture.isOpened():
+            raise ValueError(
+                f"Could not open RTSP stream: {self.stream}. Is the RTSP URL correct? Is the camera connected to the network?"
+            )
+        logger.debug(f"Initialized video capture with backend={self.capture.getBackendName()}")
 
+    def _close_connection(self):
+        with self.lock:
+            self.capture.release()
+
+    def grab(self) -> np.ndarray:
+        if not self.keep_connection_open:
+            self._open_connection()
+
+        with self.lock:
+            ret, frame = self.capture.retrieve() if self.keep_connection_open else self.capture.read()
+            if not ret:
+                logger.error(f"Could not read frame from {self.capture}")
+
+        if not self.keep_connection_open:
+            self._close_connection()
+
+        frame = self._process_frame(frame)
+        return frame
+
+    def release(self) -> None:
+        if self.keep_connection_open:
+            self.run = False  # to stop the buffer drain thread
+            self._close_connection()
+
+    def _init_drain_thread(self):
+        if not self.keep_connection_open:
+            return  # No need to drain if we're not keeping the connection open
+
+        self.drain_rate = 1 / 60  # Assuming a high FPS of 60
+        thread = Thread(target=self._drain)
+        thread.daemon = True
+        thread.start()
+
+    def _drain(self):
         while self.run:
             with self.lock:
                 _ = self.capture.grab()
-
-            # Sleep with each iteration in order to not hog the CPU
             time.sleep(self.drain_rate)
 
 
@@ -844,7 +829,7 @@ class RealSenseFrameGrabber(FrameGrabber):
 
         ctx = rs.context()
         if len(ctx.devices) == 0:
-            raise ValueError(f"No Intel RealSense cameras detected. Is your camera plugged in?")
+            raise ValueError("No Intel RealSense cameras detected. Is your camera plugged in?")
 
         provided_serial_number = self.config.get("id", {}).get("serial_number")
 
@@ -862,7 +847,7 @@ class RealSenseFrameGrabber(FrameGrabber):
                 try:
                     pipeline_profile = pipeline.start(rs_config)
                     break  # succesfully connected, breaking out of loop
-                except RuntimeError as e:
+                except RuntimeError:
                     # The current camera is not available, moving on to the next
                     continue
         else:
