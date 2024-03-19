@@ -701,6 +701,17 @@ class RTSPFrameGrabber(FrameGrabber):
             self._init_drain_thread()
 
     def _substitute_rtsp_password(self, config: dict) -> dict:
+        """
+        Substitutes the password placeholder in the rtsp_url with the actual password
+        from an environment variable.
+        The URL should take this format
+            Ex: rtsp://admin:{{MY_PASSWORD}}@10.0.0.0/cam/realmonitor?channel=1&subtype=0
+        This function looks for an all-uppercase name between {{ and }} to find an environment
+        variable with that name. If the environment variable is found, its value will be
+        substituted in the rtsp_url.
+        NOTE: This can also work for multiple RTSP URLs in the same config file as long
+            as each one has a unique password placeholder.
+        """
         pattern = r"\{\{([A-Z_][A-Z0-9_]*?)\}\}"
         rtsp_url = config.get("id", {}).get("rtsp_url", "")
         matches = re.findall(pattern, rtsp_url)
