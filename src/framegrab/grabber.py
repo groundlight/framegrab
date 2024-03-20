@@ -633,9 +633,9 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
 
 class RTSPFrameGrabber(FrameGrabber):
-    """Handles RTSP streams. Can operate in two modes based on the configuration:
-    1. Keeps the connection open for quick frame grabbing.
-    2. Opens the connection only when needed, which might be slower but conserves resources.
+    """Handles RTSP streams. Can operate in two modes based on the `keep_connection_open` configuration:
+    1.  If `true`, keeps the connection open for low-latency frame grabbing, but consumes more CPU.  (default)
+    2. If `false`, opens the connection only when needed, which is slower but conserves resources.
     """
 
     def __init__(self, config: dict):
