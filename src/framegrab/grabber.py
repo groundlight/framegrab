@@ -644,7 +644,7 @@ class RTSPFrameGrabber(FrameGrabber):
         if not self.stream:
             camera_name = self.config.get("name", "Unnamed RTSP Stream")
             raise ValueError(
-                f"No RTSP URL provided for {camera_name}. Please add an rtsp_url attribute to the configuration."
+                f"No RTSP URL provided for {camera_name}. Please add an rtsp_url attribute to the config under id."
             )
         self.lock = Lock()
         self.run = True
