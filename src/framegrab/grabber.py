@@ -636,18 +636,21 @@ class RTSPFrameGrabber(FrameGrabber):
     """Realtime Streaming Protocol Cameras"""
 
     def __init__(self, config: dict):
-        self.config = self._substitute_rtsp_password(config)
-        stream = self.config.get("id", {}).get("rtsp_url")
-        if not stream:
-            camera_name = self.config.get("name", "Unnamed RTSP Stream")
+        rtsp_url_censored = config.get("id", {}).get("rtsp_url")
+        if not rtsp_url_censored:
+            camera_name = config.get("name", "Unnamed RTSP Stream")
             raise ValueError(
                 f"No RTSP URL provided for {camera_name}. Please add an rtsp_url attribute to the configuration."
             )
-        self.capture = cv2.VideoCapture(stream)
+        
+        self.config = RTSPFrameGrabber._substitute_rtsp_password(config)
+
+        rtsp_url = self.config["id"]["rtsp_url"]
+        self.capture = cv2.VideoCapture(rtsp_url)
 
         if not self.capture.isOpened():
             raise ValueError(
-                f"Could not open RTSP stream: {stream}. "
+                f"Could not open RTSP stream: {rtsp_url}. "
                 "Is the RSTP URL correct? Is the camera connected to the network?"
             )
 
@@ -669,7 +672,8 @@ class RTSPFrameGrabber(FrameGrabber):
         thread.daemon = True
         thread.start()
 
-    def _substitute_rtsp_password(self, config: dict) -> dict:
+    @staticmethod
+    def _substitute_rtsp_password(config: dict) -> dict:
         """
         Substitutes the password placeholder in the rtsp_url with the actual password
         from an environment variable.
@@ -688,9 +692,10 @@ class RTSPFrameGrabber(FrameGrabber):
         rtsp_url = config.get("id", {}).get("rtsp_url", "")
         matches = re.findall(pattern, rtsp_url)
 
-        # Make sure there is just one match
-        if len(matches) != 1:
-            raise ValueError("RTSP URL should contain exactly one placeholder for the password.")
+        if len(matches) == 0:
+            return config # make no change to config if no password placeholder is found
+        elif len(matches) > 1:
+            raise ValueError("RTSP URL should contain no more than one placeholder for the password.")
 
         match = matches[0]
         password_env_var = os.environ.get(match)
