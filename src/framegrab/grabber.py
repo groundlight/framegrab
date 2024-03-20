@@ -642,7 +642,7 @@ class RTSPFrameGrabber(FrameGrabber):
             raise ValueError(
                 f"No RTSP URL provided for {camera_name}. Please add an rtsp_url attribute to the configuration."
             )
-        
+
         self.config = RTSPFrameGrabber._substitute_rtsp_password(config)
 
         rtsp_url = self.config["id"]["rtsp_url"]
@@ -693,7 +693,7 @@ class RTSPFrameGrabber(FrameGrabber):
         matches = re.findall(pattern, rtsp_url)
 
         if len(matches) == 0:
-            return config # make no change to config if no password placeholder is found
+            return config  # make no change to config if no password placeholder is found
         elif len(matches) > 1:
             raise ValueError("RTSP URL should contain no more than one placeholder for the password.")
 
