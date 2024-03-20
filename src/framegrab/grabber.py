@@ -725,7 +725,8 @@ class RTSPFrameGrabber(FrameGrabber):
         if not self.keep_connection_open:
             return  # No need to drain if we're not keeping the connection open
 
-        self.drain_rate = 1 / 60  # Assuming a high FPS of 60
+        max_fps = self.config.get("options", {}).get("max_fps", 30)
+        self.drain_rate = 1 / max_fps
         thread = Thread(target=self._drain)
         thread.daemon = True
         thread.start()
@@ -735,7 +736,6 @@ class RTSPFrameGrabber(FrameGrabber):
             with self.lock:
                 _ = self.capture.grab()
             time.sleep(self.drain_rate)
-
 
 class BaslerFrameGrabber(FrameGrabber):
     """Basler USB and Basler GigE Cameras"""
