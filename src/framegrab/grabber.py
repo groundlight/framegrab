@@ -737,6 +737,7 @@ class RTSPFrameGrabber(FrameGrabber):
                 _ = self.capture.grab()
             time.sleep(self.drain_rate)
 
+
 class BaslerFrameGrabber(FrameGrabber):
     """Basler USB and Basler GigE Cameras"""
 
