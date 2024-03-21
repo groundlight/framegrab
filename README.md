@@ -217,7 +217,7 @@ from framegrab import FrameGrabber, MotionDetector
 motion_threshold = 1.0
 
 config = {
-    'input_type': 'webcam',
+    'input_type': 'generic_usb',
 }
 grabber = FrameGrabber.create_grabber(config)
 m = MotionDetector(pct_threshold=motion_threshold)
@@ -243,6 +243,6 @@ We welcome contributions to FrameGrab! If you would like to contribute, please f
 
 ## License
 
-FrameGrab is released under the MIT License. For more information, please refer to the [LICENSE.txt](LICENSE.txt) file.
+FrameGrab is released under the MIT License. For more information, please refer to the [LICENSE.txt](https://github.com/groundlight/framegrab/blob/main/LICENSE.txt)
 
 

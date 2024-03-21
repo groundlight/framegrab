@@ -639,13 +639,16 @@ class RTSPFrameGrabber(FrameGrabber):
     """
 
     def __init__(self, config: dict):
-        self.config = self._substitute_rtsp_password(config)
-        self.stream = self.config.get("id", {}).get("rtsp_url")
-        if not self.stream:
-            camera_name = self.config.get("name", "Unnamed RTSP Stream")
+        rtsp_url = config.get("id", {}).get("rtsp_url")
+        if not rtsp_url:
+            camera_name = config.get("name", "Unnamed RTSP Stream")
             raise ValueError(
                 f"No RTSP URL provided for {camera_name}. Please add an rtsp_url attribute to the config under id."
             )
+        
+        self.config = RTSPFrameGrabber._substitute_rtsp_password(config)
+        self.rtsp_url = self.config["id"]["rtsp_url"]
+
         self.lock = Lock()
         self.run = True
         self.keep_connection_open = config.get("options", {}).get("keep_connection_open", True)
@@ -654,7 +657,8 @@ class RTSPFrameGrabber(FrameGrabber):
             self._open_connection()
             self._init_drain_thread()
 
-    def _substitute_rtsp_password(self, config: dict) -> dict:
+    @staticmethod
+    def _substitute_rtsp_password(config: dict) -> dict:
         """
         Substitutes the password placeholder in the rtsp_url with the actual password
         from an environment variable.
@@ -670,8 +674,10 @@ class RTSPFrameGrabber(FrameGrabber):
         rtsp_url = config.get("id", {}).get("rtsp_url", "")
         matches = re.findall(pattern, rtsp_url)
 
-        if len(matches) != 1:
-            raise ValueError("RTSP URL should contain exactly one placeholder for the password.")
+        if len(matches) == 0:
+            return config  # make no change to config if no password placeholder is found
+        elif len(matches) > 1:
+            raise ValueError("RTSP URL should contain no more than one placeholder for the password.")
 
         match = matches[0]
         password_env_var = os.environ.get(match)
@@ -690,10 +696,10 @@ class RTSPFrameGrabber(FrameGrabber):
             raise ValueError(f"Resolution was set for {camera_name}, but resolution cannot be set for RTSP streams.")
 
     def _open_connection(self):
-        self.capture = cv2.VideoCapture(self.stream)
+        self.capture = cv2.VideoCapture(self.rtsp_url)
         if not self.capture.isOpened():
             raise ValueError(
-                f"Could not open RTSP stream: {self.stream}. Is the RTSP URL correct? Is the camera connected to the network?"
+                f"Could not open RTSP stream: {self.rtsp_url}. Is the RTSP URL correct? Is the camera connected to the network?"
             )
         logger.debug(f"Initialized video capture with backend={self.capture.getBackendName()}")
 
@@ -986,147 +992,4 @@ class MockFrameGrabber(FrameGrabber):
         MockFrameGrabber.serial_numbers_in_use.remove(self.config["id"]["serial_number"])
 
     def _apply_camera_specific_options(self, options: dict) -> None:
-        pass  # no action necessary for mock camera
-
-
-# # TODO update this class to work with the latest updates
-# import os
-# import fnmatch
-# import random
-# class DirectoryFrameGrabber(FrameGrabber):
-#     def __init__(self, stream=None, fps_target=0):
-#         """stream must be an file mask"""
-#         try:
-#             self.filename_list = []
-#             for filename in os.listdir():
-#                 if fnmatch.fnmatch(filename, stream):
-#                     self.filename_list.append(filename)
-#             logger.debug(f"found {len(self.filename_list)} files matching stream: {stream}")
-#             random.shuffle(self.filename_list)
-#         except Exception as e:
-#             logger.error(f"could not initialize DirectoryFrameGrabber: stream: {stream} filename is invalid or read error")
-#             raise e
-#         if len(self.filename_list) == 0:
-#             logger.warning(f"no files found matching stream: {stream}")
-
-#     def grab(self):
-#         if len(self.filename_list) == 0:
-#             raise RuntimeWarning(f"could not read frame from {self.capture}.  possible end of file.")
-
-#         start = time.time()
-#         frame = cv2.imread(self.filename_list[0], cv2.IMREAD_GRAYSCALE)
-#         self.filename_list.pop(0)
-#         logger.debug(f"read the frame in {1000*(time.time()-start):.1f}ms")
-
-#         return frame
-
-# # TODO update this class to work with the latest updates
-# class FileStreamFrameGrabber(FrameGrabber):
-#     def __init__(self, stream=None, fps_target=0):
-#         """stream must be an filename"""
-#         try:
-#             self.capture = cv2.VideoCapture(stream)
-#             logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
-#             ret, frame = self.capture.read()
-#             self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
-#             self.fps_target = fps_target
-#             logger.debug(f"source FPS : {self.fps_source}  / target FPS : {self.fps_target}")
-#             self.remainder = 0.0
-#         except Exception as e:
-#             logger.error(f"could not initialize DeviceFrameGrabber: stream: {stream} filename is invalid or read error")
-#             raise e
-
-#     def _read(self) -> np.ndarray:
-#         """decimates stream to self.fps_target, 0 fps to use full original stream.
-#         consistent with existing behavior based on VideoCapture.read()
-#         which may return None when it cannot read a frame.
-#         """
-#         start = time.time()
-
-#         if self.fps_target > 0 and self.fps_target < self.fps_source:
-#             drop_frames = (self.fps_source / self.fps_target) - 1 + self.remainder
-#             for i in range(round(drop_frames)):
-#                 ret, frame = self.capture.read()
-#             self.remainder = round(drop_frames - round(drop_frames), 2)
-#             logger.info(
-#                 f"dropped {round(drop_frames)} frames to meet {self.fps_target} FPS target from {self.fps_source} FPS source (off by {self.remainder} frames)"
-#             )
-#         else:
-#             logger.debug(f"frame dropping disabled for {self.fps_target} FPS target from {self.fps_source} FPS source")
-
-#         ret, frame = self.capture.read()
-#         if not ret:
-#             raise RuntimeWarning(f"could not read frame from {self.capture}.  possible end of file.")
-#         now = time.time()
-#         logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
-#         return frame
-
-# # TODO update this class to work with the latest updates'
-# import pafy
-# class YouTubeFrameGrabber(FrameGrabber):
-#     """grabs the most recent frame from an YouTube stream. To avoid extraneous bandwidth
-#     this class tears down the stream between each frame grab.  maximum framerate
-#     is likely around 0.5fps in most cases.
-#     """
-
-#     def __init__(self, stream=None):
-#         self.stream = stream
-#         self.video = pafy.new(self.stream)
-#         self.best_video = self.video.getbest(preftype="mp4")
-#         self.capture = cv2.VideoCapture(self.best_video.url)
-#         logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
-#         if not self.capture.isOpened():
-#             raise ValueError(f"could not initially open {self.stream}")
-#         self.capture.release()
-
-#     def reset_stream(self):
-#         self.video = pafy.new(self.stream)
-#         self.best_video = self.video.getbest(preftype="mp4")
-#         self.capture = cv2.VideoCapture(self.best_video.url)
-#         logger.debug(f"initialized video capture with backend={self.capture.getBackendName()}")
-#         if not self.capture.isOpened():
-#             raise ValueError(f"could not initially open {self.stream}")
-#         self.capture.release()
-
-#     def grab(self):
-#         start = time.time()
-#         self.capture = cv2.VideoCapture(self.best_video.url)
-#         ret, frame = self.capture.read()  # grab and decode since we want this frame
-#         if not ret:
-#             logger.error(f"could not read frame from {self.capture}. attempting to reset stream")
-#             self.reset_stream()
-#             self.capture = cv2.VideoCapture(self.best_video.url)
-#             ret, frame = self.capture.read()
-#             if not ret:
-#                 logger.error(f"failed to effectively reset stream {self.stream} / {self.best_video.url}")
-#         now = time.time()
-#         logger.debug(f"read the frame in {1000*(now-start):.1f}ms")
-#         self.capture.release()
-#         return frame
-
-# # TODO update this class to work with the latest updates
-# import urllib
-# class ImageURLFrameGrabber(FrameGrabber):
-#     """grabs the current image at a single URL.
-#     NOTE: if image is expected to be refreshed or change with a particular frequency,
-#     it is up to the user of the class to call the `grab` method with that frequency
-#     """
-
-#     def __init__(self, url=None, **kwargs):
-#         self.url = url
-
-#     def grab(self):
-#         start = time.time()
-#         try:
-#             req = urllib.request.urlopen(self.url)
-#             response = req.read()
-#             arr = np.asarray(bytearray(response), dtype=np.uint8)
-#             frame = cv2.imdecode(arr, -1)  # 'Load it as it is'
-#         except Exception as e:
-#             logger.error(f"could not grab frame from {self.url}: {str(e)}")
-#             frame = None
-#         now = time.time()
-#         elapsed = now - start
-#         logger.info(f"read image from URL {self.url} into frame in {elapsed}s")
-
-#         return frame
+        pass  # no action necessary for mock cameras
