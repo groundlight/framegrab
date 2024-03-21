@@ -243,6 +243,6 @@ We welcome contributions to FrameGrab! If you would like to contribute, please f
 
 ## License
 
-FrameGrab is released under the MIT License. For more information, please refer to the [LICENSE.txt](https://github.com/groundlight/framegrab/blob/main/LICENSE.txt)
+FrameGrab is released under the MIT License. For more information, please refer to the [LICENSE.txt](https://github.com/groundlight/framegrab/blob/main/LICENSE.txt) file.
 
 
