@@ -645,7 +645,7 @@ class RTSPFrameGrabber(FrameGrabber):
             raise ValueError(
                 f"No RTSP URL provided for {camera_name}. Please add an rtsp_url attribute to the config under id."
             )
-        
+
         self.config = RTSPFrameGrabber._substitute_rtsp_password(config)
         self.rtsp_url = self.config["id"]["rtsp_url"]
 
