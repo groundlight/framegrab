@@ -699,21 +699,24 @@ class RTSPFrameGrabber(FrameGrabber):
 
     def _close_connection(self):
         with self.lock:
-            self.capture.release()
-
+            if self.capture is not None:
+                self.capture.release()
+    
     def grab(self) -> np.ndarray:
         if not self.keep_connection_open:
             self._open_connection()
-
+            try:
+                return self._grab_open()
+            finally:
+                self._close_connection()
+        else:
+            return self._grab_open()
+        
+    def _grab_open(self) -> np.ndarray:
         with self.lock:
             ret, frame = self.capture.retrieve() if self.keep_connection_open else self.capture.read()
-            if not ret:
-                logger.error(f"Could not read frame from {self.capture}")
-
-        if not self.keep_connection_open:
-            self._close_connection()
-
-        frame = self._process_frame(frame)
+        if not ret:
+            logger.error(f"Could not read frame from {self.capture}")
         return frame
 
     def release(self) -> None:
