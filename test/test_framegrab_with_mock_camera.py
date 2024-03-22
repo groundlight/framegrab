@@ -34,7 +34,8 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
 
         grabber.release()
 
-        assert frame.shape == (400, 400, 3)
+        assert frame.size == (400, 400)
+        assert frame.mode == 'RGB'
 
     def test_crop_relative(self):
         """Grab a frame, crop a frame in an relative manner (0 to 1), and make sure the shape is correct.
@@ -63,7 +64,8 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
 
         grabber.release()
 
-        assert frame.shape == (384, 512, 3)
+        assert frame.size == (512, 384)
+        assert frame.mode == 'RGB'
 
     def test_zoom(self):
         """Grab a frame, zoom a frame, and make sure the shape is correct.
@@ -87,7 +89,8 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
 
         grabber.release()
 
-        assert frame.shape == (240, 320, 3)
+        assert frame.size == (320, 240)
+        assert frame.mode == 'RGB'
 
     def test_attempt_create_grabber_with_invalid_input_type(self):
         config = {
@@ -157,11 +160,10 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         # Try to connect to another grabber, this should raise an exception because there are only 3 mock cameras available
         try:
             FrameGrabber.create_grabber({'input_type': 'mock'})
-            self.fail()
+            self.fail() # we shouldn't get here
         except ValueError:
             pass
         finally:
-            # release all the grabbers
             for grabber in grabbers.values():
                 grabber.release()
 
