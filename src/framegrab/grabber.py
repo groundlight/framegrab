@@ -11,8 +11,8 @@ from urllib.parse import urlparse
 
 import cv2
 import numpy as np
-from PIL import Image
 import yaml
+from PIL import Image
 
 from .unavailable_module import UnavailableModule
 
@@ -325,8 +325,7 @@ class FrameGrabber(ABC):
         pass
 
     def grab(self) -> Image:
-        """Executes the camera-specific grab implementation and return the frame as a PIL Image.
-        """
+        """Executes the camera-specific grab implementation and return the frame as a PIL Image."""
         frame = self._grab_impl()
         return Image.fromarray(frame)
 
