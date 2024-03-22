@@ -318,14 +318,21 @@ class FrameGrabber(ABC):
 
     @abstractmethod
     def grab(self) -> np.ndarray:
-        """Read a frame from the camera, zoom and crop if called for, and then perform any camera-specific
-        postprocessing operations.
+        """Grabs single frame from the configured camera device,
+        then applies post-processing operations such as cropping or zooming based
+        on the grabber's configuration.
+
         Returns a numpy array.
         """
         pass
 
     def grabimg(self) -> Image:
-        """Executes the camera-specific grab implementation and returns the frame as a PIL Image."""
+        """Grabs single frame from the configured camera device,
+        then applies post-processing operations such as cropping or zooming based
+        on the grabber's configuration.
+
+        Returns a PIL image.
+        """
         frame = self.grab()[:, :, ::-1] # convert from BGR to RGB, which PIL expects
         return Image.fromarray(frame)
 
