@@ -317,16 +317,16 @@ class FrameGrabber(ABC):
         return grabbers
 
     @abstractmethod
-    def _grab_impl(self) -> np.ndarray:
+    def grab(self) -> np.ndarray:
         """Read a frame from the camera, zoom and crop if called for, and then perform any camera-specific
         postprocessing operations.
         Returns a numpy array.
         """
         pass
 
-    def grab(self) -> Image:
+    def grabimg(self) -> Image:
         """Executes the camera-specific grab implementation and returns the frame as a PIL Image."""
-        frame = self._grab_impl()
+        frame = self.grab()[:, :, ::-1] # convert from BGR to RGB, which PIL expects
         return Image.fromarray(frame)
 
     def _autogenerate_name(self) -> None:
@@ -564,7 +564,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         self.idx = idx
         GenericUSBFrameGrabber.indices_in_use.add(idx)
 
-    def _grab_impl(self) -> np.ndarray:
+    def grab(self) -> np.ndarray:
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
         # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
         # Assuming buffer size of 1, we need to read twice to get the current frame.
@@ -714,7 +714,7 @@ class RTSPFrameGrabber(FrameGrabber):
             if self.capture is not None:
                 self.capture.release()
 
-    def _grab_impl(self) -> np.ndarray:
+    def grab(self) -> np.ndarray:
         if not self.keep_connection_open:
             self._open_connection()
             try:
@@ -799,7 +799,7 @@ class BaslerFrameGrabber(FrameGrabber):
         self.camera = camera
         BaslerFrameGrabber.serial_numbers_in_use.add(self.config["id"]["serial_number"])
 
-    def _grab_impl(self) -> np.ndarray:
+    def grab(self) -> np.ndarray:
         with self.camera.GrabOne(2000) as result:
             if result.GrabSucceeded():
                 # Convert the image to BGR for OpenCV
@@ -890,7 +890,7 @@ class RealSenseFrameGrabber(FrameGrabber):
         # In case the serial_number wasn't provided by the user, add it to the config
         self.config["id"] = {"serial_number": curr_serial_number}
 
-    def _grab_impl(self) -> np.ndarray:
+    def grab(self) -> np.ndarray:
         frames = self.pipeline.wait_for_frames()
 
         # Convert color images to numpy arrays and convert from RGB to BGR
@@ -983,7 +983,7 @@ class MockFrameGrabber(FrameGrabber):
         # In case the serial_number wasn't provided by the user, add it to the config
         self.config["id"] = {"serial_number": curr_serial_number}
 
-    def _grab_impl(self) -> np.ndarray:
+    def grab(self) -> np.ndarray:
         width = self.config.get("options", {}).get("resolution", {}).get("width", 640)
         height = self.config.get("options", {}).get("resolution", {}).get("height", 480)
 

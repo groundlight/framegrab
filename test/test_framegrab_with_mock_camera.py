@@ -5,6 +5,8 @@ Intended to check basic functionality like cropping, zooming, config validation,
 import os
 import unittest
 from framegrab.grabber import FrameGrabber, RTSPFrameGrabber
+import numpy as np
+from PIL import Image
 
 class TestFrameGrabWithMockCamera(unittest.TestCase):
     def test_crop_pixels(self):
@@ -34,8 +36,7 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
 
         grabber.release()
 
-        assert frame.size == (400, 400)
-        assert frame.mode == 'RGB'
+        assert frame.shape == (400, 400, 3)
 
     def test_crop_relative(self):
         """Grab a frame, crop a frame in an relative manner (0 to 1), and make sure the shape is correct.
@@ -64,8 +65,7 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
 
         grabber.release()
 
-        assert frame.size == (512, 384)
-        assert frame.mode == 'RGB'
+        assert frame.shape == (384, 512, 3)
 
     def test_zoom(self):
         """Grab a frame, zoom a frame, and make sure the shape is correct.
@@ -88,9 +88,8 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         frame = grabber.grab()
 
         grabber.release()
-
-        assert frame.size == (320, 240)
-        assert frame.mode == 'RGB'
+        
+        assert frame.shape == (240, 320, 3)
 
     def test_attempt_create_grabber_with_invalid_input_type(self):
         config = {
@@ -215,3 +214,36 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         new_config = RTSPFrameGrabber._substitute_rtsp_password(config)
 
         assert  new_config == config
+
+    def test_grab_returns_np_array(self):
+        """Make sure that the grab method returns a numpy array.
+        """
+        config = {
+            'input_type': 'mock',
+        }
+
+        grabber = FrameGrabber.create_grabber(config)
+
+        frame = grabber.grab()
+
+        assert isinstance(frame, np.ndarray)
+
+        grabber.release()
+
+
+    def test_grabimg_returns_pil_image(self):
+        """Make sure that the grabimg method returns a PIL Image 
+        and that the mode is 'RGB'.
+        """
+        config = {
+            'input_type': 'mock',
+        }
+
+        grabber = FrameGrabber.create_grabber(config)
+
+        frame = grabber.grabimg()
+
+        assert isinstance(frame, Image.Image)
+        assert frame.mode == 'RGB'
+
+        grabber.release()
