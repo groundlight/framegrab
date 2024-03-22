@@ -327,13 +327,8 @@ class FrameGrabber(ABC):
         pass
 
     def grabimg(self) -> Image:
-        """Grabs single frame from the configured camera device,
-        then applies post-processing operations such as cropping or zooming based
-        on the grabber's configuration.
-
-        Returns a PIL image.
-        """
-        frame = self.grab()[:, :, ::-1] # convert from BGR to RGB, which PIL expects
+        """Executes the camera-specific grab implementation and returns the frame as a PIL Image."""
+        frame = self.grab()[:, :, ::-1]  # convert from BGR to RGB, which PIL expects
         return Image.fromarray(frame)
 
     def _autogenerate_name(self) -> None:
