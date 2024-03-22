@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-"""Finds a single USB camera (or built-in webcam) and displays its feed in a window. 
-Press 'q' to quit.
+"""Finds a single USB camera (or built-in webcam), grabs an image and displays the image in a window.
 """
 
-import cv2
 from framegrab import FrameGrabber
 
 config = {
@@ -13,15 +11,8 @@ config = {
 
 grabber = FrameGrabber.create_grabber(config)
 
-while True:
-    frame = grabber.grab()
+frame = grabber.grabimg()
 
-    cv2.imshow('FrameGrab Single-Camera Demo', frame)
-
-    key = cv2.waitKey(30)
-    if key == ord('q'):
-        break
-
-cv2.destroyAllWindows()
+frame.show()
 
 grabber.release()

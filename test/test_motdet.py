@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+from PIL import Image
 from framegrab.motion import MotionDetector
 
 class TestMotionDetector(unittest.TestCase):
@@ -67,3 +68,12 @@ class TestMotionDetector(unittest.TestCase):
         self.motion_detector.motion_detected(img1)  # Initialize base image
         self.motion_detector.motion_detected(img1)  # again to really reset
         self.assertTrue(self.motion_detector.motion_detected(img3))
+
+    def test_that_motet_can_take_pil_image_or_numpy_image(self):
+        pil_img = Image.new('RGB', (100, 100), color='red')
+        for _ in range(10):
+            self.motion_detector.motion_detected(pil_img)
+
+        numpy_img = np.full((100, 100, 3), 255, dtype=np.uint8)
+        for _ in range(10):
+            self.motion_detector.motion_detected(numpy_img)

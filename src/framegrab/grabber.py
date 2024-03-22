@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 import cv2
 import numpy as np
 import yaml
+from PIL import Image
 
 from .unavailable_module import UnavailableModule
 
@@ -317,11 +318,23 @@ class FrameGrabber(ABC):
 
     @abstractmethod
     def grab(self) -> np.ndarray:
-        """Read a frame from the camera, zoom and crop if called for, and then perform any camera-specific
-        postprocessing operations.
-        Returns a frame.
+        """Grabs a single frame from the configured camera device,
+        then performs post-processing operations such as cropping and zooming based
+        on the grabber's configuration.
+
+        Returns a numpy array.
         """
         pass
+
+    def grabimg(self) -> Image:
+        """Grabs a single frame from the configured camera device,
+        then performs post-processing operations such as cropping and zooming based
+        on the grabber's configuration.
+
+        Returns a PIL image.
+        """
+        frame = self.grab()[:, :, ::-1]  # convert from BGR to RGB, which PIL expects
+        return Image.fromarray(frame)
 
     def _autogenerate_name(self) -> None:
         """For generating and assigning unique names for unnamed FrameGrabber objects.

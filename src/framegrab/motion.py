@@ -1,6 +1,8 @@
 import logging
+from typing import Union
 
 import numpy as np
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,10 @@ class MotionDetector:
                 logger.debug(f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%")
             return False
 
-    def motion_detected(self, new_img: np.ndarray) -> bool:
+    def motion_detected(self, new_img: Union[np.ndarray, Image.Image]) -> bool:
+        if isinstance(new_img, Image.Image):
+            new_img = np.array(new_img)
+
         if self.unused:
             self.base_img = new_img
             self.base2 = self.base_img
