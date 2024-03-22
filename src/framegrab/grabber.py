@@ -325,7 +325,7 @@ class FrameGrabber(ABC):
         pass
 
     def grab(self) -> Image:
-        """Executes the camera-specific grab implementation and return the frame as a PIL Image."""
+        """Executes the camera-specific grab implementation and returns the frame as a PIL Image."""
         frame = self._grab_impl()
         return Image.fromarray(frame)
 
