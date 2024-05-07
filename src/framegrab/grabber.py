@@ -401,10 +401,8 @@ class FrameGrabber(ABC):
         digital_zoom = self.config.get("options", {}).get("zoom", {}).get("digital")
 
         if digital_zoom is None:
-            print("none!")
             pass
         else:
-            print("zooming!")
             top = (frame.shape[0] - frame.shape[0] / digital_zoom) / 2
             bottom = frame.shape[0] - top
             left = (frame.shape[1] - frame.shape[1] / digital_zoom) / 2
