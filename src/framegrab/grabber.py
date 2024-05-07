@@ -321,7 +321,7 @@ class FrameGrabber(ABC):
         pass
 
     def grab(self) -> np.ndarray:
-        """Read a frame from the camera and perform post processing operations such as zoom, crop and rotation if necessary. 
+        """Read a frame from the camera and perform post processing operations such as zoom, crop and rotation if necessary.
         Returns a frame.
         """
         frame = self._grab_implementation()
