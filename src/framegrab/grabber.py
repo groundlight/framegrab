@@ -401,8 +401,10 @@ class FrameGrabber(ABC):
         digital_zoom = self.config.get("options", {}).get("zoom", {}).get("digital")
 
         if digital_zoom is None:
+            print('none!')
             pass
         else:
+            print('zooming!')
             top = (frame.shape[0] - frame.shape[0] / digital_zoom) / 2
             bottom = frame.shape[0] - top
             left = (frame.shape[1] - frame.shape[1] / digital_zoom) / 2
@@ -712,11 +714,13 @@ class RTSPFrameGrabber(FrameGrabber):
         if not self.keep_connection_open:
             self._open_connection()
             try:
-                return self._grab_open()
+                frame = self._grab_open()
             finally:
                 self._close_connection()
         else:
-            return self._grab_open()
+            frame = self._grab_open()
+        
+        return self._process_frame(frame)
 
     def _grab_open(self) -> np.ndarray:
         with self.lock:
