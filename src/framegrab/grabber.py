@@ -6,7 +6,7 @@ import subprocess
 import time
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 import cv2
@@ -321,8 +321,7 @@ class FrameGrabber(ABC):
         pass
 
     def grab(self) -> np.ndarray:
-        """Read a frame from the camera, zoom and crop if called for, and then perform any camera-specific
-        postprocessing operations.
+        """Read a frame from the camera and perform post processing operations such as zoom, crop and rotation if necessary. 
         Returns a frame.
         """
         frame = self._grab_implementation()
