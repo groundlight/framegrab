@@ -32,6 +32,7 @@ OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
 
+
 class InputTypes:
     """Defines the available input types from FrameGrabber objects"""
 
@@ -313,11 +314,10 @@ class FrameGrabber(ABC):
             time.sleep(warmup_delay)
 
         return grabbers
-    
+
     @abstractmethod
     def _grab_implementation(self) -> np.ndarray:
-        """Each FrameGrabber must implement its own method of grabbing
-        """
+        """Each FrameGrabber must implement its own method of grabbing"""
         pass
 
     def grab(self) -> np.ndarray:
