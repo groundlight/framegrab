@@ -525,7 +525,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
                     )
 
                 capture = cv2.VideoCapture(idx)
-                if capture.isOpened():
+                if self._validate_image_capture(capture):
                     break  # Found a valid capture, no need to look any further
 
             else:
@@ -540,7 +540,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
                     continue  # Camera is already in use, moving on
 
                 capture = cv2.VideoCapture(idx)
-                if capture.isOpened():
+                if self._validate_image_capture(capture):
                     break  # Found a valid capture, no need to look any further
             else:
                 raise ValueError("Unable to connect to USB camera by index. Is your camera plugged in?")
@@ -558,6 +558,20 @@ class GenericUSBFrameGrabber(FrameGrabber):
         # Log the current camera index as 'in use' to prevent other GenericUSBFrameGrabbers from stepping on it
         self.idx = idx
         GenericUSBFrameGrabber.indices_in_use.add(idx)
+
+    def _validate_image_capture(self, capture: cv2.VideoCapture) -> bool:
+       """Check if the camera is able to grab a frame and that frame is a color frame.
+       """
+       ret, frame = capture.read()
+       if not ret:
+           logger.error(f"Could not read frame from {capture}")
+           return False
+      
+       if len(frame.shape) != 3:
+           logger.error(f"Frame from {capture} is not a color frame. Shape: {frame.shape}")
+           return False
+      
+       return True
 
     def _grab_implementation(self) -> np.ndarray:
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
