@@ -574,7 +574,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
        logger.info(f'Found image resolution of {frame.shape}')
        return True
     
-    def _is_grayscale(frame: np.ndarray) -> bool:
+    def _is_grayscale(self, frame: np.ndarray) -> bool:
         # Split the image into its color channels
         b, g, r = cv2.split(frame)
         
