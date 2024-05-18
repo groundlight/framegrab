@@ -570,7 +570,8 @@ class GenericUSBFrameGrabber(FrameGrabber):
        if len(frame.shape) != 3:
            logger.error(f"Frame from {capture} is not a color frame. Shape: {frame.shape}")
            return False
-      
+       
+       logger.info(f'Found image resolution of {frame.shape}')
        return True
 
     def _grab_implementation(self) -> np.ndarray:
