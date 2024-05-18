@@ -567,12 +567,19 @@ class GenericUSBFrameGrabber(FrameGrabber):
            logger.error(f"Could not read frame from {capture}")
            return False
       
-       if len(frame.shape) != 3:
+       if self._is_grayscale(frame):
            logger.error(f"Frame from {capture} is not a color frame. Shape: {frame.shape}")
            return False
        
        logger.info(f'Found image resolution of {frame.shape}')
        return True
+    
+    def _is_grayscale(frame: np.ndarray) -> bool:
+        # Split the image into its color channels
+        b, g, r = cv2.split(frame)
+        
+        # Check if all channels are equal
+        return np.array_equal(b, g) and np.array_equal(g, r)
 
     def _grab_implementation(self) -> np.ndarray:
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
