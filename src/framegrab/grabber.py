@@ -570,10 +570,10 @@ class GenericUSBFrameGrabber(FrameGrabber):
            return False
       
        if self._is_grayscale(frame):
-           logger.error(f"Frame from {capture} is not a color frame. Shape: {frame.shape}")
+           logger.warning(f"This camera's image is not a color image. Skipping this camera.")
+           capture.release()
            return False
-       
-       logger.info(f'Found image resolution of {frame.shape}')
+    
        return True
     
     def _is_grayscale(self, frame: np.ndarray) -> bool:
