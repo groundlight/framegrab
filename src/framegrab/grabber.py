@@ -561,6 +561,8 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
     def _validate_image_capture(self, capture: cv2.VideoCapture) -> bool:
        """Check if the camera is able to grab a frame and that frame is a color frame.
+       We are excluding grayscale cameras in order to avoid connecting to IR cameras on webcams such
+       as the Logitech Brio
        """
        ret, frame = capture.read()
        if not ret:
@@ -575,10 +577,10 @@ class GenericUSBFrameGrabber(FrameGrabber):
        return True
     
     def _is_grayscale(self, frame: np.ndarray) -> bool:
-        # Split the image into its color channels
+        """Check if the provided frame is grayscale.
+        """
         b, g, r = cv2.split(frame)
         
-        # Check if all channels are equal
         return np.array_equal(b, g) and np.array_equal(g, r)
 
     def _grab_implementation(self) -> np.ndarray:
