@@ -577,10 +577,9 @@ class GenericUSBFrameGrabber(FrameGrabber):
        return True
     
     def _is_grayscale(self, frame: np.ndarray) -> bool:
-        """Check if the provided frame is grayscale.
-        """
+        """Check if the provided frame is grayscale."""
         b, g, r = cv2.split(frame)
-        
+
         return np.array_equal(b, g) and np.array_equal(g, r)
 
     def _grab_implementation(self) -> np.ndarray:
