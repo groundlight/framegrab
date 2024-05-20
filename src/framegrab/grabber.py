@@ -177,6 +177,8 @@ class FrameGrabber(ABC):
 
             # Add the grabber to the dictionary
             grabber_name = grabber.config["name"]
+            if grabber_name in grabbers:
+                grabber_name = f"{grabber_name} (2)"
             grabbers[grabber_name] = grabber
 
         return grabbers
