@@ -168,17 +168,16 @@ class FrameGrabber(ABC):
             key=lambda grabber: grabber.config.get("id", {}).get("serial_number", ""),
         )
 
-        # Create the grabbers dictionary, autogenerating names for any unnamed grabbers
         grabbers = {}
         for grabber in grabber_list:
             # If a name wasn't provided, autogenerate one
             if not grabber.config.get("name"):
                 grabber._autogenerate_name()
 
-            # Add the grabber to the dictionary
+            if grabber.config["name"] in grabbers:
+                grabber.config["name"] += " (2)"
+            
             grabber_name = grabber.config["name"]
-            if grabber_name in grabbers:
-                grabber_name = f"{grabber_name} (2)"
             grabbers[grabber_name] = grabber
 
         return grabbers
@@ -494,6 +493,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
     # keep track of the cameras that are already in use so that we don't try to connect to them twice
     indices_in_use = set()
+    grabbers = []
 
     def __init__(self, config: dict):
         self.config = config
@@ -560,8 +560,14 @@ class GenericUSBFrameGrabber(FrameGrabber):
         # Log the current camera index as 'in use' to prevent other GenericUSBFrameGrabbers from stepping on it
         self.idx = idx
         GenericUSBFrameGrabber.indices_in_use.add(idx)
+        GenericUSBFrameGrabber.grabbers.append(self)
 
     def _grab_implementation(self) -> np.ndarray:
+        # release any other devices that belong to the same camera
+        if not self.capture.isOpened():
+            self.release_other_devices()
+            self.capture.open()
+            
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
         # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
         # Assuming buffer size of 1, we need to read twice to get the current frame.
@@ -572,6 +578,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
     def release(self) -> None:
         GenericUSBFrameGrabber.indices_in_use.remove(self.idx)
+        GenericUSBFrameGrabber.grabbers.remove(self)
         self.capture.release()
 
     def _apply_camera_specific_options(self, options: dict) -> None:
@@ -579,6 +586,20 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
         # set the buffer size to 1 to always get the most recent frame
         self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+    def release_other_devices(self):
+        """Releases all other grabbers that are connected to the same camera as this one.
+        """
+        serial_number = self.config.get("id", {}).get("serial_number")
+
+        if serial_number is not None:
+            for grabber in GenericUSBFrameGrabber.grabbers:
+                if grabber == self:
+                    continue
+
+                curr_serial_number = grabber.config.get("id", {}).get("serial_number")
+                if curr_serial_number == serial_number:
+                    grabber.release()
 
     @staticmethod
     def _find_cameras() -> list:
