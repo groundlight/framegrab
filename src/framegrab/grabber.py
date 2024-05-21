@@ -513,7 +513,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         # Assign camera based on serial number if 1) serial_number was provided and 2) we know the
         # serial numbers of plugged in devices
         if found_cams:
-            logger.info(f'Checking for USB cameras with {len(found_cams)} cameras found.')
+            logger.info(f"Checking for USB cameras with {len(found_cams)} cameras found.")
             for found_cam in found_cams:
                 if serial_number and serial_number != found_cam["serial_number"]:
                     continue
