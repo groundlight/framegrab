@@ -6,7 +6,7 @@ import subprocess
 import time
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from urllib.parse import urlparse
 
 import cv2
@@ -31,7 +31,6 @@ except ImportError as e:
 OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
-
 
 class InputTypes:
     """Defines the available input types from FrameGrabber objects"""
@@ -524,8 +523,8 @@ class GenericUSBFrameGrabber(FrameGrabber):
                         f"Did you use the same serial number ({serial_number}) for two different cameras?"
                     )
 
-                capture = cv2.VideoCapture(idx)
-                if self._validate_image_capture(capture):
+                capture = self._connect_to_video_capture(found_cam)
+                if capture is not None:
                     break  # Found a valid capture, no need to look any further
 
             else:
@@ -539,8 +538,8 @@ class GenericUSBFrameGrabber(FrameGrabber):
                 if idx in GenericUSBFrameGrabber.indices_in_use:
                     continue  # Camera is already in use, moving on
 
-                capture = cv2.VideoCapture(idx)
-                if self._validate_image_capture(capture):
+                capture = self._connect_to_video_capture(found_cam)
+                if capture is not None:
                     break  # Found a valid capture, no need to look any further
             else:
                 raise ValueError("Unable to connect to USB camera by index. Is your camera plugged in?")
@@ -559,22 +558,60 @@ class GenericUSBFrameGrabber(FrameGrabber):
         self.idx = idx
         GenericUSBFrameGrabber.indices_in_use.add(idx)
 
-    def _validate_image_capture(self, capture: cv2.VideoCapture) -> bool:
-        """Check if the camera is able to grab a frame and that frame is a color frame.
-        We are excluding grayscale cameras in order to avoid connecting to IR cameras on webcams such
-        as the Logitech Brio
+    # def _connect_to_video_capture(self, capture: cv2.VideoCapture) -> bool:
+    #     """Check if the camera is able to grab a frame and that frame is a color frame.
+    #     We are excluding grayscale cameras in order to avoid connecting to IR cameras on webcams such
+    #     as the Logitech Brio
+    #     """
+    #     ret, frame = capture.read()
+    #     if not ret:
+    #         logger.error(f"Could not read frame from {capture}")
+    #         return False
+
+    #     if self._is_grayscale(frame):
+    #         logger.warning(f"This camera's image is not a color image. Skipping this camera.")
+    #         capture.release()
+    #         return False
+
+    #     return True
+    
+    def _has_ir_camera(self, camera_name: str) -> bool:
+        """Check if the device contains an IR camera. 
+        
+        Cameras such as the Logitech Brio contain an infrared camera for unlocking the computer with features 
+        such as Windows Hello. These cameras are not suitable for use in the context of this application, so we will
+        exclude them.
         """
-        ret, frame = capture.read()
-        if not ret:
-            logger.error(f"Could not read frame from {capture}")
-            return False
+        cameras_with_ir = ['logitech brio'] # we can add to this list as we discover more cameras with IR
+        for i in cameras_with_ir:
+            if i in camera_name.lower():
+                return True
+        return False
+    
+    def _connect_to_video_capture(self, camera_details: Dict[str, str]) -> Union[cv2.VideoCapture , None]:
+        """Connect to the camera, check that it is open and not an IR camera. 
 
-        if self._is_grayscale(frame):
-            logger.warning(f"This camera's image is not a color image. Skipping this camera.")
-            capture.release()
-            return False
-
-        return True
+        Return the camera if it is valid, otherwise return None.
+        """
+        capture = cv2.VideoCapture(camera_details['idx'])
+        if not capture.isOpened():
+            logger.warning(f"Could not open camera with index {camera_details['idx']}")
+            return None
+        
+        has_ir_camera = self._has_ir_camera(camera_details['camera_name'])
+        if has_ir_camera:
+            ret, frame = capture.read()
+            if not ret:
+                logger.warning(f"Could not read frame from {capture}")
+                return None
+            elif self._is_grayscale(frame):
+                logger.warning(f"This camera is grayscale and therefore an IR camera. Skipping this camera.")
+                capture.release()
+                return None
+            else:
+                return capture
+        else:
+            return capture
 
     def _is_grayscale(self, frame: np.ndarray) -> bool:
         """Check if the provided frame is grayscale."""
@@ -602,6 +639,14 @@ class GenericUSBFrameGrabber(FrameGrabber):
         self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
     @staticmethod
+    def _run_system_command(command: str) -> str:
+        """Runs a Linux system command and returns the stdout as a string.
+        """
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        stdout, _ = process.communicate()
+        return stdout.decode("utf-8").strip()
+
+    @staticmethod
     def _find_cameras() -> list:
         """Attempts to finds all USB cameras and returns a list dictionaries, each dictionary containing
         information about a camera, including: serial_number, device name, index, etc.
@@ -613,14 +658,12 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
         # ls /dev/video* returns device paths for all detected cameras
         command = "ls /dev/video*"
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        stdout, _ = process.communicate()
+        output =  GenericUSBFrameGrabber._run_system_command(command)
 
-        if len(stdout) == 0:  # len is zero when no cameras are plugged in
+        if len(output) == 0:  # len is zero when no cameras are plugged in
             device_paths = []
         else:
-            output = stdout.decode("utf-8")
-            device_paths = output.strip().split("\n")
+            device_paths = output.split("\n")
 
         found_cams = []
         for device_path in device_paths:
@@ -629,16 +672,16 @@ class GenericUSBFrameGrabber(FrameGrabber):
             # e.g. /sys/bus/usb/devices/2-3.2:1.0 -> /sys/bus/usb/devices/<bus>-<port>.<subport>:<config>.<interface>
             devname = device_path.split("/")[-1]
             command = f"ls -l /sys/class/video4linux/{devname}/device"
-            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-            stdout, _ = process.communicate()
-            output = stdout.decode("utf-8")
+            output = GenericUSBFrameGrabber._run_system_command(command)
             bus_port_subport = output.split("/")[-1].split(":")[0]
 
             # find the serial number
             command = f"cat /sys/bus/usb/devices/{bus_port_subport}/serial"
-            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-            stdout, _ = process.communicate()
-            serial_number = stdout.decode("utf-8").strip()
+            serial_number = GenericUSBFrameGrabber._run_system_command(command)
+
+            # find the camera name (e.g. Logitech Brio)
+            command = f"ls /sys/class/video4linux/{devname}/name"
+            camera_name = GenericUSBFrameGrabber._run_system_command(command)
 
             # find the index
             idx = int(re.findall(r"\d+", devname)[-1])
@@ -649,6 +692,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
                         "serial_number": serial_number,
                         "device_path": device_path,
                         "idx": idx,
+                        "camera_name": camera_name,
                     }
                 )
 
