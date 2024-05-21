@@ -513,7 +513,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         # Assign camera based on serial number if 1) serial_number was provided and 2) we know the
         # serial numbers of plugged in devices
         if found_cams:
-            logger.info(f"Checking for USB cameras with {len(found_cams)} cameras found.")
+            logger.debug(f"Found {len(found_cams)} USB cameras with Linux commands. Assigning camera by serial number.")
             for found_cam in found_cams:
                 if serial_number and serial_number != found_cam["serial_number"]:
                     continue
@@ -533,7 +533,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
                 )
         # If we don't know the serial numbers of the cameras, just assign the next available camera by index
         else:
-            logger.info("No USB cameras found with Linux commands. Assigning camera by index.")
+            logger.debug("No USB cameras found with Linux commands. Assigning camera by index.")
             for idx in range(20):  # an arbitrarily high number to make sure we check for enough cams
                 if idx in GenericUSBFrameGrabber.indices_in_use:
                     continue  # Camera is already in use, moving on
@@ -563,7 +563,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         """Check if the device contains an IR camera.
 
         Cameras such as the Logitech Brio contain an infrared camera for unlocking the computer with features
-        such as Windows Hello. These cameras are not suitable for use in the context of this application, so we will
+        such as Windows Hello. These cameras are not suitable for use in the context of most applications, so we will
         exclude them.
         """
         cameras_with_ir = ["logitech brio"]  # we can add to this list as we discover more cameras with IR
@@ -577,20 +577,23 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
         Return the camera if it is valid, otherwise return None.
         """
-        capture = cv2.VideoCapture(camera_details["idx"])
+        idx = camera_details["idx"]
+        camera_name = camera_details["camera_name"]
+        device_path = camera_details["device_path"]
+
+        capture = cv2.VideoCapture(idx)
         if not capture.isOpened():
-            logger.warning(f"Could not open camera with index {camera_details['idx']}")
+            logger.warning(f"Could not open camera with index {idx}")
             return None
 
-        has_ir_camera = self._has_ir_camera(camera_details["camera_name"])
-        logger.info(f'Camera "{camera_details["camera_name"]}" has IR camera: {has_ir_camera}')
+        has_ir_camera = self._has_ir_camera(camera_name)
         if has_ir_camera:
             ret, frame = capture.read()
             if not ret:
-                logger.warning(f"Could not read frame from {capture}")
+                logger.warning(f"Could not read frame from {device_path}")
                 return None
             elif self._is_grayscale(frame):
-                logger.warning(f"This camera is grayscale and therefore an IR camera. Skipping this camera.")
+                logger.info(f"This device ({device_path}) is grayscale and therefore likely an IR camera. Skipping this camera.")
                 capture.release()
                 return None
             else:
@@ -607,7 +610,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
     def _grab_implementation(self) -> np.ndarray:
         if not self.capture.isOpened():
             self.capture.open(self.idx)
-            
+
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
         # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
         # Assuming buffer size of 1, we need to read twice to get the current frame.
