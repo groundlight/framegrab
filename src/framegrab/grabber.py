@@ -564,9 +564,10 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
     def _grab_implementation(self) -> np.ndarray:
         # release any other devices that belong to the same camera
+        self._release_other_devices()
+
         if not self.capture.isOpened():
-            print("Releasing other devices...")
-            self.release_other_devices()
+            print('Capture is not open. Lets try reopening it')
             self.capture.open()
             print(f"Capture status after reopening: {self.capture.isOpened()}")
         else:
@@ -591,19 +592,22 @@ class GenericUSBFrameGrabber(FrameGrabber):
         # set the buffer size to 1 to always get the most recent frame
         self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-    def release_other_devices(self):
-        """Releases all other grabbers that are connected to the same camera as this one.
+    def _release_other_devices(self) -> None:
+        """Releases all other grabbers that are connected to the same camera as this one (grabbers 
+        that have the same serial number as this one).
         """
         serial_number = self.config.get("id", {}).get("serial_number")
+        if serial_number is None:
+            return
 
-        if serial_number is not None:
-            for grabber in GenericUSBFrameGrabber.grabbers:
-                if grabber == self:
-                    continue
+        for grabber in GenericUSBFrameGrabber.grabbers:
+            if grabber == self:
+                continue
 
-                curr_serial_number = grabber.config.get("id", {}).get("serial_number")
-                if curr_serial_number == serial_number:
-                    grabber.release()
+            curr_serial_number = grabber.config.get("id", {}).get("serial_number")
+            if grabber.isOpened() and curr_serial_number == serial_number:
+                print(f"Releasing grabber with serial number {curr_serial_number}")
+                grabber.release()
 
     @staticmethod
     def _find_cameras() -> list:
