@@ -513,6 +513,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         # Assign camera based on serial number if 1) serial_number was provided and 2) we know the
         # serial numbers of plugged in devices
         if found_cams:
+            logger.info(f'Checking for USB cameras with {len(found_cams)} cameras found.')
             for found_cam in found_cams:
                 if serial_number and serial_number != found_cam["serial_number"]:
                     continue
@@ -532,6 +533,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
                 )
         # If we don't know the serial numbers of the cameras, just assign the next available camera by index
         else:
+            logger.info("No USB cameras found with Linux commands. Assigning camera by index.")
             for idx in range(20):  # an arbitrarily high number to make sure we check for enough cams
                 if idx in GenericUSBFrameGrabber.indices_in_use:
                     continue  # Camera is already in use, moving on
@@ -581,6 +583,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
             return None
 
         has_ir_camera = self._has_ir_camera(camera_details["camera_name"])
+        logger.info(f'Camera "{camera_details["camera_name"]}" has IR camera: {has_ir_camera}')
         if has_ir_camera:
             ret, frame = capture.read()
             if not ret:
