@@ -598,16 +598,19 @@ class GenericUSBFrameGrabber(FrameGrabber):
         """
         serial_number = self.config.get("id", {}).get("serial_number")
         if serial_number is None:
+            print('No serial number found')
             return
 
+        print(f'Found grabbers: {len(GenericUSBFrameGrabber.grabbers)}')
         for grabber in GenericUSBFrameGrabber.grabbers:
             if grabber == self:
                 continue
 
             curr_serial_number = grabber.config.get("id", {}).get("serial_number")
+            print(f'Checking grabber with serial number {curr_serial_number}')
             if grabber.capture.isOpened() and curr_serial_number == serial_number:
                 print(f"Releasing grabber with serial number {curr_serial_number}")
-                grabber.release()
+                grabber.capture.release()
 
     @staticmethod
     def _find_cameras() -> list:
