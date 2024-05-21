@@ -605,7 +605,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
                 continue
 
             curr_serial_number = grabber.config.get("id", {}).get("serial_number")
-            if grabber.isOpened() and curr_serial_number == serial_number:
+            if grabber.capture.isOpened() and curr_serial_number == serial_number:
                 print(f"Releasing grabber with serial number {curr_serial_number}")
                 grabber.release()
 
