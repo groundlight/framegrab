@@ -32,6 +32,7 @@ OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
 
+
 class InputTypes:
     """Defines the available input types from FrameGrabber objects"""
 
@@ -574,31 +575,31 @@ class GenericUSBFrameGrabber(FrameGrabber):
     #         return False
 
     #     return True
-    
+
     def _has_ir_camera(self, camera_name: str) -> bool:
-        """Check if the device contains an IR camera. 
-        
-        Cameras such as the Logitech Brio contain an infrared camera for unlocking the computer with features 
+        """Check if the device contains an IR camera.
+
+        Cameras such as the Logitech Brio contain an infrared camera for unlocking the computer with features
         such as Windows Hello. These cameras are not suitable for use in the context of this application, so we will
         exclude them.
         """
-        cameras_with_ir = ['logitech brio'] # we can add to this list as we discover more cameras with IR
+        cameras_with_ir = ["logitech brio"]  # we can add to this list as we discover more cameras with IR
         for i in cameras_with_ir:
             if i in camera_name.lower():
                 return True
         return False
-    
-    def _connect_to_video_capture(self, camera_details: Dict[str, str]) -> Union[cv2.VideoCapture , None]:
-        """Connect to the camera, check that it is open and not an IR camera. 
+
+    def _connect_to_video_capture(self, camera_details: Dict[str, str]) -> Union[cv2.VideoCapture, None]:
+        """Connect to the camera, check that it is open and not an IR camera.
 
         Return the camera if it is valid, otherwise return None.
         """
-        capture = cv2.VideoCapture(camera_details['idx'])
+        capture = cv2.VideoCapture(camera_details["idx"])
         if not capture.isOpened():
             logger.warning(f"Could not open camera with index {camera_details['idx']}")
             return None
-        
-        has_ir_camera = self._has_ir_camera(camera_details['camera_name'])
+
+        has_ir_camera = self._has_ir_camera(camera_details["camera_name"])
         if has_ir_camera:
             ret, frame = capture.read()
             if not ret:
@@ -640,8 +641,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
     @staticmethod
     def _run_system_command(command: str) -> str:
-        """Runs a Linux system command and returns the stdout as a string.
-        """
+        """Runs a Linux system command and returns the stdout as a string."""
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         stdout, _ = process.communicate()
         return stdout.decode("utf-8").strip()
@@ -658,7 +658,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
         # ls /dev/video* returns device paths for all detected cameras
         command = "ls /dev/video*"
-        output =  GenericUSBFrameGrabber._run_system_command(command)
+        output = GenericUSBFrameGrabber._run_system_command(command)
 
         if len(output) == 0:  # len is zero when no cameras are plugged in
             device_paths = []
