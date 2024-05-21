@@ -568,7 +568,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
         if not self.capture.isOpened():
             print('Capture is not open. Lets try reopening it')
-            self.capture.open()
+            self.capture.open(self.idx)
             print(f"Capture status after reopening: {self.capture.isOpened()}")
         else:
             print("Capture is already opened")
