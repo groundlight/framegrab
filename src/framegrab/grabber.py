@@ -664,7 +664,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
             serial_number = GenericUSBFrameGrabber._run_system_command(command)
 
             # find the camera name (e.g. Logitech Brio)
-            command = f"ls /sys/class/video4linux/{devname}/name"
+            command = f"cat /sys/class/video4linux/{devname}/name"
             camera_name = GenericUSBFrameGrabber._run_system_command(command)
 
             # find the index
