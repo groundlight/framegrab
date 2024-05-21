@@ -512,36 +512,34 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
         # Assign camera based on serial number if 1) serial_number was provided and 2) we know the
         # serial numbers of plugged in devices
-        if serial_number and found_cams:
+        if found_cams:
             for found_cam in found_cams:
-                if serial_number != found_cam["serial_number"]:
+                if serial_number and serial_number != found_cam["serial_number"]:
                     continue
 
                 idx = found_cam["idx"]
                 if idx in GenericUSBFrameGrabber.indices_in_use:
-                    raise ValueError(
-                        f"USB camera index {idx} already in use. "
-                        f"Did you use the same serial number ({serial_number}) for two different cameras?"
-                    )
+                    continue
 
-                capture = self._connect_to_video_capture(found_cam)
+                capture = self._connect_and_validate_capture(found_cam)
                 if capture is not None:
-                    break  # Found a valid capture, no need to look any further
+                    break  # Found a valid capture
 
             else:
                 raise ValueError(
                     f"Unable to find USB camera with the specified serial_number: {serial_number}. "
                     "Please ensure that the serial number is correct and that the camera is plugged in."
                 )
-        # If no serial number was provided, just assign the next available camera by index
+        # If we don't know the serial numbers of the cameras, just assign the next available camera by index
         else:
             for idx in range(20):  # an arbitrarily high number to make sure we check for enough cams
                 if idx in GenericUSBFrameGrabber.indices_in_use:
                     continue  # Camera is already in use, moving on
+                
+                capture = cv2.VideoCapture(idx)
+                if capture.isOpened():
+                    break  # Found a valid capture
 
-                capture = self._connect_to_video_capture(found_cam)
-                if capture is not None:
-                    break  # Found a valid capture, no need to look any further
             else:
                 raise ValueError("Unable to connect to USB camera by index. Is your camera plugged in?")
 
@@ -559,23 +557,6 @@ class GenericUSBFrameGrabber(FrameGrabber):
         self.idx = idx
         GenericUSBFrameGrabber.indices_in_use.add(idx)
 
-    # def _connect_to_video_capture(self, capture: cv2.VideoCapture) -> bool:
-    #     """Check if the camera is able to grab a frame and that frame is a color frame.
-    #     We are excluding grayscale cameras in order to avoid connecting to IR cameras on webcams such
-    #     as the Logitech Brio
-    #     """
-    #     ret, frame = capture.read()
-    #     if not ret:
-    #         logger.error(f"Could not read frame from {capture}")
-    #         return False
-
-    #     if self._is_grayscale(frame):
-    #         logger.warning(f"This camera's image is not a color image. Skipping this camera.")
-    #         capture.release()
-    #         return False
-
-    #     return True
-
     def _has_ir_camera(self, camera_name: str) -> bool:
         """Check if the device contains an IR camera.
 
@@ -589,7 +570,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
                 return True
         return False
 
-    def _connect_to_video_capture(self, camera_details: Dict[str, str]) -> Union[cv2.VideoCapture, None]:
+    def _connect_and_validate_capture(self, camera_details: Dict[str, str]) -> Union[cv2.VideoCapture, None]:
         """Connect to the camera, check that it is open and not an IR camera.
 
         Return the camera if it is valid, otherwise return None.
