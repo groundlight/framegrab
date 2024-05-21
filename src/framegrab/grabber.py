@@ -537,7 +537,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
             for idx in range(20):  # an arbitrarily high number to make sure we check for enough cams
                 if idx in GenericUSBFrameGrabber.indices_in_use:
                     continue  # Camera is already in use, moving on
-                
+
                 capture = cv2.VideoCapture(idx)
                 if capture.isOpened():
                     break  # Found a valid capture
