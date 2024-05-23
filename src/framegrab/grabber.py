@@ -593,7 +593,9 @@ class GenericUSBFrameGrabber(FrameGrabber):
                 logger.warning(f"Could not read frame from {device_path}")
                 return None
             elif self._is_grayscale(frame):
-                logger.info(f"This device ({device_path}) is grayscale and therefore likely an IR camera. Skipping this camera.")
+                logger.info(
+                    f"This device ({device_path}) is grayscale and therefore likely an IR camera. Skipping this camera."
+                )
                 capture.release()
                 return None
             else:
