@@ -529,7 +529,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
             else:
                 raise ValueError(
                     f"Unable to find USB camera with the specified serial_number: {serial_number}. "
-                    "Please ensure that the serial number is correct and that the camera is plugged in."
+                    "Please ensure that the serial number is correct, that the camera is plugged in, and that the camera is not already in use."
                 )
         # If we don't know the serial numbers of the cameras, just assign the next available camera by index
         else:
