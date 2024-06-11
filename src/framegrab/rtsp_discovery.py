@@ -1,4 +1,5 @@
 import logging
+import onvif
 
 from onvif import ONVIFCamera
 from wsdiscovery.discovery import ThreadedWSDiscovery as WSDiscovery
@@ -51,3 +52,59 @@ class RTSPDiscovery:
                     device_ips.add(ip)
         wsd.stop()
         return list(device_ips)
+
+    @staticmethod
+    def generate_rtsp_urls(
+        ip: str, username: str = "admin", password: str = "admin"
+    ) -> list[str]:
+        """Fetch RTSP URLs from an ONVIF device, given a username/password.
+        Returns [] if the device is unreachable or the credentials are wrong.
+        """
+
+        rtsp_urls = []
+        try:
+            try:
+                # Assuming port 80, adjust if necessary
+                cam = ONVIFCamera(ip, 80, username, password)
+                # Create media service
+                media_service = cam.create_media_service()
+                # Get profiles
+                profiles = media_service.GetProfiles()
+                # For each profile, get the RTSP URL
+                for profile in profiles:
+                    reqobj = media_service.create_type("GetStreamUri")
+                    reqobj.ProfileToken = RTSPDiscovery._find_token(profile)
+                    reqobj.StreamSetup = {
+                        "Stream": "RTP-Unicast",
+                        "Transport": {"Protocol": "RTSP"},
+                    }
+                    uri = media_service.GetStreamUri(reqobj)
+                    rtsp_urls.append(uri.Uri)
+            except onvif.exceptions.ONVIFError as e:
+                msg = str(e).lower()
+                if "auth" in msg:  # looks like a bad login - give up.
+                    return []
+                else:
+                    raise  # something else
+        except Exception as e:
+            logger.error(f"Error fetching RTSP URL for {ip}: {e}", exc_info=True)
+
+        # Now insert the username/password into the URLs
+        for i, url in enumerate(rtsp_urls):
+            rtsp_urls[i] = url.replace("rtsp://", f"rtsp://{username}:{password}@")
+        return rtsp_urls
+
+    @staticmethod
+    def _find_token(profile: "onvif.client.ONVIFProfile") -> str:
+        """Find the token for an onvif profile."""
+        try:
+            # In my experience, it seems to be just ".token"
+            return profile.token
+        except AttributeError:
+            pass
+        try:
+            # Docs often say it's suppoed to by "._token"
+            return profile._token
+        except AttributeError:
+            logger.warning(f"Failed to find profile token for {profile}")
+            raise
