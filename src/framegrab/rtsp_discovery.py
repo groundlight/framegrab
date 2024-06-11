@@ -70,16 +70,17 @@ class RTSPDiscovery:
                 media_service = cam.create_media_service()
                 # Get profiles
                 profiles = media_service.GetProfiles()
+                stream_setup = {
+                    "Stream": "RTP-Unicast",  # Specify the type of stream
+                    "Transport": {"Protocol": "RTSP"},
+                }
+                
                 # For each profile, get the RTSP URL
                 for profile in profiles:
-                    reqobj = media_service.create_type("GetStreamUri")
-                    reqobj.ProfileToken = RTSPDiscovery._find_token(profile)
-                    reqobj.StreamSetup = {
-                        "Stream": "RTP-Unicast",
-                        "Transport": {"Protocol": "RTSP"},
-                    }
-                    uri = media_service.GetStreamUri(reqobj)
-                    rtsp_urls.append(uri.Uri)
+                    stream_uri = media_service.GetStreamUri(
+                        {"StreamSetup": stream_setup, "ProfileToken": profile.token}
+                    )
+                    rtsp_urls.append(stream_uri.Uri)
             except onvif.exceptions.ONVIFError as e:
                 msg = str(e).lower()
                 if "auth" in msg:  # looks like a bad login - give up.
@@ -93,18 +94,3 @@ class RTSPDiscovery:
         for i, url in enumerate(rtsp_urls):
             rtsp_urls[i] = url.replace("rtsp://", f"rtsp://{username}:{password}@")
         return rtsp_urls
-
-    @staticmethod
-    def _find_token(profile: "onvif.client.ONVIFProfile") -> str:
-        """Find the token for an onvif profile."""
-        try:
-            # In my experience, it seems to be just ".token"
-            return profile.token
-        except AttributeError:
-            pass
-        try:
-            # Docs often say it's suppoed to by "._token"
-            return profile._token
-        except AttributeError:
-            logger.warning(f"Failed to find profile token for {profile}")
-            raise
