@@ -1,6 +1,7 @@
 from .cli.clitools import preview_image
 from .grabber import FrameGrabber
 from .motion import MotionDetector
+from .rtsp_discovery import RTSPDiscovery
 
 try:
     import importlib.metadata
@@ -16,5 +17,6 @@ except ModuleNotFoundError:
 __all__ = [
     "FrameGrabber",
     "MotionDetector",
+    "RTSPDiscovery",
     "preview_image",
 ]
