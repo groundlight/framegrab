@@ -40,7 +40,7 @@ class RTSPDiscovery:
     # Simple RTSP camera discovery with ONVIF capabilities
 
     @staticmethod
-    def discover_camera_ips(try_default_logins: bool = False) -> list[ONVIFDeviceInfo]:
+    def discover_camera_ips(try_default_logins: bool = False) -> List[ONVIFDeviceInfo]:
         """
         Uses WSDiscovery to find ONVIF supported devices.
 
@@ -49,7 +49,7 @@ class RTSPDiscovery:
             Defaults to False.
 
         Returns:
-        list[ONVIFDeviceInfo]: A list of ONVIFDeviceInfos with IP address, port number, and ONVIF service address.
+        List[ONVIFDeviceInfo]: A list of ONVIFDeviceInfos with IP address, port number, and ONVIF service address.
         """
 
         device_ips = []
