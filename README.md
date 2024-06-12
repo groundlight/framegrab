@@ -174,7 +174,7 @@ The table below shows all available configurations and the cameras to which they
 In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
 
 ### Autodiscovery
-Autodiscovery automatically connects to all cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense` and `basler` cameras. Default configurations will be loaded for each camera. Please note that RTSP streams cannot be discovered in this manner; RTSP URLs must be specified in the configurations.
+Autodiscovery automatically connects to all cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense` and `basler` cameras. Default configurations will be loaded for each camera. Please note that RTSP streams cannot be discovered in this manner; RTSP URLs must be specified in the configurations or can be discovered using a separate tool below.
 
 Autodiscovery is great for simple applications where you don't need to set any special options on your cameras. It's also a convenient method for finding the serial numbers of your cameras (if the serial number isn't printed on the camera).
 ```python
@@ -186,6 +186,37 @@ for grabber in grabbers.values():
 
     grabber.release()
 ```
+
+#### RTSP Discovery
+RTSP cameras with support for ONVIF can be discovered using the tool built into the library. It provides a convenient method for finding all the RTSP cameras in the local network.
+
+```python
+from framegrab import RTSPDiscovery, ONVIFDeviceInfo
+        
+devices = RTSPDiscovery.discover_camera_ips()
+```
+
+The `discover_camera_ips()` will provide a list of devices that it finds in the `ONVIFDeviceInfo` format. An optional flag `try_default_logins` can be used to try different default credentials to fetch RTSP URLs.
+
+```python
+# Model for storing ONVIF Device Information
+class ONVIFDeviceInfo(BaseModel):
+    ip: str
+    port: Optional[int] = 80
+    username: Optional[str] = ""
+    password: Optional[str] = ""
+    xaddr: Optional[str] = ""  # ONVIF service address
+    rtsp_urls: Optional[List[str]] = []  # List of rtsp urls for the camera
+```
+
+After getting the list and enter the username and password of the camera. Use `generate_rtsp_urls()` to generate RTSP URLs for each devices.
+
+```python
+for device in devices:
+    RTSPDiscovery.generate_rtsp_urls(device=device)
+```
+
+This will generate all the available RTSP URLs and can be used when creating `FrameGrabber.create_grabbers` to grab frames.
 
 ### Motion Detection
 
