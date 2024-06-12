@@ -1,7 +1,11 @@
-import logging
 import onvif
+import logging
+import urllib.parse
 
+from typing import Optional
 from onvif import ONVIFCamera
+from wsdiscovery import QName
+from pydantic import BaseModel
 from wsdiscovery.discovery import ThreadedWSDiscovery as WSDiscovery
 
 logger = logging.getLogger(__name__)
@@ -20,6 +24,15 @@ DEFAULT_CREDENTIALS = [
 ]
 
 
+class ONVIFDeviceInfo(BaseModel):
+    ip: str
+    port: Optional[int] = 80
+    username: Optional[str] = ""
+    password: Optional[str] = ""
+    xaddr: Optional[str] = ""
+    rtsp_urls: Optional[list[str]] = []
+
+
 class RTSPDiscovery:
     # Simple RTSP camera discovery with ONVIF capabilities
 
@@ -27,45 +40,63 @@ class RTSPDiscovery:
         pass
 
     @staticmethod
-    def discover_camera_ips() -> set:
-        """Use WSDiscovery to find ONVIF devices.
-        Returns a list of IP addresses of ONVIF devices.
+    def discover_camera_ips(try_default_logins: bool = False) -> list[ONVIFDeviceInfo]:
+        """
+        Uses WSDiscovery to find ONVIF supported devices.
+
+        Parameters:
+        try_default_logins (bool, optional): Option to try different default credentials stored in DEFAULT_CREDENTIALS.
+            Defaults to False.
+
+        Returns:
+        list[ONVIFDeviceInfo]: A list of ONVIFDeviceInfos with IP address, port number, and ONVIF service address.
         """
 
-        device_ips = set()
+        device_ips = []
         logger.debug("Starting WSDiscovery for ONVIF devices")
         wsd = WSDiscovery()
         wsd.start()
-        ret = wsd.searchServices()
+        types = [
+            QName("http://www.onvif.org/ver10/network/wsdl", "NetworkVideoTransmitter")
+        ]
+        ret = wsd.searchServices(types=types)
         for service in ret:
             xaddr = service.getXAddrs()[0]
-            # each service has a bunch of QName's == qualified names
-            qnames = service.getTypes()
-            for qname in qnames:
-                # the qname's we care about are
-                # - http://www.onvif.org/ver10/network/wsdl:NetworkVideoTransmitter
-                # - http://www.onvif.org/ver10/device/wsdl:Device
-                if "onvif" in str(qname):
-                    logger.debug(f"Found ONVIF service {qname} at {xaddr}")
-                    # xaddr will be like "http://10.44.2.95/onvif/device_service"
-                    ip = xaddr.split("//")[1].split("/")[0]
-                    device_ips.add(ip)
+            parsed_url = urllib.parse.urlparse(xaddr)
+            ip = parsed_url.hostname
+            port = parsed_url.port or 80  # Use the default port 80 if not specified
+
+            logger.debug(f"Found ONVIF service at {xaddr}")
+            device_ip = ONVIFDeviceInfo(
+                ip=ip, port=port, username="", password="", xaddr=xaddr, rtsp_urls=[]
+            )
+
+            if try_default_logins:
+                device_ip = RTSPDiscovery._try_logins(device=device_ip)
+
+            device_ips.append(device_ip)
         wsd.stop()
         return list(device_ips)
 
     @staticmethod
-    def generate_rtsp_urls(
-        ip: str, username: str = "admin", password: str = "admin"
-    ) -> list[str]:
-        """Fetch RTSP URLs from an ONVIF device, given a username/password.
-        Returns [] if the device is unreachable or the credentials are wrong.
+    def generate_rtsp_urls(device: ONVIFDeviceInfo) -> bool:
+        """
+        Fetch RTSP URLs from an ONVIF supported device, given a username/password.
+
+        Parameters:
+        device (ONVIFDeviceInfo): Pydantic Model that stores information about camera RTSP address, port number, username, and password.
+
+        Returns:
+        bool: False if the device is unreachable or the credentials are wrong, else returns True and updates ONVIFDeviceInfo with updated rtsp_urls.
         """
 
         rtsp_urls = []
         try:
             try:
                 # Assuming port 80, adjust if necessary
-                cam = ONVIFCamera(ip, 80, username, password)
+                cam = ONVIFCamera(
+                    device.ip, device.port, device.username, device.password
+                )
                 # Create media service
                 media_service = cam.create_media_service()
                 # Get profiles
@@ -74,7 +105,7 @@ class RTSPDiscovery:
                     "Stream": "RTP-Unicast",  # Specify the type of stream
                     "Transport": {"Protocol": "RTSP"},
                 }
-                
+
                 # For each profile, get the RTSP URL
                 for profile in profiles:
                     stream_uri = media_service.GetStreamUri(
@@ -84,13 +115,45 @@ class RTSPDiscovery:
             except onvif.exceptions.ONVIFError as e:
                 msg = str(e).lower()
                 if "auth" in msg:  # looks like a bad login - give up.
-                    return []
+                    return False
                 else:
                     raise  # something else
         except Exception as e:
-            logger.error(f"Error fetching RTSP URL for {ip}: {e}", exc_info=True)
+            logger.error(f"Error fetching RTSP URL for {device.ip}: {e}", exc_info=True)
 
         # Now insert the username/password into the URLs
         for i, url in enumerate(rtsp_urls):
-            rtsp_urls[i] = url.replace("rtsp://", f"rtsp://{username}:{password}@")
-        return rtsp_urls
+            rtsp_urls[i] = url.replace(
+                "rtsp://", f"rtsp://{device.username}:{device.password}@"
+            )
+
+        device.rtsp_urls = rtsp_urls
+        return True
+
+    def _try_logins(device: ONVIFDeviceInfo) -> bool:
+        """
+        Fetch RTSP URLs from an ONVIF supported device, given a username/password.
+
+        Parameters:
+        device (ONVIFDeviceInfo): Pydantic Model that stores information about camera RTSP address, port number, username, and password.
+
+        Returns:
+        bool: False if the device is unreachable or the credentials are wrong, else returns True and updates ONVIFDeviceInfo with updated rtsp_urls.
+        """
+
+        for username, password in DEFAULT_CREDENTIALS:
+            logger.debug(f"Trying {username}:{password} for device IP {device.ip}")
+
+            device.username = username
+            device.password = password
+
+            # Try generate rtsp urls for that device, if username or password incorrect try next
+            if RTSPDiscovery.generate_rtsp_urls(device=device):
+                logger.debug(
+                    f"RTSP URL fetched successfully with {username}:{password} for device IP {device.ip}"
+                )
+                return True
+
+        # Return False when there are no correct credentials
+        logger.debug(f"Unable to find RTSP URLs for device IP {device.ip}")
+        return False
