@@ -1,11 +1,11 @@
-import onvif
 import logging
 import urllib.parse
+from typing import List, Optional
 
-from typing import Optional, List
+import onvif
 from onvif import ONVIFCamera
-from wsdiscovery import QName
 from pydantic import BaseModel
+from wsdiscovery import QName
 from wsdiscovery.discovery import ThreadedWSDiscovery as WSDiscovery
 
 logger = logging.getLogger(__name__)
@@ -56,9 +56,7 @@ class RTSPDiscovery:
         logger.debug("Starting WSDiscovery for ONVIF devices")
         wsd = WSDiscovery()
         wsd.start()
-        types = [
-            QName("http://www.onvif.org/ver10/network/wsdl", "NetworkVideoTransmitter")
-        ]
+        types = [QName("http://www.onvif.org/ver10/network/wsdl", "NetworkVideoTransmitter")]
         ret = wsd.searchServices(types=types)
         for service in ret:
             xaddr = service.getXAddrs()[0]
@@ -67,9 +65,7 @@ class RTSPDiscovery:
             port = parsed_url.port or 80  # Use the default port 80 if not specified
 
             logger.debug(f"Found ONVIF service at {xaddr}")
-            device_ip = ONVIFDeviceInfo(
-                ip=ip, port=port, username="", password="", xaddr=xaddr, rtsp_urls=[]
-            )
+            device_ip = ONVIFDeviceInfo(ip=ip, port=port, username="", password="", xaddr=xaddr, rtsp_urls=[])
 
             if try_default_logins:
                 RTSPDiscovery._try_logins(device=device_ip)
@@ -94,9 +90,7 @@ class RTSPDiscovery:
         try:
             try:
                 # Assuming port 80, adjust if necessary
-                cam = ONVIFCamera(
-                    device.ip, device.port, device.username, device.password
-                )
+                cam = ONVIFCamera(device.ip, device.port, device.username, device.password)
                 # Create media service
                 media_service = cam.create_media_service()
                 # Get profiles
@@ -124,9 +118,7 @@ class RTSPDiscovery:
 
         # Now insert the username/password into the URLs
         for i, url in enumerate(rtsp_urls):
-            rtsp_urls[i] = url.replace(
-                "rtsp://", f"rtsp://{device.username}:{device.password}@"
-            )
+            rtsp_urls[i] = url.replace("rtsp://", f"rtsp://{device.username}:{device.password}@")
 
         device.rtsp_urls = rtsp_urls
         return True
@@ -150,9 +142,7 @@ class RTSPDiscovery:
 
             # Try generate rtsp urls for that device, if username or password incorrect try next
             if RTSPDiscovery.generate_rtsp_urls(device=device):
-                logger.debug(
-                    f"RTSP URL fetched successfully with {username}:{password} for device IP {device.ip}"
-                )
+                logger.debug(f"RTSP URL fetched successfully with {username}:{password} for device IP {device.ip}")
                 return True
 
         # Return False when there are no correct credentials

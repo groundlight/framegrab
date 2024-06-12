@@ -1,7 +1,7 @@
 from .cli.clitools import preview_image
 from .grabber import FrameGrabber
 from .motion import MotionDetector
-from .rtsp_discovery import RTSPDiscovery, ONVIFDeviceInfo
+from .rtsp_discovery import ONVIFDeviceInfo, RTSPDiscovery
 
 try:
     import importlib.metadata
