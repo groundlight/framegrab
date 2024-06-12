@@ -72,7 +72,7 @@ class RTSPDiscovery:
             )
 
             if try_default_logins:
-                device_ip = RTSPDiscovery._try_logins(device=device_ip)
+                RTSPDiscovery._try_logins(device=device_ip)
 
             device_ips.append(device_ip)
         wsd.stop()
