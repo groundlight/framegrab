@@ -21,7 +21,7 @@ class TestRTSPDiscovery(unittest.TestCase):
     def test_generate_rtsp_urls(self):
         device = ONVIFDeviceInfo(ip="0")
 
-        assert False == RTSPDiscovery.generate_rtsp_urls(device=device)
+        assert [] == RTSPDiscovery.generate_rtsp_urls(device=device)
         assert device.rtsp_urls == []
 
     def test_try_logins(self):

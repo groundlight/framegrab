@@ -75,7 +75,7 @@ class RTSPDiscovery:
         return device_ips
 
     @staticmethod
-    def generate_rtsp_urls(device: ONVIFDeviceInfo) -> bool:
+    def generate_rtsp_urls(device: ONVIFDeviceInfo) -> List[str]:
         """
         Fetch RTSP URLs from an ONVIF supported device, given a username/password.
 
@@ -83,7 +83,7 @@ class RTSPDiscovery:
         device (ONVIFDeviceInfo): Pydantic Model that stores information about camera RTSP address, port number, username, and password.
 
         Returns:
-        bool: False if the device is unreachable or the credentials are wrong, else returns True and updates ONVIFDeviceInfo with updated rtsp_urls.
+        List[str]: A list of RTSP URLs, empty list if error fetching URLs or incorrect credentials.
         """
 
         rtsp_urls = []
@@ -109,19 +109,19 @@ class RTSPDiscovery:
             except onvif.exceptions.ONVIFError as e:
                 msg = str(e).lower()
                 if "auth" in msg:  # looks like a bad login - give up.
-                    return False
+                    return rtsp_urls
                 else:
-                    raise  # something else
+                    raise onvif.exceptions.ONVIFError  # something else
         except Exception as e:
             logger.error(f"Error fetching RTSP URL for {device.ip}: {e}", exc_info=True)
-            return False
+            return rtsp_urls
 
         # Now insert the username/password into the URLs
         for i, url in enumerate(rtsp_urls):
             rtsp_urls[i] = url.replace("rtsp://", f"rtsp://{device.username}:{device.password}@")
 
         device.rtsp_urls = rtsp_urls
-        return True
+        return rtsp_urls
 
     def _try_logins(device: ONVIFDeviceInfo) -> bool:
         """
