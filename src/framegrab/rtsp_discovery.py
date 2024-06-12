@@ -2,7 +2,7 @@ import onvif
 import logging
 import urllib.parse
 
-from typing import Optional
+from typing import Optional, List
 from onvif import ONVIFCamera
 from wsdiscovery import QName
 from pydantic import BaseModel
@@ -33,7 +33,7 @@ class ONVIFDeviceInfo(BaseModel):
     username: Optional[str] = ""
     password: Optional[str] = ""
     xaddr: Optional[str] = ""  # ONVIF service address
-    rtsp_urls: Optional[list[str]] = []  # List of rtsp urls for the camera
+    rtsp_urls: Optional[List[str]] = []  # List of rtsp urls for the camera
 
 
 class RTSPDiscovery:
