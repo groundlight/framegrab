@@ -10,6 +10,8 @@ from wsdiscovery.discovery import ThreadedWSDiscovery as WSDiscovery
 
 logger = logging.getLogger(__name__)
 
+
+# Default credentials to try when connecting to RTSP cameras, used in discover_camera_ips() when try_default_logins=True
 DEFAULT_CREDENTIALS = [
     ("admin", "admin"),
     ("admin", ""),
@@ -24,20 +26,18 @@ DEFAULT_CREDENTIALS = [
 ]
 
 
+# Model for storing ONVIF Device Information
 class ONVIFDeviceInfo(BaseModel):
     ip: str
     port: Optional[int] = 80
     username: Optional[str] = ""
     password: Optional[str] = ""
-    xaddr: Optional[str] = ""
-    rtsp_urls: Optional[list[str]] = []
+    xaddr: Optional[str] = ""  # ONVIF service address
+    rtsp_urls: Optional[list[str]] = []  # List of rtsp urls for the camera
 
 
 class RTSPDiscovery:
     # Simple RTSP camera discovery with ONVIF capabilities
-
-    def __init__(self) -> None:
-        pass
 
     @staticmethod
     def discover_camera_ips(try_default_logins: bool = False) -> list[ONVIFDeviceInfo]:
@@ -120,6 +120,7 @@ class RTSPDiscovery:
                     raise  # something else
         except Exception as e:
             logger.error(f"Error fetching RTSP URL for {device.ip}: {e}", exc_info=True)
+            return False
 
         # Now insert the username/password into the URLs
         for i, url in enumerate(rtsp_urls):
