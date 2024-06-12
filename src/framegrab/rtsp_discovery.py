@@ -37,7 +37,7 @@ class ONVIFDeviceInfo(BaseModel):
 
 
 class RTSPDiscovery:
-    # Simple RTSP camera discovery with ONVIF capabilities
+    """Simple RTSP camera discovery with ONVIF capabilities"""
 
     @staticmethod
     def discover_camera_ips(try_default_logins: bool = False) -> List[ONVIFDeviceInfo]:
@@ -72,7 +72,7 @@ class RTSPDiscovery:
 
             device_ips.append(device_ip)
         wsd.stop()
-        return list(device_ips)
+        return device_ips
 
     @staticmethod
     def generate_rtsp_urls(device: ONVIFDeviceInfo) -> bool:

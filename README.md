@@ -199,6 +199,7 @@ devices = RTSPDiscovery.discover_camera_ips()
 The `discover_camera_ips()` will provide a list of devices that it finds in the `ONVIFDeviceInfo` format. An optional flag `try_default_logins` can be used to try different default credentials to fetch RTSP URLs.
 
 ```python
+from pydantic import BaseModel
 # Model for storing ONVIF Device Information
 class ONVIFDeviceInfo(BaseModel):
     ip: str
@@ -217,6 +218,17 @@ for device in devices:
 ```
 
 This will generate all the available RTSP URLs and can be used when creating `FrameGrabber.create_grabbers` to grab frames.
+
+```python
+config = f"""
+name: Front Door Camera
+input_type: rtsp
+id:
+  rtsp_url: {device.rtsp_urls[0]}
+"""
+
+grabber = FrameGrabber.create_grabber_yaml(config)
+```
 
 ### Motion Detection
 
