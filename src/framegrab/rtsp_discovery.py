@@ -2,7 +2,7 @@ import logging
 import time
 import urllib.parse
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional
 
 import onvif
 from onvif import ONVIFCamera
@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 # Default credentials to try when connecting to RTSP cameras, used in discover_camera_ips() when try_default_logins=True
 DEFAULT_CREDENTIALS = [
     ("admin", "admin"),
-    ("admin", ""),
     ("", ""),
+    ("admin", ""),
     ("root", "camera"),
     ("root", "root"),
     ("admin", "12345"),
@@ -57,14 +57,14 @@ class RTSPDiscovery:
     """Simple RTSP camera discovery with ONVIF capabilities"""
 
     @staticmethod
-    def discover_camera_ips(auto_discover_modes: Union[AutoDiscoverModes, None] = None) -> List[ONVIFDeviceInfo]:
+    def discover_camera_ips(auto_discover_modes: AutoDiscoverModes | None = None) -> List[ONVIFDeviceInfo]:
         """
         Uses WSDiscovery to find ONVIF supported devices.
 
         Parameters:
         auto_discover_modes (AutoDiscoverModes | None, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
         Consists of three options:
-            light: only try first three usernames and passwords ("admin:admin", "admin:", and no password).
+            light: only try first two usernames and passwords ("admin:admin" and no username/password).
             complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between.
             complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 5 seconds in between.
             Defaults to None.
@@ -152,7 +152,7 @@ class RTSPDiscovery:
         device (ONVIFDeviceInfo): Pydantic Model that stores information about camera RTSP address, port number, username, and password.
         auto_discover_modes (AutoDiscoverModes | None, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
         Consists of three options:
-            light: only try first three usernames and passwords ("admin:admin", "admin:", and no password).
+            light: only try first two usernames and passwords ("admin:admin" and no username/password).
             complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between.
             complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
 
@@ -163,7 +163,7 @@ class RTSPDiscovery:
         credentials = DEFAULT_CREDENTIALS
 
         if auto_discover_modes == AutoDiscoverModes.light:
-            credentials = DEFAULT_CREDENTIALS[:3]
+            credentials = DEFAULT_CREDENTIALS[:2]
 
         for username, password in credentials:
             logger.debug(f"Trying {username}:{password} for device IP {device.ip}")
