@@ -188,7 +188,7 @@ for grabber in grabbers.values():
 ```
 
 #### RTSP Discovery
-RTSP cameras with support for ONVIF can be discovered using the tool built into the library. It provides a convenient method for finding all the RTSP cameras in the local network.
+RTSP cameras with support for ONVIF can be discovered on your local network in the following way:
 
 ```python
 from framegrab import RTSPDiscovery, ONVIFDeviceInfo
@@ -196,27 +196,13 @@ from framegrab import RTSPDiscovery, ONVIFDeviceInfo
 devices = RTSPDiscovery.discover_camera_ips()
 ```
 
-The `discover_camera_ips()` will provide a list of devices that it finds in the `ONVIFDeviceInfo` format. An optional mode `auto_discover_modes` can be used to try different default credentials to fetch RTSP URLs:
+The `discover_onvif_devices()` will provide a list of devices that it finds in the `ONVIFDeviceInfo` format. An optional mode `auto_discover_modes` can be used to try different default credentials to fetch RTSP URLs:
 
-light: only try first three usernames and passwords ("admin:admin", "admin:", and no username/password).
+- disable: Disable guessing camera credentials.
+- light: Only try first two usernames and passwords ("admin:admin" and no username/password).
+- complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
+- complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
 
-complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between. 
-
-complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
-
-Defaults to None.
-
-```python
-from pydantic import BaseModel
-# Model for storing ONVIF Device Information
-class ONVIFDeviceInfo(BaseModel):
-    ip: str
-    port: Optional[int] = 80
-    username: Optional[str] = ""
-    password: Optional[str] = ""
-    xaddr: Optional[str] = ""  # ONVIF service address
-    rtsp_urls: Optional[List[str]] = []  # List of rtsp urls for the camera
-```
 
 After getting the list and enter the username and password of the camera. Use `generate_rtsp_urls()` to generate RTSP URLs for each devices.
 

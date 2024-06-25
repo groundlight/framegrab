@@ -33,7 +33,6 @@ Consists of four options:
     light: Only try first two usernames and passwords ("admin:admin" and no username/password).
     complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
     complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
-    Defaults to None.
 """
 
 
@@ -81,7 +80,7 @@ class RTSPDiscovery:
             light: Only try first two usernames and passwords ("admin:admin" and no username/password).
             complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
             complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
-            Defaults to None.
+            Defaults to disable.
 
         Returns:
         List[ONVIFDeviceInfo]: A list of ONVIFDeviceInfos with IP address, port number, and ONVIF service address.
@@ -165,7 +164,6 @@ class RTSPDiscovery:
             light: Only try first two usernames and passwords ("admin:admin" and no username/password).
             complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
             complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
-            Defaults to None.
 
         Returns:
         bool: False if the device is unreachable or the credentials are wrong, else returns True and updates ONVIFDeviceInfo with updated rtsp_urls.
