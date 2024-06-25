@@ -2,7 +2,7 @@ import logging
 import time
 import urllib.parse
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import onvif
 from onvif import ONVIFCamera
@@ -57,7 +57,7 @@ class RTSPDiscovery:
     """Simple RTSP camera discovery with ONVIF capabilities"""
 
     @staticmethod
-    def discover_camera_ips(auto_discover_modes: AutoDiscoverModes | None = None) -> List[ONVIFDeviceInfo]:
+    def discover_camera_ips(auto_discover_modes: Union[AutoDiscoverModes, None] = None) -> List[ONVIFDeviceInfo]:
         """
         Uses WSDiscovery to find ONVIF supported devices.
 
