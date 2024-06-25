@@ -1,13 +1,13 @@
-import time
-import onvif
 import logging
+import time
 import urllib.parse
-
 from enum import Enum
-from onvif import ONVIFCamera
-from wsdiscovery import QName
-from pydantic import BaseModel
 from typing import List, Optional
+
+import onvif
+from onvif import ONVIFCamera
+from pydantic import BaseModel
+from wsdiscovery import QName
 from wsdiscovery.discovery import ThreadedWSDiscovery as WSDiscovery
 
 logger = logging.getLogger(__name__)
@@ -35,10 +35,13 @@ Consists of three options:
     complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
     Defaults to None.
 """
+
+
 class AutoDiscoverModes(str, Enum):
     light = "light"
     complete_fast = "complete_fast"
     complete_slow = "complete_slow"
+
 
 # Model for storing ONVIF Device Information
 class ONVIFDeviceInfo(BaseModel):
@@ -59,10 +62,10 @@ class RTSPDiscovery:
         Uses WSDiscovery to find ONVIF supported devices.
 
         Parameters:
-        auto_discover_modes (AutoDiscoverModes | None, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS. 
+        auto_discover_modes (AutoDiscoverModes | None, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
         Consists of three options:
             light: only try first three usernames and passwords ("admin:admin", "admin:", and no password).
-            complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between. 
+            complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between.
             complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 5 seconds in between.
             Defaults to None.
 
@@ -147,18 +150,18 @@ class RTSPDiscovery:
 
         Parameters:
         device (ONVIFDeviceInfo): Pydantic Model that stores information about camera RTSP address, port number, username, and password.
-        auto_discover_modes (AutoDiscoverModes | None, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS. 
+        auto_discover_modes (AutoDiscoverModes | None, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
         Consists of three options:
             light: only try first three usernames and passwords ("admin:admin", "admin:", and no password).
-            complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between. 
+            complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between.
             complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
 
         Returns:
         bool: False if the device is unreachable or the credentials are wrong, else returns True and updates ONVIFDeviceInfo with updated rtsp_urls.
         """
-        
+
         credentials = DEFAULT_CREDENTIALS
-        
+
         if auto_discover_modes == AutoDiscoverModes.light:
             credentials = DEFAULT_CREDENTIALS[:3]
 
@@ -172,10 +175,10 @@ class RTSPDiscovery:
             if RTSPDiscovery.generate_rtsp_urls(device=device):
                 logger.debug(f"RTSP URL fetched successfully with {username}:{password} for device IP {device.ip}")
                 return True
-            
+
             if auto_discover_modes == AutoDiscoverModes.complete_slow:
                 time.sleep(1)
-                
+
         # Return False when there are no correct credentials
         logger.debug(f"Unable to find RTSP URLs for device IP {device.ip}")
         return False
