@@ -35,6 +35,8 @@ Consists of four options:
     complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
     Defaults to None.
 """
+
+
 class AutodiscoverModes(str, Enum):
     disable = "disable"
     light = "light"
@@ -51,12 +53,14 @@ Model for storing ONVIF Device Information:
     xddr[str]: ONVIF service address.
     rtsp_urls[List[str]]: List of RTSP URLs for the camera.
 """
+
+
 class ONVIFDeviceInfo(BaseModel):
     ip: str
     port: Optional[int] = 80
     username: Optional[str] = ""
     password: Optional[str] = ""
-    xaddr: Optional[str] = "" 
+    xaddr: Optional[str] = ""
     rtsp_urls: Optional[List[str]] = []
 
 
@@ -64,7 +68,9 @@ class RTSPDiscovery:
     """Simple RTSP camera discovery with ONVIF capabilities"""
 
     @staticmethod
-    def discover_onvif_devices(auto_discover_modes: AutodiscoverModes = AutodiscoverModes.disable) -> List[ONVIFDeviceInfo]:
+    def discover_onvif_devices(
+        auto_discover_modes: AutodiscoverModes = AutodiscoverModes.disable,
+    ) -> List[ONVIFDeviceInfo]:
         """
         Uses WSDiscovery to find ONVIF supported devices.
 
@@ -73,7 +79,7 @@ class RTSPDiscovery:
         Consists of four options:
             disable: Disable guessing camera credentials.
             light: Only try first two usernames and passwords ("admin:admin" and no username/password).
-            complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
+            complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
             complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
             Defaults to None.
 
@@ -130,9 +136,7 @@ class RTSPDiscovery:
 
             # For each profile, get the RTSP URL
             for profile in profiles:
-                stream_uri = media_service.GetStreamUri(
-                    {"StreamSetup": stream_setup, "ProfileToken": profile.token}
-                )
+                stream_uri = media_service.GetStreamUri({"StreamSetup": stream_setup, "ProfileToken": profile.token})
                 rtsp_urls.append(stream_uri.Uri)
         except Exception as e:
             msg = str(e).lower()
@@ -159,7 +163,7 @@ class RTSPDiscovery:
         Consists of four options:
             disable: Disable guessing camera credentials.
             light: Only try first two usernames and passwords ("admin:admin" and no username/password).
-            complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
+            complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
             complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
             Defaults to None.
 
@@ -168,7 +172,7 @@ class RTSPDiscovery:
         """
 
         credentials = DEFAULT_CREDENTIALS
-        
+
         if auto_discover_modes == AutodiscoverModes.disable:
             return False
 
