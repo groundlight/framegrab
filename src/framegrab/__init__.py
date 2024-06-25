@@ -1,7 +1,7 @@
 from .cli.clitools import preview_image
 from .grabber import FrameGrabber
 from .motion import MotionDetector
-from .rtsp_discovery import ONVIFDeviceInfo, RTSPDiscovery
+from .rtsp_discovery import ONVIFDeviceInfo, AutoDiscoverModes, RTSPDiscovery
 
 try:
     import importlib.metadata
@@ -19,5 +19,6 @@ __all__ = [
     "MotionDetector",
     "RTSPDiscovery",
     "ONVIFDeviceInfo",
+    "AutoDiscoverModes",
     "preview_image",
 ]
