@@ -1,13 +1,13 @@
-import logging
 import time
-import urllib.parse
-from enum import Enum
-from typing import List, Optional
-
 import onvif
+import logging
+import urllib.parse
+
+from enum import Enum
+from wsdiscovery import QName
 from onvif import ONVIFCamera
 from pydantic import BaseModel
-from wsdiscovery import QName
+from typing import List, Optional, Union
 from wsdiscovery.discovery import ThreadedWSDiscovery as WSDiscovery
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ class RTSPDiscovery:
     """Simple RTSP camera discovery with ONVIF capabilities"""
 
     @staticmethod
-    def discover_camera_ips(auto_discover_modes: AutoDiscoverModes | None = None) -> List[ONVIFDeviceInfo]:
+    def discover_camera_ips(auto_discover_modes: Union[AutoDiscoverModes, None] = None) -> List[ONVIFDeviceInfo]:
         """
         Uses WSDiscovery to find ONVIF supported devices.
 
