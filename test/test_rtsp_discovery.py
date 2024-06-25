@@ -2,7 +2,7 @@ import unittest
 
 from wsdiscovery.service import Service
 from unittest.mock import patch
-from framegrab.rtsp_discovery import RTSPDiscovery, ONVIFDeviceInfo, AutoDiscoverModes
+from framegrab.rtsp_discovery import RTSPDiscovery, ONVIFDeviceInfo, AutodiscoverModes
 
 
 class TestRTSPDiscovery(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestRTSPDiscovery(unittest.TestCase):
             "wsdiscovery.discovery.ThreadedWSDiscovery.searchServices",
             return_value=[service],
         ) as mock_camera_ips:
-            devices = RTSPDiscovery.discover_camera_ips()
+            devices = RTSPDiscovery.discover_onvif_devices()
 
             assert devices[0].xaddr == "http://localhost:8080"
 
@@ -27,5 +27,5 @@ class TestRTSPDiscovery(unittest.TestCase):
     def test_try_logins(self):
         device = ONVIFDeviceInfo(ip="0")
 
-        assert False == RTSPDiscovery._try_logins(device=device, auto_discover_modes=AutoDiscoverModes.complete_fast)
+        assert False == RTSPDiscovery._try_logins(device=device, auto_discover_modes=AutodiscoverModes.complete_fast)
         assert device.rtsp_urls == []

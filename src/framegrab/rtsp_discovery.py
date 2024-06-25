@@ -2,9 +2,8 @@ import logging
 import time
 import urllib.parse
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional
 
-import onvif
 from onvif import ONVIFCamera
 from pydantic import BaseModel
 from wsdiscovery import QName
@@ -29,44 +28,53 @@ DEFAULT_CREDENTIALS = [
 
 """
 Enum for camera discovery modes. Options to try different default credentials stored in DEFAULT_CREDENTIALS. 
-Consists of three options:
-    light: only try first two usernames and passwords ("admin:admin" and no username/password).
-    complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between. 
-    complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
+Consists of four options:
+    disable: Disable guessing camera credentials.
+    light: Only try first two usernames and passwords ("admin:admin" and no username/password).
+    complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
+    complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
     Defaults to None.
 """
-
-
-class AutoDiscoverModes(str, Enum):
+class AutodiscoverModes(str, Enum):
+    disable = "disable"
     light = "light"
     complete_fast = "complete_fast"
     complete_slow = "complete_slow"
 
 
-# Model for storing ONVIF Device Information
+"""
+Model for storing ONVIF Device Information:
+    ip[str]: IP address of the RTSP Camera.
+    port[int]: Port number of the RTSP Camera. Defaults to 80 if not specified.
+    username[str]: Username.
+    password[str]: Password.
+    xddr[str]: ONVIF service address.
+    rtsp_urls[List[str]]: List of RTSP URLs for the camera.
+"""
 class ONVIFDeviceInfo(BaseModel):
     ip: str
     port: Optional[int] = 80
     username: Optional[str] = ""
     password: Optional[str] = ""
-    xaddr: Optional[str] = ""  # ONVIF service address
-    rtsp_urls: Optional[List[str]] = []  # List of rtsp urls for the camera
+    xaddr: Optional[str] = "" 
+    rtsp_urls: Optional[List[str]] = []
 
 
 class RTSPDiscovery:
     """Simple RTSP camera discovery with ONVIF capabilities"""
 
     @staticmethod
-    def discover_camera_ips(auto_discover_modes: Union[AutoDiscoverModes, None] = None) -> List[ONVIFDeviceInfo]:
+    def discover_onvif_devices(auto_discover_modes: AutodiscoverModes = AutodiscoverModes.disable) -> List[ONVIFDeviceInfo]:
         """
         Uses WSDiscovery to find ONVIF supported devices.
 
         Parameters:
-        auto_discover_modes (AutoDiscoverModes | None, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
-        Consists of three options:
-            light: only try first two usernames and passwords ("admin:admin" and no username/password).
-            complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between.
-            complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
+        auto_discover_modes (AutodiscoverModes, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
+        Consists of four options:
+            disable: Disable guessing camera credentials.
+            light: Only try first two usernames and passwords ("admin:admin" and no username/password).
+            complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
+            complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
             Defaults to None.
 
         Returns:
@@ -88,7 +96,7 @@ class RTSPDiscovery:
             logger.debug(f"Found ONVIF service at {xaddr}")
             device_ip = ONVIFDeviceInfo(ip=ip, port=port, username="", password="", xaddr=xaddr, rtsp_urls=[])
 
-            if auto_discover_modes is not None:
+            if auto_discover_modes is not AutodiscoverModes.disable:
                 RTSPDiscovery._try_logins(device=device_ip, auto_discover_modes=auto_discover_modes)
 
             device_ips.append(device_ip)
@@ -109,33 +117,30 @@ class RTSPDiscovery:
 
         rtsp_urls = []
         try:
-            try:
-                # Assuming port 80, adjust if necessary
-                cam = ONVIFCamera(device.ip, device.port, device.username, device.password)
-                # Create media service
-                media_service = cam.create_media_service()
-                # Get profiles
-                profiles = media_service.GetProfiles()
-                stream_setup = {
-                    "Stream": "RTP-Unicast",  # Specify the type of stream
-                    "Transport": {"Protocol": "RTSP"},
-                }
+            # Assuming port 80, adjust if necessary
+            cam = ONVIFCamera(device.ip, device.port, device.username, device.password)
+            # Create media service
+            media_service = cam.create_media_service()
+            # Get profiles
+            profiles = media_service.GetProfiles()
+            stream_setup = {
+                "Stream": "RTP-Unicast",  # Specify the type of stream
+                "Transport": {"Protocol": "RTSP"},
+            }
 
-                # For each profile, get the RTSP URL
-                for profile in profiles:
-                    stream_uri = media_service.GetStreamUri(
-                        {"StreamSetup": stream_setup, "ProfileToken": profile.token}
-                    )
-                    rtsp_urls.append(stream_uri.Uri)
-            except onvif.ONVIFError as e:
-                msg = str(e).lower()
-                if "auth" in msg:  # looks like a bad login - give up.
-                    return rtsp_urls
-                else:
-                    raise onvif.ONVIFError
+            # For each profile, get the RTSP URL
+            for profile in profiles:
+                stream_uri = media_service.GetStreamUri(
+                    {"StreamSetup": stream_setup, "ProfileToken": profile.token}
+                )
+                rtsp_urls.append(stream_uri.Uri)
         except Exception as e:
-            logger.error(f"Error fetching RTSP URL for {device.ip}: {e}", exc_info=True)
-            return rtsp_urls
+            msg = str(e).lower()
+            if "auth" in msg:  # looks like a bad login - give up.
+                return rtsp_urls
+            else:
+                logger.error(f"Error fetching RTSP URL for {device.ip}: {e}", exc_info=True)
+                return rtsp_urls
 
         # Now insert the username/password into the URLs
         for i, url in enumerate(rtsp_urls):
@@ -144,25 +149,30 @@ class RTSPDiscovery:
         device.rtsp_urls = rtsp_urls
         return rtsp_urls
 
-    def _try_logins(device: ONVIFDeviceInfo, auto_discover_modes: AutoDiscoverModes) -> bool:
+    def _try_logins(device: ONVIFDeviceInfo, auto_discover_modes: AutodiscoverModes) -> bool:
         """
         Fetch RTSP URLs from an ONVIF supported device, given a username/password.
 
         Parameters:
         device (ONVIFDeviceInfo): Pydantic Model that stores information about camera RTSP address, port number, username, and password.
-        auto_discover_modes (AutoDiscoverModes | None, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
-        Consists of three options:
-            light: only try first two usernames and passwords ("admin:admin" and no username/password).
-            complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between.
-            complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
+        auto_discover_modes (AutodiscoverModes | None, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
+        Consists of four options:
+            disable: Disable guessing camera credentials.
+            light: Only try first two usernames and passwords ("admin:admin" and no username/password).
+            complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
+            complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
+            Defaults to None.
 
         Returns:
         bool: False if the device is unreachable or the credentials are wrong, else returns True and updates ONVIFDeviceInfo with updated rtsp_urls.
         """
 
         credentials = DEFAULT_CREDENTIALS
+        
+        if auto_discover_modes == AutodiscoverModes.disable:
+            return False
 
-        if auto_discover_modes == AutoDiscoverModes.light:
+        if auto_discover_modes == AutodiscoverModes.light:
             credentials = DEFAULT_CREDENTIALS[:2]
 
         for username, password in credentials:
@@ -176,7 +186,7 @@ class RTSPDiscovery:
                 logger.debug(f"RTSP URL fetched successfully with {username}:{password} for device IP {device.ip}")
                 return True
 
-            if auto_discover_modes == AutoDiscoverModes.complete_slow:
+            if auto_discover_modes == AutodiscoverModes.complete_slow:
                 time.sleep(1)
 
         # Return False when there are no correct credentials
