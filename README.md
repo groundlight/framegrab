@@ -196,7 +196,15 @@ from framegrab import RTSPDiscovery, ONVIFDeviceInfo
 devices = RTSPDiscovery.discover_camera_ips()
 ```
 
-The `discover_camera_ips()` will provide a list of devices that it finds in the `ONVIFDeviceInfo` format. An optional flag `try_default_logins` can be used to try different default credentials to fetch RTSP URLs.
+The `discover_camera_ips()` will provide a list of devices that it finds in the `ONVIFDeviceInfo` format. An optional mode `auto_discover_modes` can be used to try different default credentials to fetch RTSP URLs:
+
+light: only try first three usernames and passwords ("admin:admin", "admin:", and no username/password).
+
+complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between. 
+
+complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
+
+Defaults to None.
 
 ```python
 from pydantic import BaseModel
