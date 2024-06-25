@@ -1,13 +1,13 @@
-import time
-import onvif
 import logging
+import time
 import urllib.parse
-
 from enum import Enum
-from wsdiscovery import QName
+from typing import List, Optional, Union
+
+import onvif
 from onvif import ONVIFCamera
 from pydantic import BaseModel
-from typing import List, Optional, Union
+from wsdiscovery import QName
 from wsdiscovery.discovery import ThreadedWSDiscovery as WSDiscovery
 
 logger = logging.getLogger(__name__)
