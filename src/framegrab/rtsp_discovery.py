@@ -30,7 +30,7 @@ DEFAULT_CREDENTIALS = [
 """
 Enum for camera discovery modes. Options to try different default credentials stored in DEFAULT_CREDENTIALS. 
 Consists of three options:
-    light: only try first three usernames and passwords ("admin:admin", "admin:", and no username/password).
+    light: only try first two usernames and passwords ("admin:admin" and no username/password).
     complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between. 
     complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
     Defaults to None.
@@ -66,7 +66,7 @@ class RTSPDiscovery:
         Consists of three options:
             light: only try first two usernames and passwords ("admin:admin" and no username/password).
             complete_fast: try the entire DEFAULT_CREDENTIALS without delays in between.
-            complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 5 seconds in between.
+            complete_slow: try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
             Defaults to None.
 
         Returns:
