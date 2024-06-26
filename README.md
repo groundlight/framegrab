@@ -193,7 +193,7 @@ RTSP cameras with support for ONVIF can be discovered on your local network in t
 ```python
 from framegrab import RTSPDiscovery, ONVIFDeviceInfo
         
-devices = RTSPDiscovery.discover_camera_ips()
+devices = RTSPDiscovery.discover_onvif_devices()
 ```
 
 The `discover_onvif_devices()` will provide a list of devices that it finds in the `ONVIFDeviceInfo` format. An optional mode `auto_discover_modes` can be used to try different default credentials to fetch RTSP URLs:
