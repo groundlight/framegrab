@@ -174,7 +174,7 @@ The table below shows all available configurations and the cameras to which they
 In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
 
 ### Autodiscovery
-Autodiscovery automatically connects to all cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense` and `basler` cameras. Default configurations will be loaded for each camera. Please note that RTSP streams cannot be discovered in this manner; RTSP URLs must be specified in the configurations.
+Autodiscovery automatically connects to all cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense` and `basler` cameras. Default configurations will be loaded for each camera. Please note that RTSP streams cannot be discovered in this manner; RTSP URLs must be specified in the configurations or can be discovered using a separate tool below.
 
 Autodiscovery is great for simple applications where you don't need to set any special options on your cameras. It's also a convenient method for finding the serial numbers of your cameras (if the serial number isn't printed on the camera).
 ```python
@@ -185,6 +185,43 @@ for grabber in grabbers.values():
     print(grabber.config)
 
     grabber.release()
+```
+
+#### RTSP Discovery
+RTSP cameras with support for ONVIF can be discovered on your local network in the following way:
+
+```python
+from framegrab import RTSPDiscovery, ONVIFDeviceInfo
+        
+devices = RTSPDiscovery.discover_camera_ips()
+```
+
+The `discover_onvif_devices()` will provide a list of devices that it finds in the `ONVIFDeviceInfo` format. An optional mode `auto_discover_modes` can be used to try different default credentials to fetch RTSP URLs:
+
+- disable: Disable guessing camera credentials.
+- light: Only try first two usernames and passwords ("admin:admin" and no username/password).
+- complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
+- complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
+
+
+After getting the list and enter the username and password of the camera. Use `generate_rtsp_urls()` to generate RTSP URLs for each devices.
+
+```python
+for device in devices:
+    RTSPDiscovery.generate_rtsp_urls(device=device)
+```
+
+This will generate all the available RTSP URLs and can be used when creating `FrameGrabber.create_grabbers` to grab frames.
+
+```python
+config = f"""
+name: Front Door Camera
+input_type: rtsp
+id:
+  rtsp_url: {device.rtsp_urls[0]}
+"""
+
+grabber = FrameGrabber.create_grabber_yaml(config)
 ```
 
 ### Motion Detection
