@@ -26,16 +26,17 @@ DEFAULT_CREDENTIALS = [
     ("root", "pass"),
 ]
 
+
 class AutodiscoverModes(str, Enum):
     """
-    Enum for camera discovery modes. Options to try different default credentials stored in DEFAULT_CREDENTIALS. 
+    Enum for camera discovery modes. Options to try different default credentials stored in DEFAULT_CREDENTIALS.
     Consists of four options:
         disable: Disable guessing camera credentials.
         light: Only try first two usernames and passwords ("admin:admin" and no username/password).
-        complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
+        complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
         complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
     """
-    
+
     disable = "disable"
     light = "light"
     complete_fast = "complete_fast"
@@ -52,7 +53,7 @@ class ONVIFDeviceInfo(BaseModel):
         xddr[str]: ONVIF service address.
         rtsp_urls[List[str]]: List of RTSP URLs for the camera.
     """
-    
+
     ip: str
     port: Optional[int] = 80
     username: Optional[str] = ""
