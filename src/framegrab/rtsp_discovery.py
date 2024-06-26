@@ -26,35 +26,33 @@ DEFAULT_CREDENTIALS = [
     ("root", "pass"),
 ]
 
-"""
-Enum for camera discovery modes. Options to try different default credentials stored in DEFAULT_CREDENTIALS. 
-Consists of four options:
-    disable: Disable guessing camera credentials.
-    light: Only try first two usernames and passwords ("admin:admin" and no username/password).
-    complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
-    complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
-"""
-
-
 class AutodiscoverModes(str, Enum):
+    """
+    Enum for camera discovery modes. Options to try different default credentials stored in DEFAULT_CREDENTIALS. 
+    Consists of four options:
+        disable: Disable guessing camera credentials.
+        light: Only try first two usernames and passwords ("admin:admin" and no username/password).
+        complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
+        complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
+    """
+    
     disable = "disable"
     light = "light"
     complete_fast = "complete_fast"
     complete_slow = "complete_slow"
 
 
-"""
-Model for storing ONVIF Device Information:
-    ip[str]: IP address of the RTSP Camera.
-    port[int]: Port number of the RTSP Camera. Defaults to 80 if not specified.
-    username[str]: Username.
-    password[str]: Password.
-    xddr[str]: ONVIF service address.
-    rtsp_urls[List[str]]: List of RTSP URLs for the camera.
-"""
-
-
 class ONVIFDeviceInfo(BaseModel):
+    """
+    Model for storing ONVIF Device Information:
+        ip[str]: IP address of the RTSP Camera.
+        port[int]: Port number of the RTSP Camera. Defaults to 80 if not specified.
+        username[str]: Username.
+        password[str]: Password.
+        xddr[str]: ONVIF service address.
+        rtsp_urls[List[str]]: List of RTSP URLs for the camera.
+    """
+    
     ip: str
     port: Optional[int] = 80
     username: Optional[str] = ""
