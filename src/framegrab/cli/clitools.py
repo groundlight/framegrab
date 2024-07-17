@@ -5,6 +5,8 @@ import cv2
 from imgcat import imgcat
 from PIL import Image
 
+from framegrab.rtsp_discovery import AutodiscoverModes
+
 
 def imgcat_preview(name: str, frame):
     """Displays the given frame in the terminal using imgcat.
@@ -44,6 +46,7 @@ _PREVIEW_COMMANDS = {
 }
 
 PREVIEW_COMMAND_CHOICES = list(_PREVIEW_COMMANDS.keys())
+PREVIEW_RTSP_COMMAND_CHOICES = [mode.value for mode in AutodiscoverModes]
 
 
 def preview_image(frame, title: str, output_type: str):
