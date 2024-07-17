@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 import yaml
 
-from .rtsp_discovery import AutodiscoverModes, discover_camera_ips
+from .rtsp_discovery import AutodiscoverModes, RTSPDiscovery
 from .unavailable_module import UnavailableModule
 
 logger = logging.getLogger(__name__)
@@ -302,7 +302,7 @@ class FrameGrabber(ABC):
             logger.info(f"Autodiscovering {input_type} cameras...")
             
             if input_type == InputTypes.RTSP:
-                onvif_devices = discover_camera_ips(try_default_logins=rtsp_discover_modes)
+                onvif_devices = RTSPDiscovery.discover_onvif_devices(auto_discover_modes=rtsp_discover_modes)
                 for device in onvif_devices:
                     for index, rtsp_url in enumerate(device.rtsp_urls):
                         grabber = FrameGrabber.create_grabber(
