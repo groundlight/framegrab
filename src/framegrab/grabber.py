@@ -13,8 +13,8 @@ import cv2
 import numpy as np
 import yaml
 
-from .rtsp_discovery import AutodiscoverModes, RTSPDiscovery
 from .exceptions import GrabError
+from .rtsp_discovery import AutodiscoverModes, RTSPDiscovery
 from .unavailable_module import UnavailableModule
 
 logger = logging.getLogger(__name__)

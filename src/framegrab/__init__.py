@@ -18,8 +18,7 @@ except ModuleNotFoundError:
 __all__ = [
     "FrameGrabber",
     "MotionDetector",
-    "GrabError"
-    "RTSPDiscovery",
+    "GrabError" "RTSPDiscovery",
     "ONVIFDeviceInfo",
     "AutodiscoverModes",
     "preview_image",
