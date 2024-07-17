@@ -5,8 +5,12 @@ import yaml
 from imgcat import imgcat
 
 from framegrab import FrameGrabber
+from framegrab.cli.clitools import (
+    PREVIEW_COMMAND_CHOICES,
+    PREVIEW_RTSP_COMMAND_CHOICES,
+    preview_image,
+)
 from framegrab.rtsp_discovery import AutodiscoverModes
-from framegrab.cli.clitools import PREVIEW_COMMAND_CHOICES, PREVIEW_RTSP_COMMAND_CHOICES, preview_image
 
 
 @click.command()
