@@ -5,21 +5,33 @@ import yaml
 from imgcat import imgcat
 
 from framegrab import FrameGrabber
-from framegrab.cli.clitools import PREVIEW_COMMAND_CHOICES, preview_image
+from framegrab.cli.clitools import (
+    PREVIEW_COMMAND_CHOICES,
+    PREVIEW_RTSP_COMMAND_CHOICES,
+    preview_image,
+)
+from framegrab.rtsp_discovery import AutodiscoverModes
 
 
 @click.command()
-@click.argument(
-    "preview",
+@click.option(
+    "--preview",
     type=click.Choice(PREVIEW_COMMAND_CHOICES, case_sensitive=False),
     default="imgcat",
+    show_default=True,
 )
-def autodiscover(preview: str):
+@click.option(
+    "--rtsp_discover_modes",
+    type=click.Choice(PREVIEW_RTSP_COMMAND_CHOICES, case_sensitive=False),
+    default="light",
+    show_default=True,
+)
+def autodiscover(preview: str, rtsp_discover_modes: str = "light"):
     """Automatically discover cameras connected to the current host (e.g. USB)."""
     # Print message to stderr
     click.echo("Discovering cameras...", err=True)
 
-    grabbers = FrameGrabber.autodiscover()
+    grabbers = FrameGrabber.autodiscover(rtsp_discover_modes=rtsp_discover_modes)
 
     yaml_config = {
         "image_sources": [],

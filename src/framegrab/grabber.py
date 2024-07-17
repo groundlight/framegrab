@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 import yaml
 
+from .rtsp_discovery import AutodiscoverModes, RTSPDiscovery
 from .exceptions import GrabError
 from .unavailable_module import UnavailableModule
 
@@ -272,24 +273,53 @@ class FrameGrabber(ABC):
         return grabber
 
     @staticmethod
-    def autodiscover(warmup_delay: float = 1.0) -> dict:
+    def autodiscover(
+        warmup_delay: float = 1.0, rtsp_discover_modes: AutodiscoverModes = AutodiscoverModes.light
+    ) -> dict:
         """Autodiscovers cameras and returns a dictionary of FrameGrabber objects
 
         warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
             cameras often need a moment to warm up before they can be used; grabbing frames too early
             might result in dark or blurry images.
             Defaults to 1.0. Only happens if there are any generic_usb cameras in the config list.
+
+        rtsp_discover_modes (AutodiscoverModes, optional): Options to try different default credentials
+            stored in DEFAULT_CREDENTIALS for RTSP cameras.
+            Consists of four options:
+                disable: Disable guessing camera credentials.
+                light: Only try first two usernames and passwords ("admin:admin" and no username/password).
+                complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
+                complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
+            Defaults to AutodiscoverModes.light.
         """
         autodiscoverable_input_types = (
             InputTypes.REALSENSE,
             InputTypes.GENERIC_USB,
             InputTypes.BASLER,
+            InputTypes.RTSP,
         )
 
         # Autodiscover the grabbers
         grabber_list = []
         for input_type in autodiscoverable_input_types:
             logger.info(f"Autodiscovering {input_type} cameras...")
+
+            if input_type == InputTypes.RTSP:
+                onvif_devices = RTSPDiscovery.discover_onvif_devices(auto_discover_modes=rtsp_discover_modes)
+                for device in onvif_devices:
+                    for index, rtsp_url in enumerate(device.rtsp_urls):
+                        grabber = FrameGrabber.create_grabber(
+                            {
+                                "input_type": input_type,
+                                "id": {"rtsp_url": rtsp_url},
+                                "name": f"RTSP Camera - {device.ip} - {index}",
+                            },
+                            autogenerate_name=False,
+                            warmup_delay=0,
+                        )
+                        grabber_list.append(grabber)
+                continue
+
             for _ in range(
                 100
             ):  # an arbitrarily high value so that we look for enough cameras, but this never becomes an infinite loop
