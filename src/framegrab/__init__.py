@@ -1,4 +1,5 @@
 from .cli.clitools import preview_image
+from .exceptions import GrabError
 from .grabber import FrameGrabber
 from .motion import MotionDetector
 from .rtsp_discovery import AutodiscoverModes, ONVIFDeviceInfo, RTSPDiscovery
@@ -17,7 +18,7 @@ except ModuleNotFoundError:
 __all__ = [
     "FrameGrabber",
     "MotionDetector",
-    "RTSPDiscovery",
+    "GrabError" "RTSPDiscovery",
     "ONVIFDeviceInfo",
     "AutodiscoverModes",
     "preview_image",
