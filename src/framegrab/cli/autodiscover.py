@@ -26,7 +26,7 @@ from framegrab.rtsp_discovery import AutodiscoverModes
     default="light",
     show_default=True,
 )
-def autodiscover(preview: str, rtsp_discover_modes: str):
+def autodiscover(preview: str, rtsp_discover_modes: str = "light"):
     """Automatically discover cameras connected to the current host (e.g. USB)."""
     # Print message to stderr
     click.echo("Discovering cameras...", err=True)
