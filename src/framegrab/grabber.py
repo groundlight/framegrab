@@ -14,6 +14,7 @@ import numpy as np
 import yaml
 
 from .unavailable_module import UnavailableModule
+from .exceptions import GrabError
 
 logger = logging.getLogger(__name__)
 
@@ -325,6 +326,11 @@ class FrameGrabber(ABC):
         Returns a frame.
         """
         frame = self._grab_implementation()
+
+        if frame is None:
+            name = self.config['name'] # all grabbers should have a name, either user-provided or generated
+            error_msg = f'Failed to grab frame from {name}'
+            raise GrabError(error_msg)
 
         # apply post processing operations
         frame = self._crop(frame)

@@ -1,6 +1,7 @@
 from .cli.clitools import preview_image
 from .grabber import FrameGrabber
 from .motion import MotionDetector
+from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverModes, ONVIFDeviceInfo, RTSPDiscovery
 
 try:
