@@ -90,11 +90,11 @@ class RTSPDiscovery:
 
         device_ips = []
         logger.debug("Starting WSDiscovery for ONVIF devices")
-        
+
         if auto_discover_mode == AutodiscoverMode.disable:
             logger.debug("ONVIF device discovery disabled")
             return device_ips
-        
+
         wsd = WSDiscovery()
         wsd.start()
         types = [QName("http://www.onvif.org/ver10/network/wsdl", "NetworkVideoTransmitter")]
