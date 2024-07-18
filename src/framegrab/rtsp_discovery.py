@@ -30,14 +30,16 @@ DEFAULT_CREDENTIALS = [
 class AutodiscoverMode(str, Enum):
     """
     Enum for camera discovery modes. Options to try different default credentials stored in DEFAULT_CREDENTIALS.
-    Consists of four options:
-        disable: Disable guessing camera credentials.
+    Consists of five options:
+        disable: No discovery.
+        ip_only: Only discover the IP address of the camera.
         light: Only try first two usernames and passwords ("admin:admin" and no username/password).
         complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
         complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
     """
 
     disable = "disable"
+    ip_only = "ip_only"
     light = "light"
     complete_fast = "complete_fast"
     complete_slow = "complete_slow"
@@ -67,19 +69,20 @@ class RTSPDiscovery:
 
     @staticmethod
     def discover_onvif_devices(
-        auto_discover_mode: AutodiscoverMode = AutodiscoverMode.disable,
+        auto_discover_mode: AutodiscoverMode = AutodiscoverMode.ip_only,
     ) -> List[ONVIFDeviceInfo]:
         """
         Uses WSDiscovery to find ONVIF supported devices.
 
         Parameters:
         auto_discover_mode (AutodiscoverMode, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
-        Consists of four options:
-            disable: Disable guessing camera credentials.
+        Consists of five options:
+            disable: No discovery.
+            ip_only: Only discover the IP address of the camera.
             light: Only try first two usernames and passwords ("admin:admin" and no username/password).
             complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
             complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
-            Defaults to disable.
+            Defaults to ip_only.
 
         Returns:
         List[ONVIFDeviceInfo]: A list of ONVIFDeviceInfos with IP address, port number, and ONVIF service address.
@@ -87,6 +90,11 @@ class RTSPDiscovery:
 
         device_ips = []
         logger.debug("Starting WSDiscovery for ONVIF devices")
+        
+        if auto_discover_mode == AutodiscoverMode.disable:
+            logger.debug("ONVIF device discovery disabled")
+            return device_ips
+        
         wsd = WSDiscovery()
         wsd.start()
         types = [QName("http://www.onvif.org/ver10/network/wsdl", "NetworkVideoTransmitter")]
@@ -100,7 +108,7 @@ class RTSPDiscovery:
             logger.debug(f"Found ONVIF service at {xaddr}")
             device_ip = ONVIFDeviceInfo(ip=ip, port=port, username="", password="", xaddr=xaddr, rtsp_urls=[])
 
-            if auto_discover_mode is not AutodiscoverMode.disable:
+            if auto_discover_mode is not AutodiscoverMode.ip_only:
                 RTSPDiscovery._try_logins(device=device_ip, auto_discover_mode=auto_discover_mode)
 
             device_ips.append(device_ip)
@@ -157,9 +165,10 @@ class RTSPDiscovery:
 
         Parameters:
         device (ONVIFDeviceInfo): Pydantic Model that stores information about camera RTSP address, port number, username, and password.
-        auto_discover_mode (AutodiscoverMode | None, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
-        Consists of four options:
-            disable: Disable guessing camera credentials.
+        auto_discover_mode (AutodiscoverMode): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
+        Consists of five options:
+            disable: No discovery.
+            ip_only: Only discover the IP address of the camera.
             light: Only try first two usernames and passwords ("admin:admin" and no username/password).
             complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
             complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
@@ -170,7 +179,7 @@ class RTSPDiscovery:
 
         credentials = DEFAULT_CREDENTIALS
 
-        if auto_discover_mode == AutodiscoverMode.disable:
+        if auto_discover_mode == AutodiscoverMode.ip_only or auto_discover_mode == AutodiscoverMode.disable:
             return False
 
         if auto_discover_mode == AutodiscoverMode.light:

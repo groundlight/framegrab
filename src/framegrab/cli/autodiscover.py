@@ -23,10 +23,10 @@ from framegrab.rtsp_discovery import AutodiscoverMode
 @click.option(
     "--rtsp_discover_mode",
     type=click.Choice(PREVIEW_RTSP_COMMAND_CHOICES, case_sensitive=False),
-    default="light",
+    default="disable",
     show_default=True,
 )
-def autodiscover(preview: str, rtsp_discover_mode: str = "light"):
+def autodiscover(preview: str, rtsp_discover_mode: str = "disable"):
     """Automatically discover cameras connected to the current host (e.g. USB)."""
     # Print message to stderr
     click.echo("Discovering cameras...", err=True)
