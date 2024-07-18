@@ -273,9 +273,7 @@ class FrameGrabber(ABC):
         return grabber
 
     @staticmethod
-    def autodiscover(
-        warmup_delay: float = 1.0, rtsp_discover_mode: AutodiscoverMode = AutodiscoverMode.off
-    ) -> dict:
+    def autodiscover(warmup_delay: float = 1.0, rtsp_discover_mode: AutodiscoverMode = AutodiscoverMode.off) -> dict:
         """Autodiscovers cameras and returns a dictionary of FrameGrabber objects
 
         warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
