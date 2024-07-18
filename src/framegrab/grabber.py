@@ -274,7 +274,7 @@ class FrameGrabber(ABC):
 
     @staticmethod
     def autodiscover(
-        warmup_delay: float = 1.0, rtsp_discover_mode: AutodiscoverMode = AutodiscoverMode.disable
+        warmup_delay: float = 1.0, rtsp_discover_mode: AutodiscoverMode = AutodiscoverMode.off
     ) -> dict:
         """Autodiscovers cameras and returns a dictionary of FrameGrabber objects
 
@@ -286,13 +286,13 @@ class FrameGrabber(ABC):
         rtsp_discover_mode (AutodiscoverMode, optional): Options to try different default credentials
             stored in DEFAULT_CREDENTIALS for RTSP cameras.
             Consists of five options:
-                disable: No discovery.
+                off: No discovery.
                 ip_only: Only discover the IP address of the camera.
                 light: Only try first two usernames and passwords ("admin:admin" and no username/password).
                 complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
                 complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
                 Defaults to ip_only.
-            Defaults to disable.
+            Defaults to off.
         """
         autodiscoverable_input_types = (
             InputTypes.REALSENSE,

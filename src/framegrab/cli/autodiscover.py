@@ -23,7 +23,7 @@ from framegrab.rtsp_discovery import AutodiscoverMode
 @click.option(
     "--rtsp_discover_mode",
     type=click.Choice(PREVIEW_RTSP_COMMAND_CHOICES, case_sensitive=False),
-    default="disable",
+    default="off",
     show_default=True,
 )
 def autodiscover(preview: str, rtsp_discover_mode: str = "disable"):

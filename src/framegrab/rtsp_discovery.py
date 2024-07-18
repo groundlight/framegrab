@@ -31,14 +31,14 @@ class AutodiscoverMode(str, Enum):
     """
     Enum for camera discovery modes. Options to try different default credentials stored in DEFAULT_CREDENTIALS.
     Consists of five options:
-        disable: No discovery.
+        off: No discovery.
         ip_only: Only discover the IP address of the camera.
         light: Only try first two usernames and passwords ("admin:admin" and no username/password).
         complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
         complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
     """
 
-    disable = "disable"
+    off = "off"
     ip_only = "ip_only"
     light = "light"
     complete_fast = "complete_fast"
@@ -77,7 +77,7 @@ class RTSPDiscovery:
         Parameters:
         auto_discover_mode (AutodiscoverMode, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
         Consists of five options:
-            disable: No discovery.
+            off: No discovery.
             ip_only: Only discover the IP address of the camera.
             light: Only try first two usernames and passwords ("admin:admin" and no username/password).
             complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
@@ -91,7 +91,7 @@ class RTSPDiscovery:
         device_ips = []
         logger.debug("Starting WSDiscovery for ONVIF devices")
 
-        if auto_discover_mode == AutodiscoverMode.disable:
+        if auto_discover_mode == AutodiscoverMode.off:
             logger.debug("ONVIF device discovery disabled")
             return device_ips
 
@@ -167,7 +167,7 @@ class RTSPDiscovery:
         device (ONVIFDeviceInfo): Pydantic Model that stores information about camera RTSP address, port number, username, and password.
         auto_discover_mode (AutodiscoverMode): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
         Consists of five options:
-            disable: No discovery.
+            off: No discovery.
             ip_only: Only discover the IP address of the camera.
             light: Only try first two usernames and passwords ("admin:admin" and no username/password).
             complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
@@ -179,7 +179,7 @@ class RTSPDiscovery:
 
         credentials = DEFAULT_CREDENTIALS
 
-        if auto_discover_mode == AutodiscoverMode.ip_only or auto_discover_mode == AutodiscoverMode.disable:
+        if auto_discover_mode == AutodiscoverMode.ip_only or auto_discover_mode == AutodiscoverMode.off:
             return False
 
         if auto_discover_mode == AutodiscoverMode.light:

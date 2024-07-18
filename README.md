@@ -198,7 +198,7 @@ devices = RTSPDiscovery.discover_onvif_devices()
 
 The `discover_onvif_devices()` will provide a list of devices that it finds in the `ONVIFDeviceInfo` format. An optional mode `auto_discover_mode` can be used to try different default credentials to fetch RTSP URLs:
 
-- disable: No discovery.
+- off: No discovery.
 - ip_only: Only discover the IP address of the camera.
 - light: Only try first two usernames and passwords ("admin:admin" and no username/password).
 - complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
