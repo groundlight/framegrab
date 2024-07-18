@@ -2,7 +2,7 @@ import unittest
 
 from wsdiscovery.service import Service
 from unittest.mock import patch
-from framegrab.rtsp_discovery import RTSPDiscovery, ONVIFDeviceInfo, AutodiscoverModes
+from framegrab.rtsp_discovery import RTSPDiscovery, ONVIFDeviceInfo, AutodiscoverMode
 
 
 class TestRTSPDiscovery(unittest.TestCase):
@@ -27,5 +27,5 @@ class TestRTSPDiscovery(unittest.TestCase):
     def test_try_logins(self):
         device = ONVIFDeviceInfo(ip="0")
 
-        assert False == RTSPDiscovery._try_logins(device=device, auto_discover_modes=AutodiscoverModes.complete_fast)
+        assert False == RTSPDiscovery._try_logins(device=device, auto_discover_mode=AutodiscoverMode.complete_fast)
         assert device.rtsp_urls == []

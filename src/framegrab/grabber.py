@@ -14,7 +14,7 @@ import numpy as np
 import yaml
 
 from .exceptions import GrabError
-from .rtsp_discovery import AutodiscoverModes, RTSPDiscovery
+from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
 from .unavailable_module import UnavailableModule
 
 logger = logging.getLogger(__name__)
@@ -273,7 +273,7 @@ class FrameGrabber(ABC):
         return grabber
 
     @staticmethod
-    def autodiscover(warmup_delay: float = 1.0, rtsp_discover_modes: Union[AutodiscoverModes, None] = None) -> dict:
+    def autodiscover(warmup_delay: float = 1.0, rtsp_discover_mode: Union[AutodiscoverMode, None] = None) -> dict:
         """Autodiscovers cameras and returns a dictionary of FrameGrabber objects
 
         warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
@@ -281,7 +281,7 @@ class FrameGrabber(ABC):
             might result in dark or blurry images.
             Defaults to 1.0. Only happens if there are any generic_usb cameras in the config list.
 
-        rtsp_discover_modes (AutodiscoverModes, optional): Options to try different default credentials
+        rtsp_discover_mode (AutodiscoverMode, optional): Options to try different default credentials
             stored in DEFAULT_CREDENTIALS for RTSP cameras.
             Consists of four options:
                 disable: Disable guessing camera credentials.
@@ -305,8 +305,8 @@ class FrameGrabber(ABC):
 
             # If the input type is RTSP and rtsp_discover_modes is provided, use RTSPDiscovery to find the cameras
             if input_type == InputTypes.RTSP:
-                if rtsp_discover_modes is not None:
-                    onvif_devices = RTSPDiscovery.discover_onvif_devices(auto_discover_modes=rtsp_discover_modes)
+                if rtsp_discover_mode is not None:
+                    onvif_devices = RTSPDiscovery.discover_onvif_devices(auto_discover_mode=rtsp_discover_mode)
                     for device in onvif_devices:
                         for index, rtsp_url in enumerate(device.rtsp_urls):
                             grabber = FrameGrabber.create_grabber(
