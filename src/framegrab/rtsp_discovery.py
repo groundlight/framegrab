@@ -12,7 +12,7 @@ from wsdiscovery.discovery import ThreadedWSDiscovery as WSDiscovery
 logger = logging.getLogger(__name__)
 
 
-# Default credentials to try when connecting to RTSP cameras, used in discover_camera_ips() when try_default_logins=True
+# Default credentials to try when connecting to RTSP cameras, used in discover_onvif_devices() and setting auto_discover_mode.
 DEFAULT_CREDENTIALS = [
     ("admin", "admin"),
     ("", ""),
