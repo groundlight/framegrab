@@ -289,7 +289,6 @@ class FrameGrabber(ABC):
                 light: Only try first two usernames and passwords ("admin:admin" and no username/password).
                 complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
                 complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
-                Defaults to ip_only.
             Defaults to off.
         """
         autodiscoverable_input_types = (
