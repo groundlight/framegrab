@@ -17,7 +17,7 @@ click = "^8.1.6"
 ascii-magic = "^2.3.0"
 wsdiscovery = "^2.0.0"
 onvif-zeep = "^0.2.12"
-pydantic = "2.5.3"
+pydantic = "^2.5.3"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
