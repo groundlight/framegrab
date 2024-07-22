@@ -10,7 +10,7 @@ from framegrab.cli.clitools import (
     PREVIEW_RTSP_COMMAND_CHOICES,
     preview_image,
 )
-from framegrab.rtsp_discovery import AutodiscoverModes
+from framegrab.rtsp_discovery import AutodiscoverMode
 
 
 @click.command()
@@ -21,17 +21,17 @@ from framegrab.rtsp_discovery import AutodiscoverModes
     show_default=True,
 )
 @click.option(
-    "--rtsp_discover_modes",
+    "--rtsp-discover-mode",
     type=click.Choice(PREVIEW_RTSP_COMMAND_CHOICES, case_sensitive=False),
-    default="light",
+    default="off",
     show_default=True,
 )
-def autodiscover(preview: str, rtsp_discover_modes: str = "light"):
+def autodiscover(preview: str, rtsp_discover_mode: str = "off"):
     """Automatically discover cameras connected to the current host (e.g. USB)."""
     # Print message to stderr
     click.echo("Discovering cameras...", err=True)
 
-    grabbers = FrameGrabber.autodiscover(rtsp_discover_modes=rtsp_discover_modes)
+    grabbers = FrameGrabber.autodiscover(rtsp_discover_mode=rtsp_discover_mode)
 
     yaml_config = {
         "image_sources": [],

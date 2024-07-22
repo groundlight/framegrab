@@ -14,7 +14,7 @@ import numpy as np
 import yaml
 
 from .exceptions import GrabError
-from .rtsp_discovery import AutodiscoverModes, RTSPDiscovery
+from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
 from .unavailable_module import UnavailableModule
 
 logger = logging.getLogger(__name__)
@@ -273,9 +273,7 @@ class FrameGrabber(ABC):
         return grabber
 
     @staticmethod
-    def autodiscover(
-        warmup_delay: float = 1.0, rtsp_discover_modes: AutodiscoverModes = AutodiscoverModes.light
-    ) -> dict:
+    def autodiscover(warmup_delay: float = 1.0, rtsp_discover_mode: AutodiscoverMode = AutodiscoverMode.off) -> dict:
         """Autodiscovers cameras and returns a dictionary of FrameGrabber objects
 
         warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
@@ -283,14 +281,15 @@ class FrameGrabber(ABC):
             might result in dark or blurry images.
             Defaults to 1.0. Only happens if there are any generic_usb cameras in the config list.
 
-        rtsp_discover_modes (AutodiscoverModes, optional): Options to try different default credentials
+        rtsp_discover_mode (AutodiscoverMode, optional): Options to try different default credentials
             stored in DEFAULT_CREDENTIALS for RTSP cameras.
-            Consists of four options:
-                disable: Disable guessing camera credentials.
+            Consists of five options:
+                off: No discovery.
+                ip_only: Only discover the IP address of the camera.
                 light: Only try first two usernames and passwords ("admin:admin" and no username/password).
                 complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
                 complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
-            Defaults to AutodiscoverModes.light.
+            Defaults to off.
         """
         autodiscoverable_input_types = (
             InputTypes.REALSENSE,
@@ -304,20 +303,22 @@ class FrameGrabber(ABC):
         for input_type in autodiscoverable_input_types:
             logger.info(f"Autodiscovering {input_type} cameras...")
 
+            # If the input type is RTSP and rtsp_discover_modes is provided, use RTSPDiscovery to find the cameras
             if input_type == InputTypes.RTSP:
-                onvif_devices = RTSPDiscovery.discover_onvif_devices(auto_discover_modes=rtsp_discover_modes)
-                for device in onvif_devices:
-                    for index, rtsp_url in enumerate(device.rtsp_urls):
-                        grabber = FrameGrabber.create_grabber(
-                            {
-                                "input_type": input_type,
-                                "id": {"rtsp_url": rtsp_url},
-                                "name": f"RTSP Camera - {device.ip} - {index}",
-                            },
-                            autogenerate_name=False,
-                            warmup_delay=0,
-                        )
-                        grabber_list.append(grabber)
+                if rtsp_discover_mode is not None:
+                    onvif_devices = RTSPDiscovery.discover_onvif_devices(auto_discover_mode=rtsp_discover_mode)
+                    for device in onvif_devices:
+                        for index, rtsp_url in enumerate(device.rtsp_urls):
+                            grabber = FrameGrabber.create_grabber(
+                                {
+                                    "input_type": input_type,
+                                    "id": {"rtsp_url": rtsp_url},
+                                    "name": f"RTSP Camera - {device.ip} - {index}",
+                                },
+                                autogenerate_name=False,
+                                warmup_delay=0,
+                            )
+                            grabber_list.append(grabber)
                 continue
 
             for _ in range(
