@@ -67,7 +67,13 @@ class ONVIFDeviceInfo(BaseModel):
 class RTSPDiscovery:
     """Simple RTSP camera discovery with ONVIF capabilities"""
     
-    wsd = WSDiscovery()
+    _wsd_instance = None
+    
+    @classmethod
+    def get_wsd(cls):
+        if cls._wsd_instance is None:
+            cls._wsd_instance = WSDiscovery()
+        return cls._wsd_instance
 
     @staticmethod
     def discover_onvif_devices(
@@ -98,7 +104,7 @@ class RTSPDiscovery:
             return device_ips
         
         try:
-            wsd = RTSPDiscovery.wsd
+            wsd = RTSPDiscovery.get_wsd()
             wsd.start()
             types = [QName("http://www.onvif.org/ver10/network/wsdl", "NetworkVideoTransmitter")]
             ret = wsd.searchServices(types=types)
