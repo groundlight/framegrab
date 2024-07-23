@@ -70,7 +70,14 @@ class RTSPDiscovery:
     _wsd_instance = None
     
     @classmethod
-    def get_wsd(cls):
+    def _get_wsd(cls):
+        """
+        Get the WSDiscovery instance, creating it if it doesn't exist.
+        
+        Returns:
+        WSDiscovery: The WSDiscovery instance.
+        """
+        
         if cls._wsd_instance is None:
             cls._wsd_instance = WSDiscovery()
         return cls._wsd_instance
@@ -104,7 +111,7 @@ class RTSPDiscovery:
             return device_ips
         
         try:
-            wsd = RTSPDiscovery.get_wsd()
+            wsd = RTSPDiscovery._get_wsd()
             wsd.start()
             types = [QName("http://www.onvif.org/ver10/network/wsdl", "NetworkVideoTransmitter")]
             ret = wsd.searchServices(types=types)
