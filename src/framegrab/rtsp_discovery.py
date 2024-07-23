@@ -96,23 +96,27 @@ class RTSPDiscovery:
             return device_ips
 
         wsd = WSDiscovery()
-        wsd.start()
-        types = [QName("http://www.onvif.org/ver10/network/wsdl", "NetworkVideoTransmitter")]
-        ret = wsd.searchServices(types=types)
-        for service in ret:
-            xaddr = service.getXAddrs()[0]
-            parsed_url = urllib.parse.urlparse(xaddr)
-            ip = parsed_url.hostname
-            port = parsed_url.port or 80  # Use the default port 80 if not specified
+        
+        try:
+            wsd.start()
+            types = [QName("http://www.onvif.org/ver10/network/wsdl", "NetworkVideoTransmitter")]
+            ret = wsd.searchServices(types=types)
+            for service in ret:
+                xaddr = service.getXAddrs()[0]
+                parsed_url = urllib.parse.urlparse(xaddr)
+                ip = parsed_url.hostname
+                port = parsed_url.port or 80  # Use the default port 80 if not specified
 
-            logger.debug(f"Found ONVIF service at {xaddr}")
-            device_ip = ONVIFDeviceInfo(ip=ip, port=port, username="", password="", xaddr=xaddr, rtsp_urls=[])
+                logger.debug(f"Found ONVIF service at {xaddr}")
+                device_ip = ONVIFDeviceInfo(ip=ip, port=port, username="", password="", xaddr=xaddr, rtsp_urls=[])
 
-            if auto_discover_mode is not AutodiscoverMode.ip_only:
-                RTSPDiscovery._try_logins(device=device_ip, auto_discover_mode=auto_discover_mode)
+                if auto_discover_mode is not AutodiscoverMode.ip_only:
+                    RTSPDiscovery._try_logins(device=device_ip, auto_discover_mode=auto_discover_mode)
 
-            device_ips.append(device_ip)
-        wsd.stop()
+                device_ips.append(device_ip)
+        finally:
+            wsd.stop()
+            
         return device_ips
 
     @staticmethod
