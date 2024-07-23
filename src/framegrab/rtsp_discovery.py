@@ -66,6 +66,8 @@ class ONVIFDeviceInfo(BaseModel):
 
 class RTSPDiscovery:
     """Simple RTSP camera discovery with ONVIF capabilities"""
+    
+    wsd = WSDiscovery()
 
     @staticmethod
     def discover_onvif_devices(
@@ -94,10 +96,9 @@ class RTSPDiscovery:
         if auto_discover_mode == AutodiscoverMode.off:
             logger.debug("ONVIF device discovery disabled")
             return device_ips
-
-        wsd = WSDiscovery()
         
         try:
+            wsd = RTSPDiscovery.wsd
             wsd.start()
             types = [QName("http://www.onvif.org/ver10/network/wsdl", "NetworkVideoTransmitter")]
             ret = wsd.searchServices(types=types)
