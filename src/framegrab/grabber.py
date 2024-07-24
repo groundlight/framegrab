@@ -30,6 +30,12 @@ try:
 except ImportError as e:
     rs = UnavailableModule(e)
 
+# Only used for ribbon cable cameras with Raspberry Pi, not required otherwise
+try:
+    from picamera2 import Picamera2
+except ImportError as e:
+    Picamera2 = UnavailableModule(e)
+
 OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
@@ -42,6 +48,7 @@ class InputTypes:
     RTSP = "rtsp"
     REALSENSE = "realsense"
     BASLER = "basler"
+    RPI_RIBBON = "rpi_ribbon"
     MOCK = "mock"
 
     def get_options() -> list:
@@ -248,6 +255,8 @@ class FrameGrabber(ABC):
             grabber = BaslerFrameGrabber(config)
         elif input_type == InputTypes.REALSENSE:
             grabber = RealSenseFrameGrabber(config)
+        elif input_type == InputTypes.RPI_RIBBON:
+            grabber = RPiRibbonFrameGrabber(config)
         elif input_type == InputTypes.MOCK:
             grabber = MockFrameGrabber(config)
         else:
@@ -296,6 +305,7 @@ class FrameGrabber(ABC):
             InputTypes.GENERIC_USB,
             InputTypes.BASLER,
             InputTypes.RTSP,
+            InputTypes.RPI_RIBBON,
         )
 
         # Autodiscover the grabbers
@@ -1033,6 +1043,49 @@ class RealSenseFrameGrabber(FrameGrabber):
         else:
             # If the user didn't provide a resolution, do nothing
             pass
+
+
+class RPiRibbonFrameGrabber(FrameGrabber):
+    "For ribbon cable cameras connected to Raspberry Pis"
+
+    # keep track of the cameras that are already in use so that we don't try to connect 
+    # to them twice
+    indices_in_use = set()
+
+    def __init__(self, config: dict):
+        self.config = config
+
+        # This will also detect USB cameras, but the documentation assures me that the
+        # CSI2 cameras (attached to the dedicated camera port) will always come before 
+        # USB cameras here
+        cameras = Picamera2.global_camera_info()
+        # cameras is a dict with "Model", "Location", "Rotation", and "Id"
+
+        if not cameras:
+            raise ValueError("No ribbon cable cameras were found. Is your camera connected?")
+        
+        # only connecting to first camera, so we exclude any USB cameras
+        # maybe instead I should cross out usb cameras detected in the other method
+        picam2 = Picamera2()
+        picam2.configure(picam2.create_still_configuration())
+        picam2.start()
+        logger.info(f"Connected to Raspberry Pi CSI2 camera with id {cameras[0]["Id"]}")
+
+        # save picam2 to be accessible elsewhere
+        self.camera = picam2
+
+    def _grab_implementation(self) -> np.ndarray:
+        frame = self.camera.capture_array()
+
+        # Convert to BGR for opencv
+        bgr_frame = cv2.cvtColor(np.asanyarray(frame), cv2.COLOR_BGR2RGB)
+
+        return bgr_frame
+    
+    def release(self) -> None:
+        self.camera.close()
+
+
 
 
 class MockFrameGrabber(FrameGrabber):
