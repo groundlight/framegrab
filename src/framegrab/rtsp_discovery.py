@@ -129,7 +129,7 @@ class RTSPDiscovery:
 
                 device_ips.append(device_ip)
         finally:
-            wsd.stop()
+            wsd.stop()  # This is supposed to clean up the threads but it doesn't seem to work, sock is still open after running this
 
         return device_ips
 
