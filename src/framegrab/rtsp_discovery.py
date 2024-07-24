@@ -66,18 +66,18 @@ class ONVIFDeviceInfo(BaseModel):
 
 class RTSPDiscovery:
     """Simple RTSP camera discovery with ONVIF capabilities"""
-    
+
     _wsd_instance = None
-    
+
     @classmethod
     def _get_wsd(cls):
         """
         Get the WSDiscovery instance, creating it if it doesn't exist.
-        
+
         Returns:
         WSDiscovery: The WSDiscovery instance.
         """
-        
+
         if cls._wsd_instance is None:
             cls._wsd_instance = WSDiscovery()
         return cls._wsd_instance
@@ -109,7 +109,7 @@ class RTSPDiscovery:
         if auto_discover_mode == AutodiscoverMode.off:
             logger.debug("ONVIF device discovery disabled")
             return device_ips
-        
+
         try:
             wsd = RTSPDiscovery._get_wsd()
             wsd.start()
@@ -130,7 +130,7 @@ class RTSPDiscovery:
                 device_ips.append(device_ip)
         finally:
             wsd.stop()
-            
+
         return device_ips
 
     @staticmethod
