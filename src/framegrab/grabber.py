@@ -1069,7 +1069,7 @@ class RPiRibbonFrameGrabber(FrameGrabber):
         picam2 = Picamera2()
         picam2.configure(picam2.create_still_configuration())
         picam2.start()
-        logger.info(f"Connected to Raspberry Pi CSI2 camera with id {cameras[0]["Id"]}")
+        logger.info(f"Connected to Raspberry Pi CSI2 camera with id {(cameras[0])['Id']}")
 
         # save picam2 to be accessible elsewhere
         self.camera = picam2
