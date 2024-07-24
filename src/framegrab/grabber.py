@@ -30,7 +30,7 @@ try:
 except ImportError as e:
     rs = UnavailableModule(e)
 
-# Only used for ribbon cable cameras with Raspberry Pi, not required otherwise
+# Only used for CSI2 cameras with Raspberry Pi, not required otherwise
 try:
     from picamera2 import Picamera2
 except ImportError as e:
@@ -48,7 +48,7 @@ class InputTypes:
     RTSP = "rtsp"
     REALSENSE = "realsense"
     BASLER = "basler"
-    RPI_RIBBON = "rpi_ribbon"
+    RPI_CSI2 = "rpi_csi2"
     MOCK = "mock"
 
     def get_options() -> list:
@@ -255,8 +255,8 @@ class FrameGrabber(ABC):
             grabber = BaslerFrameGrabber(config)
         elif input_type == InputTypes.REALSENSE:
             grabber = RealSenseFrameGrabber(config)
-        elif input_type == InputTypes.RPI_RIBBON:
-            grabber = RPiRibbonFrameGrabber(config)
+        elif input_type == InputTypes.RPI_CSI2:
+            grabber = RaspberryPiCSI2FrameGrabber(config)
         elif input_type == InputTypes.MOCK:
             grabber = MockFrameGrabber(config)
         else:
@@ -305,7 +305,7 @@ class FrameGrabber(ABC):
             InputTypes.GENERIC_USB,
             InputTypes.BASLER,
             InputTypes.RTSP,
-            InputTypes.RPI_RIBBON,
+            InputTypes.RPI_CSI2,
         )
 
         # Autodiscover the grabbers
@@ -1045,8 +1045,8 @@ class RealSenseFrameGrabber(FrameGrabber):
             pass
 
 
-class RPiRibbonFrameGrabber(FrameGrabber):
-    "For ribbon cable cameras connected to Raspberry Pis"
+class RaspberryPiCSI2FrameGrabber(FrameGrabber):
+    "For CSI2 cameras connected to Raspberry Pis through their dedicated camera port"
 
     # keep track of the cameras that are already in use so that we don't try to connect 
     # to them twice
@@ -1055,14 +1055,16 @@ class RPiRibbonFrameGrabber(FrameGrabber):
     def __init__(self, config: dict):
         self.config = config
 
-        # This will also detect USB cameras, but the documentation assures me that the
-        # CSI2 cameras (attached to the dedicated camera port) will always come before 
-        # USB cameras here
+        # This will also detect USB cameras, but according to the documentation CSI2
+        # cameras attached to the dedicated camera port will always come before USB 
+        # cameras in the resulting list of camera dictionaries
+        # https://datasheets.raspberrypi.com/camera/picamera2-manual.pdf#page=66.21
         cameras = Picamera2.global_camera_info()
+        print(cameras)
         # cameras is a dict with "Model", "Location", "Rotation", and "Id"
 
         if not cameras:
-            raise ValueError("No ribbon cable cameras were found. Is your camera connected?")
+            raise ValueError("No CSI2 cameras were found. Is your camera connected?")
         
         # only connecting to first camera, so we exclude any USB cameras
         # maybe instead I should cross out usb cameras detected in the other method
@@ -1081,6 +1083,12 @@ class RPiRibbonFrameGrabber(FrameGrabber):
         bgr_frame = cv2.cvtColor(np.asanyarray(frame), cv2.COLOR_BGR2RGB)
 
         return bgr_frame
+
+    def _apply_camera_specific_options(self, options: dict) -> None:
+        if options.get("resolution"):
+            camera_name = self.config.get("name", "Unnamed Raspberry Pi CSI2 camera")
+            raise ValueError(f"Resolution was set for {camera_name}, but resolution cannot be set for Raspberry Pi CSI2 cameras.")
+    
     
     def release(self) -> None:
         self.camera.close()
