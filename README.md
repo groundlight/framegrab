@@ -25,7 +25,7 @@ Certain camera types have additional dependencies that must be installed separat
 
 - To use a Basler USB or GigE camera, you must separately install the `pypylon` package.
 - To use Intel RealSense cameras, you must install `pyrealsense2`.
-- To use a ribbon cable camera with a Raspberry Pi, you must install `python3-picamera2`. See install instructions at the [picamera2 github repository](https://github.com/raspberrypi/picamera2).
+- To use a CSI2 camera connected with a ribbon cable to a Raspberry Pi, you must install `python3-picamera2`. See install instructions at the [picamera2 github repository](https://github.com/raspberrypi/picamera2).
 
 
 ## Usage
@@ -45,7 +45,7 @@ lists the sub-commands, including `autodiscover` and `preview`.
 Frame Grabbers are defined by a configuration dict which is usually stored as YAML.  The configuration combines the camera type, the camera ID, and the camera options.  The configuration is passed to the `FrameGrabber.create_grabber` method to create a grabber object.  The grabber object can then be used to grab frames from the camera.
 
 
-`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense`, `basler`, and `rpi_ribbon`.
+`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense`, `basler`, and `rpi_csi2`.
 
 Here's an example of a single USB camera configured with several options:
 ```python
@@ -94,7 +94,7 @@ When you are done with the camera, release the resource by running:
 grabber.release()
 ```
 
-You might have several cameras that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.create_grabbers`.
+You might have several cameras that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.create_grabbers`. Note that currently only a single Raspberry Pi CSI2 camera is supported, but these cameras can be used in conjunction with other types of cameras. 
 
 If you have multiple cameras of the same type plugged in, it's recommended that you include serial numbers in the configurations; this ensures that each configuration is paired with the correct camera. If you don't provide serial numbers in your configurations, configurations will be paired with cameras in a sequential manner.
 
@@ -147,14 +147,14 @@ for grabber in grabbers.values():
 ```
 ### Configurations
 The table below shows all available configurations and the cameras to which they apply.
-| Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense | Raspberry Pi Ribbon Camera |
+| Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense | Raspberry Pi CSI2 |
 |----------------------------|-----------------|------------|-----------|-----------|-----------|-----------|
 | name                       | On Robot Arm    | optional   | optional  | optional  | optional  | optional  |
 | input_type                 | generic_usb    | required   | required  | required  | required  | required  |
 | id.serial_number           | 23458234       | optional   | -         | optional  | optional  | optional  |
 | id.rtsp_url                | rtsp://…        | -          | required  | -         | -         | -         |
-| options.resolution.height  | 480            | optional   | -         | -         | optional  | optional  |
-| options.resolution.width   | 640            | optional   | -         | -         | optional  | optional  |
+| options.resolution.height  | 480            | optional   | -         | -         | optional  | -  |
+| options.resolution.width   | 640            | optional   | -         | -         | optional  | -  |
 | options.zoom.digital       | 1.3            | optional   | optional  | optional  | optional  | optional  |
 | options.crop.pixels.top    | 100            | optional   | optional  | optional  | optional  | optional  |
 | options.crop.pixels.bottom | 400            | optional   | optional  | optional  | optional  | optional  |
@@ -175,7 +175,7 @@ The table below shows all available configurations and the cameras to which they
 In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
 
 ### Autodiscovery
-Autodiscovery automatically connects to all cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense`, `basler`, `rpi_ribbon`, and ONVIF supported `rtsp` cameras. Default configurations will be loaded for each camera. Note that discovery of RTSP cameras will be disabled by default but can be enabled by setting `rtsp_discover_mode`. Refer to [RTSP Discovery](#rtsp-discovery) section for different options.
+Autodiscovery automatically connects to cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense`, `basler`, and ONVIF supported `rtsp` cameras. Note that `rpi_csi2` cameras are not yet supported by autodiscover. Default configurations will be loaded for each camera. Note that discovery of RTSP cameras will be disabled by default but can be enabled by setting `rtsp_discover_mode`. Refer to [RTSP Discovery](#rtsp-discovery) section for different options.
 
 Autodiscovery is great for simple applications where you don't need to set any special options on your cameras. It's also a convenient method for finding the serial numbers of your cameras (if the serial number isn't printed on the camera).
 ```python

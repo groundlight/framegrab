@@ -1048,10 +1048,6 @@ class RealSenseFrameGrabber(FrameGrabber):
 class RaspberryPiCSI2FrameGrabber(FrameGrabber):
     "For CSI2 cameras connected to Raspberry Pis through their dedicated camera port"
 
-    # keep track of the cameras that are already in use so that we don't try to connect 
-    # to them twice
-    indices_in_use = set()
-
     def __init__(self, config: dict):
         self.config = config
 
@@ -1060,40 +1056,35 @@ class RaspberryPiCSI2FrameGrabber(FrameGrabber):
         # cameras in the resulting list of camera dictionaries
         # https://datasheets.raspberrypi.com/camera/picamera2-manual.pdf#page=66.21
         cameras = Picamera2.global_camera_info()
-        print(cameras)
-        # cameras is a dict with "Model", "Location", "Rotation", and "Id"
 
         if not cameras:
             raise ValueError("No CSI2 cameras were found. Is your camera connected?")
         
-        # only connecting to first camera, so we exclude any USB cameras
-        # maybe instead I should cross out usb cameras detected in the other method
+        # Since global_camera_info() also finds USB cameras, we will only use the first
+        # entry. USB cameras must be found through their specific FrameGrabber. Note
+        # that only a single CSI2 camera is supported at this time.
         picam2 = Picamera2()
         picam2.configure(picam2.create_still_configuration())
         picam2.start()
         logger.info(f"Connected to Raspberry Pi CSI2 camera with id {(cameras[0])['Id']}")
 
-        # save picam2 to be accessible elsewhere
         self.camera = picam2
 
     def _grab_implementation(self) -> np.ndarray:
         frame = self.camera.capture_array()
 
         # Convert to BGR for opencv
-        bgr_frame = cv2.cvtColor(np.asanyarray(frame), cv2.COLOR_BGR2RGB)
+        frame = cv2.cvtColor(np.asanyarray(frame), cv2.COLOR_BGR2RGB)
 
-        return bgr_frame
+        return frame
 
     def _apply_camera_specific_options(self, options: dict) -> None:
         if options.get("resolution"):
             camera_name = self.config.get("name", "Unnamed Raspberry Pi CSI2 camera")
             raise ValueError(f"Resolution was set for {camera_name}, but resolution cannot be set for Raspberry Pi CSI2 cameras.")
     
-    
     def release(self) -> None:
         self.camera.close()
-
-
 
 
 class MockFrameGrabber(FrameGrabber):
