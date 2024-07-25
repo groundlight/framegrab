@@ -1081,7 +1081,7 @@ class RaspberryPiCSI2FrameGrabber(FrameGrabber):
     def _apply_camera_specific_options(self, options: dict) -> None:
         if options.get("resolution"):
             raise ValueError("FrameGrab does not support setting resolution on Raspberry Pi CSI2 cameras.")
-    
+
     def release(self) -> None:
         self.camera.close()
 
