@@ -25,7 +25,7 @@ Certain camera types have additional dependencies that must be installed separat
 
 - To use a Basler USB or GigE camera, you must separately install the `pypylon` package.
 - To use Intel RealSense cameras, you must install `pyrealsense2`.
-- To use a CSI2 camera connected with a ribbon cable to a Raspberry Pi, you must install `python3-picamera2`. See install instructions at the [picamera2 github repository](https://github.com/raspberrypi/picamera2).
+- To use a Raspberry Pi "CSI2" camera (connected with a ribbon cable), you must install the `picamera2` library. See install instructions at the [picamera2 github repository](https://github.com/raspberrypi/picamera2).
 
 
 ## Usage
@@ -151,7 +151,7 @@ The table below shows all available configurations and the cameras to which they
 |----------------------------|-----------------|------------|-----------|-----------|-----------|-----------|
 | name                       | On Robot Arm    | optional   | optional  | optional  | optional  | optional  |
 | input_type                 | generic_usb    | required   | required  | required  | required  | required  |
-| id.serial_number           | 23458234       | optional   | -         | optional  | optional  | optional  |
+| id.serial_number           | 23458234       | optional   | -         | optional  | optional  | -  |
 | id.rtsp_url                | rtsp://…        | -          | required  | -         | -         | -         |
 | options.resolution.height  | 480            | optional   | -         | -         | optional  | -  |
 | options.resolution.width   | 640            | optional   | -         | -         | optional  | -  |
