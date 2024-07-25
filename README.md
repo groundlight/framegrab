@@ -99,26 +99,26 @@ If you have multiple cameras of the same type plugged in, it's recommended that 
 
 Below is a sample yaml file containing configurations for three different cameras.
 ```yaml
-GL_CAMERAS: |
+image_sources: 
   - name: on robot arm
     input_type: realsense
-    options: 
+    options:
       depth:
         side_by_side: 1
       crop:
         relative:
-          right: .8
+          right: 0.8
   - name: conference room
-      input_type: rtsp
-      id: 
-        rtsp_url: rtsp://admin:password@192.168.1.20/cam/realmonitor?channel=1&subtype=0
-      options:
-        crop:
-          pixels:
-            top: 350
-            bottom: 1100
-            left: 1100
-            right: 2000
+    input_type: rtsp
+    id:
+      rtsp_url: rtsp://admin:password@192.168.1.20/cam/realmonitor?channel=1&subtype=0
+    options:
+      crop:
+        pixels:
+          top: 350
+          bottom: 1100
+          left: 1100
+          right: 2000
   - name: workshop
     input_type: generic_usb
     id:
@@ -127,16 +127,9 @@ GL_CAMERAS: |
 You can load the configurations from the yaml file and use the cameras in the following manner.
 ```python
 from framegrab import FrameGrabber
-import yaml
 
-# load the configurations from yaml
 config_path = 'camera_config.yaml'
-with open(config_path, 'r') as f:
-    data = yaml.safe_load(f)
-    configs = yaml.safe_load(data['GL_CAMERAS'])
-
-# create the grabbers
-grabbers = FrameGrabber.create_grabbers(configs)
+grabbers = FrameGrabber.from_yaml(config_path)
 
 for grabber in grabbers.values():
     print(grabber.config)
