@@ -30,6 +30,12 @@ try:
 except ImportError as e:
     rs = UnavailableModule(e)
 
+# Only used for CSI2 cameras with Raspberry Pi, not required otherwise
+try:
+    from picamera2 import Picamera2
+except ImportError as e:
+    Picamera2 = UnavailableModule(e)
+
 OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
@@ -42,6 +48,7 @@ class InputTypes:
     RTSP = "rtsp"
     REALSENSE = "realsense"
     BASLER = "basler"
+    RPI_CSI2 = "rpi_csi2"
     MOCK = "mock"
 
     def get_options() -> list:
@@ -248,6 +255,8 @@ class FrameGrabber(ABC):
             grabber = BaslerFrameGrabber(config)
         elif input_type == InputTypes.REALSENSE:
             grabber = RealSenseFrameGrabber(config)
+        elif input_type == InputTypes.RPI_CSI2:
+            grabber = RaspberryPiCSI2FrameGrabber(config)
         elif input_type == InputTypes.MOCK:
             grabber = MockFrameGrabber(config)
         else:
@@ -296,6 +305,7 @@ class FrameGrabber(ABC):
             InputTypes.GENERIC_USB,
             InputTypes.BASLER,
             InputTypes.RTSP,
+            InputTypes.RPI_CSI2,
         )
 
         # Autodiscover the grabbers
@@ -1033,6 +1043,47 @@ class RealSenseFrameGrabber(FrameGrabber):
         else:
             # If the user didn't provide a resolution, do nothing
             pass
+
+
+class RaspberryPiCSI2FrameGrabber(FrameGrabber):
+    "For CSI2 cameras connected to Raspberry Pis through their dedicated camera port"
+
+    def __init__(self, config: dict):
+        self.config = config
+
+        # This will also detect USB cameras, but according to the documentation CSI2
+        # cameras attached to the dedicated camera port will always come before USB
+        # cameras in the resulting list of camera dictionaries
+        # https://datasheets.raspberrypi.com/camera/picamera2-manual.pdf#page=66.21
+        cameras = Picamera2.global_camera_info()
+
+        if not cameras:
+            raise ValueError("No CSI2 cameras were found. Is your camera connected?")
+
+        # Since global_camera_info() also finds USB cameras, we will only use the first
+        # entry. USB cameras must be found through their specific FrameGrabber. Note
+        # that only a single CSI2 camera is supported at this time.
+        picam2 = Picamera2()
+        picam2.configure(picam2.create_still_configuration())
+        picam2.start()
+        logger.info(f"Connected to Raspberry Pi CSI2 camera with id {(cameras[0])['Id']}")
+
+        self.camera = picam2
+
+    def _grab_implementation(self) -> np.ndarray:
+        frame = self.camera.capture_array()
+
+        # Convert to BGR for opencv
+        frame = cv2.cvtColor(np.asanyarray(frame), cv2.COLOR_BGR2RGB)
+
+        return frame
+
+    def _apply_camera_specific_options(self, options: dict) -> None:
+        if options.get("resolution"):
+            raise ValueError("FrameGrab does not support setting resolution on Raspberry Pi CSI2 cameras.")
+
+    def release(self) -> None:
+        self.camera.close()
 
 
 class MockFrameGrabber(FrameGrabber):
