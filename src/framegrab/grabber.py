@@ -1052,14 +1052,14 @@ class RaspberryPiCSI2FrameGrabber(FrameGrabber):
         self.config = config
 
         # This will also detect USB cameras, but according to the documentation CSI2
-        # cameras attached to the dedicated camera port will always come before USB 
+        # cameras attached to the dedicated camera port will always come before USB
         # cameras in the resulting list of camera dictionaries
         # https://datasheets.raspberrypi.com/camera/picamera2-manual.pdf#page=66.21
         cameras = Picamera2.global_camera_info()
 
         if not cameras:
             raise ValueError("No CSI2 cameras were found. Is your camera connected?")
-        
+
         # Since global_camera_info() also finds USB cameras, we will only use the first
         # entry. USB cameras must be found through their specific FrameGrabber. Note
         # that only a single CSI2 camera is supported at this time.
