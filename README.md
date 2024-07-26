@@ -50,14 +50,12 @@ Frame Grabbers are defined by a configuration dict which is usually stored as YA
 Here's an example of a single USB camera configured with several options:
 ```python
 config = """
-name: Front Door Camera
-input_type: generic_usb
-id:
-  serial_number: 23432570
+name: Raspberry Pi Ribbon Cable Camera
+input_type: rpi_csi2
 options:
     resolution:
-        height: 1080
-        width: 1920
+        height: 720
+        width: 1280
     zoom:
         digital: 1.5
 """
@@ -101,15 +99,16 @@ If you have multiple cameras of the same type plugged in, it's recommended that 
 Below is a sample yaml file containing configurations for three different cameras.
 ```yaml
 image_sources: 
-  - name: on robot arm
-    input_type: realsense
+  - name: On Robot Arm
+    input_type: basler
+    id:
+      serial_number: A24P1V4T
     options:
-      depth:
-        side_by_side: 1
       crop:
         relative:
+          top: 0.3
           right: 0.8
-  - name: conference room
+  - name: Chip Bin
     input_type: rtsp
     id:
       rtsp_url: rtsp://admin:password@192.168.1.20/cam/realmonitor?channel=1&subtype=0
@@ -120,7 +119,7 @@ image_sources:
           bottom: 1100
           left: 1100
           right: 2000
-  - name: workshop
+  - name: Over CNC Machine
     input_type: generic_usb
     id:
       serial_number: B77D3A8F
@@ -157,7 +156,7 @@ The table below shows all available configurations and the cameras to which they
 | options.crop.relative.bottom | 0.9          | optional   | optional  | optional  | optional  | optional  |
 | options.crop.relative.left | 0.1            | optional   | optional  | optional  | optional  | optional  |
 | options.crop.relative.right | 0.9            | optional   | optional  | optional  | optional  | optional  |
-| options.depth.side_by_side | 1              | -          | -         | -         | optional  | optional  |
+| options.depth.side_by_side | 1              | -          | -         | -         | optional  | -  |
 | options.num_90_deg_rotations | 2              | optional          | optional         | optional         | optional  | optional  |
 | options.keep_connection_open | True              | -          | optional         | -         | -  | - |
 | options.max_fps | 30              | -          | optional         | -         | -  | - |
