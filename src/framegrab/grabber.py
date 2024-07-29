@@ -481,9 +481,9 @@ class FrameGrabber(ABC):
         resolution = self.config.get("options", {}).get("resolution")
         if resolution is None:
             return
-        else:
-            new_height = resolution.get("height")
-            new_width = resolution.get("width")
+
+        new_height = resolution.get("height")
+        new_width = resolution.get("width")
 
         if new_width:
             current_width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
