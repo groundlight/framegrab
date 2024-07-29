@@ -472,11 +472,11 @@ class FrameGrabber(ABC):
     def _set_cv2_resolution(self) -> None:
         """Set the resolution of the cv2.VideoCapture object based on the FrameGrabber's config.
         If the FrameGrabber lacks both of these properties (height and width), this method
-        will do nothing. 
-        
-        Similarly, if the specified resolution equals the existing resolution, this function will 
-        do nothing. This is because setting the resolution of a cv2.VideoCapture object is non-trivial and 
-        can take multiple seconds, so we should only do it when something has changed. 
+        will do nothing.
+
+        Similarly, if the specified resolution equals the existing resolution, this function will
+        do nothing. This is because setting the resolution of a cv2.VideoCapture object is non-trivial and
+        can take multiple seconds, so we should only do it when something has changed.
         """
         resolution = self.config.get("options", {}).get("resolution")
         if resolution is None:
