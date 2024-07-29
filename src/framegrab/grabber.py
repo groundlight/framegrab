@@ -473,15 +473,26 @@ class FrameGrabber(ABC):
         """Set the resolution of the cv2.VideoCapture object based on the FrameGrabber's config.
         If the FrameGrabber lacks both of these properties (height and width), this method
         will do nothing.
-        """
-        resolution = self.config.get("options", {}).get("resolution", {})
-        height = resolution.get("height")
-        width = resolution.get("width")
 
-        if width:
-            self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-        if height:
-            self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        Similarly, if the specified resolution equals the existing resolution, this function will
+        do nothing. This is because setting the resolution of a cv2.VideoCapture object is non-trivial and
+        can take multiple seconds, so we should only do it when something has changed.
+        """
+        resolution = self.config.get("options", {}).get("resolution")
+        if resolution is None:
+            return
+
+        new_height = resolution.get("height")
+        new_width = resolution.get("width")
+
+        if new_width:
+            current_width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+            if new_width != current_width:
+                self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, new_width)
+        if new_height:
+            current_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            if new_height != current_height:
+                self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
 
     def apply_options(self, options: dict) -> None:
         """Update generic options such as crop and zoom as well as
