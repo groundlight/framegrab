@@ -472,28 +472,27 @@ class FrameGrabber(ABC):
     def _set_cv2_resolution(self) -> None:
         """Set the resolution of the cv2.VideoCapture object based on the FrameGrabber's config.
         If the FrameGrabber lacks both of these properties (height and width), this method
-        will do nothing.
+        will do nothing. 
+        
+        Similarly, if the specified resolution equals the existing resolution, this function will 
+        do nothing. This is because setting the resolution of a cv2.VideoCapture object is non-trivial and 
+        can take multiple seconds, so we should only do it when something has changed. 
         """
-
-        current_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        current_width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-
-        logger.info(f'Found current resolution of {self.config["name"]} as {current_height} x {current_width}')
-
-        resolution = self.config.get("options", {}).get("resolution", {})
-        new_height = resolution.get("height")
-        new_width = resolution.get("width")
-
-        # Updating the resolution on a cv2.VideoCapture object is a non-trial operation, can take ~0.8 seconds
-        # so we should avoid doing this if the resolution isn't actually changing
-        if current_height == new_height and current_width == new_width:
-            logger.info('The new resolution is the same as the current resolution. Passing.')
-            return 
+        resolution = self.config.get("options", {}).get("resolution")
+        if resolution is None:
+            return
+        else:
+            new_height = resolution.get("height")
+            new_width = resolution.get("width")
 
         if new_width:
-            self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, new_width)
+            current_width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+            if new_width != current_width:
+                self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, new_width)
         if new_height:
-            self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
+            current_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            if new_height != current_height:
+                self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
 
     def apply_options(self, options: dict) -> None:
         """Update generic options such as crop and zoom as well as
