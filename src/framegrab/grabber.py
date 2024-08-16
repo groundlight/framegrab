@@ -485,29 +485,29 @@ class FrameGrabber(ABC):
         new_height = resolution.get("height")
         new_width = resolution.get("width")
 
-        print('calling _set_cv2_resolution' + '-' * 50)
+        logger.info('calling _set_cv2_resolution' + '-' * 50)
         if new_width:
-            print('Got a new width')
+            logger.info('Got a new width')
             t1 = time.time()
             current_width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
             t2 = time.time()
-            print(f'Took {t2 - t1} seconds to get width')
+            logger.info(f'Took {t2 - t1} seconds to get width')
             if new_width != current_width:
                 t1 = time.time()
                 self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, new_width)
                 t2 = time.time()
-                print(f'Took {t2 - t1} seconds to set width')
+                logger.info(f'Took {t2 - t1} seconds to set width')
         if new_height:
-            print('Got a new height')
+            logger.info('Got a new height')
             t1 = time.time()
             current_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
             t2 = time.time()
-            print(f'Took {t2 - t1} seconds to get height')
+            logger.info(f'Took {t2 - t1} seconds to get height')
             if new_height != current_height:
                 t1 = time.time()
                 self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
                 t2 = time.time()
-                print(f'Took {t2 - t1} seconds to set height')
+                logger.info(f'Took {t2 - t1} seconds to set height')
 
     def apply_options(self, options: dict) -> None:
         """Update generic options such as crop and zoom as well as
