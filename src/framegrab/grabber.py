@@ -305,7 +305,6 @@ class FrameGrabber(ABC):
             InputTypes.GENERIC_USB,
             InputTypes.BASLER,
             InputTypes.RTSP,
-            InputTypes.RPI_CSI2,
         )
 
         # Autodiscover the grabbers
