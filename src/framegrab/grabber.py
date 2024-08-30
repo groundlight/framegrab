@@ -446,10 +446,10 @@ class FrameGrabber(ABC):
 
     def _digital_pan_and_zoom(self, frame: np.ndarray) -> np.ndarray:
         digital_zoom = self.config.get("options", {}).get("zoom", {}).get("digital")
-        
-        digital_pan_x = self.config.get("options", {}).get("pan", {}).get("digital", {}).get('x', 0)
-        digital_pan_y = self.config.get("options", {}).get("pan", {}).get("digital", {}).get('y', 0)
-        
+
+        digital_pan_x = self.config.get("options", {}).get("pan", {}).get("digital", {}).get("x", 0)
+        digital_pan_y = self.config.get("options", {}).get("pan", {}).get("digital", {}).get("y", 0)
+
         self.can_pan_left = False
         self.can_pan_right = False
         self.can_pan_up = False
@@ -462,34 +462,34 @@ class FrameGrabber(ABC):
             # Calculate the visible portion of the image based on the zoom level
             zoomed_height = frame.shape[0] / digital_zoom
             zoomed_width = frame.shape[1] / digital_zoom
-            
+
             # Calculate the center coordinates considering the pan
             center_x = frame.shape[1] / 2 + digital_pan_x
             center_y = frame.shape[0] / 2 + digital_pan_y
-            
+
             # Determine the boundaries for panning
             self.can_pan_left = center_x > zoomed_width / 2
             self.can_pan_right = center_x < frame.shape[1] - zoomed_width / 2
             self.can_pan_up = center_y > zoomed_height / 2
             self.can_pan_down = center_y < frame.shape[0] - zoomed_height / 2
-            
+
             # Ensure the pan doesn't go out of bounds
             center_x = max(zoomed_width / 2, min(center_x, frame.shape[1] - zoomed_width / 2))
             center_y = max(zoomed_height / 2, min(center_y, frame.shape[0] - zoomed_height / 2))
-            
+
             # Calculate the crop box
             left = center_x - zoomed_width / 2
             right = center_x + zoomed_width / 2
             top = center_y - zoomed_height / 2
             bottom = center_y + zoomed_height / 2
-            
+
             # Crop and return the zoomed and panned frame
-            frame = frame[int(top):int(bottom), int(left):int(right)]
+            frame = frame[int(top) : int(bottom), int(left) : int(right)]
 
         return frame
-    
+
     def get_pan_options(self) -> tuple:
-        if hasattr(self, 'can_pan_left'):
+        if hasattr(self, "can_pan_left"):
             return (self.can_pan_left, self.can_pan_right, self.can_pan_up, self.can_pan_down)
         else:
             return (True, True, True, True)
