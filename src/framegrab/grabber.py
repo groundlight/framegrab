@@ -374,9 +374,9 @@ class FrameGrabber(ABC):
             raise GrabError(error_msg)
 
         # apply post processing operations
+        frame = self._rotate(frame)
         frame = self._crop(frame)
         frame = self._digital_zoom(frame)
-        frame = self._rotate(frame)
         return frame
 
     def _autogenerate_name(self) -> None:
