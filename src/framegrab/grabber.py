@@ -366,7 +366,10 @@ class FrameGrabber(ABC):
         """Read a frame from the camera and perform post processing operations such as zoom, crop and rotation if necessary.
         Returns a frame.
         """
+        t1 = time.time()
         frame = self._grab_implementation()
+        t2 = time.time()
+        logger.info(f'_grab_implementation completed in {t2 - t1}')
 
         if frame is None:
             name = self.config["name"]  # all grabbers should have a name, either user-provided or generated
