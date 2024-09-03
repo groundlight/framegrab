@@ -369,7 +369,7 @@ class FrameGrabber(ABC):
         t1 = time.time()
         frame = self._grab_implementation()
         t2 = time.time()
-        logger.info(f'_grab_implementation completed in {t2 - t1}')
+        logger.info(f'Debug | _grab_implementation {t2 - t1}')
 
         if frame is None:
             name = self.config["name"]  # all grabbers should have a name, either user-provided or generated
@@ -377,9 +377,13 @@ class FrameGrabber(ABC):
             raise GrabError(error_msg)
 
         # apply post processing operations
+        
+        t1 = time.time()
         frame = self._rotate(frame)
         frame = self._crop(frame)
         frame = self._digital_zoom(frame)
+        t2 = time.time()
+        logger.info(f'Debug | post processing: {t2 - t1}')
         return frame
 
     def _autogenerate_name(self) -> None:
@@ -671,14 +675,25 @@ class GenericUSBFrameGrabber(FrameGrabber):
         return np.array_equal(b, g) and np.array_equal(g, r)
 
     def _grab_implementation(self) -> np.ndarray:
+        t1 = time.time()
         if not self.capture.isOpened():
+            t2 = time.time()
+            logger.info(f'Debug  | self.capture.isOpened(): {t2 - t1}')
+            
+            t1 = time.time()
             self.capture.open(self.idx)
+            t2 = time.time()
+            logger.info(f'Debug | open capture: {t2 - t1}')
+        
 
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
         # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
         # Assuming buffer size of 1, we need to read twice to get the current frame.
+        t1 = time.time()
         for _ in range(2):
             _, frame = self.capture.read()
+        t2 = time.time()
+        logger.info(f'Debug | reading twice: {t2 - t1}')
 
         return frame
 
