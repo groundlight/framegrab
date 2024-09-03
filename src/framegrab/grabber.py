@@ -691,7 +691,10 @@ class GenericUSBFrameGrabber(FrameGrabber):
         # Assuming buffer size of 1, we need to read twice to get the current frame.
         t1 = time.time()
         for _ in range(2):
+            t1_inner = time.time()
             _, frame = self.capture.read()
+            t2_inner = time.time()
+            logger.info(f'Debug | reading once: {t2_inner - t1_inner}')
         t2 = time.time()
         logger.info(f'Debug | reading twice: {t2 - t1}')
 
