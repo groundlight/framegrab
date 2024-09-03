@@ -690,7 +690,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
         # Assuming buffer size of 1, we need to read twice to get the current frame.
         t1 = time.time()
-        for _ in range(1):
+        for _ in range(2):
             t1_inner = time.time()
             _, frame = self.capture.read()
             t2_inner = time.time()
@@ -708,8 +708,13 @@ class GenericUSBFrameGrabber(FrameGrabber):
         self._set_cv2_resolution()
 
         # set the buffer size to 1 to always get the most recent frame
-        self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
+        result = self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 0)
+        if result:
+            logger.info(f'Succeeded setting buffer size to 0')
+        else:
+            logger.info(f'Failed setting buffer size to 0')
+            result = self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        
     @staticmethod
     def _run_system_command(command: str) -> str:
         """Runs a Linux system command and returns the stdout as a string."""
