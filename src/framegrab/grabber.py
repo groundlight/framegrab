@@ -476,9 +476,9 @@ class FrameGrabber(ABC):
 
         return frame
 
-    def _set_cv2_resolution(self) -> None:
-        """Set the resolution of the cv2.VideoCapture object based on the FrameGrabber's config.
-        If the FrameGrabber lacks both of these properties (height and width), this method
+    def _set_cv2_resolution(self, options: dict) -> None:
+        """Set the resolution of the cv2.VideoCapture object based on the provided options.
+        If the options lack both of these properties (height and width), this method
         will do nothing.
 
         Similarly, if the specified resolution equals the existing resolution, this function will
@@ -486,21 +486,29 @@ class FrameGrabber(ABC):
         can take multiple seconds, so we should only do it when something has changed.
         """
         t1 = time.time()
-        resolution = self.config.get("options", {}).get("resolution")
+        resolution = options.get("resolution")
         if resolution is None:
             return
 
-        new_height = resolution.get("height")
-        new_width = resolution.get("width")
+        target_height = resolution.get("height")
+        target_width = resolution.get("width")
 
-        if new_width:
+        if target_width:
             current_width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-            if new_width != current_width:
-                self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, new_width)
-        if new_height:
+            if target_width != current_width:
+                self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, target_width)
+                
+            actual_width = self.capture.get(cv2.CAP_PROP_FRAME_WIDTH)
+            if target_width != actual_width:
+                logger.error(f"Failed to set width for {self.config['name']}. Actual width is {actual_width}.")
+        if target_height:
             current_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            if new_height != current_height:
-                self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
+            if target_height != current_height:
+                self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, target_height)
+                
+            actual_height = self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            if target_height != actual_height:
+                logger.error(f"Failed to set height for {self.config['name']}. Actual height is {actual_height}.")
                 
         t2 = time.time()
         logger.info(f'debug | _set_cv2_resolution: {t2 - t1}')
@@ -709,7 +717,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         self.capture.release()
 
     def _apply_camera_specific_options(self, options: dict) -> None:
-        self._set_cv2_resolution()
+        self._set_cv2_resolution(options)
 
         # set the buffer size to 1 to always get the most recent frame
         self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
