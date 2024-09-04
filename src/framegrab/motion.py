@@ -16,8 +16,7 @@ class MotionDetector:
         :param pct_threshold: Percent of pixels needed to change before motion is detected
         """
         self.unused = True
-        self.threshold = 50
-        self.pixel_val_threshold = 50
+        self.pixel_val_threshold = val_threshold
         self.pixel_pct_threshold = pct_threshold
         self.log_pixel_percent = True
 
@@ -48,8 +47,8 @@ class MotionDetector:
         if new_img16.shape != self.base_img.shape:
             return True
 
-        diff1 = np.abs(new_img16 - self.base_img) > self.threshold
-        diff2 = np.abs(new_img16 - self.base2) > self.threshold
+        diff1 = np.abs(new_img16 - self.base_img) > self.pixel_val_threshold
+        diff2 = np.abs(new_img16 - self.base2) > self.pixel_val_threshold
 
         self.base2 = self.base_img
         self.base_img = new_img
