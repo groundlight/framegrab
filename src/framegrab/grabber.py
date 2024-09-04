@@ -485,6 +485,7 @@ class FrameGrabber(ABC):
         do nothing. This is because setting the resolution of a cv2.VideoCapture object is non-trivial and
         can take multiple seconds, so we should only do it when something has changed.
         """
+        t1 = time.time()
         resolution = self.config.get("options", {}).get("resolution")
         if resolution is None:
             return
@@ -500,6 +501,9 @@ class FrameGrabber(ABC):
             current_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
             if new_height != current_height:
                 self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
+                
+        t2 = time.time()
+        logger.info(f'debug | _set_cv2_resolution: {t2 - t1}')
 
     def apply_options(self, options: dict) -> None:
         """Update generic options such as crop and zoom as well as
@@ -708,12 +712,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         self._set_cv2_resolution()
 
         # set the buffer size to 1 to always get the most recent frame
-        result = self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 0)
-        if result:
-            logger.info(f'Succeeded setting buffer size to 0')
-        else:
-            logger.info(f'Failed setting buffer size to 0')
-            result = self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         
     @staticmethod
     def _run_system_command(command: str) -> str:
