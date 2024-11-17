@@ -1,12 +1,12 @@
 image_sources:
   - name: Front Door
     input_type: generic_usb
-    options: 
+    options:
       zoom:
         digital: 1.5
   - name: Conference Room
     input_type: rtsp
-    id: 
+    id:
       rtsp_url: rtsp://admin:password@10.0.0.0/cam/realmonitor?channel=1&subtype=0
     options:
       crop:
@@ -17,8 +17,12 @@ image_sources:
           right: .9
   - name: Workshop
     input_type: basler
-    id: 
+    id:
       serial_number: 12345678
     options:
       basler:
         ExposureTime: 60000
+  - name: International Space Station
+    input_type: youtube_live
+    id:
+      youtube_url: https://www.youtube.com/watch?v=xAieE-QtOeM

@@ -6,22 +6,42 @@ logger = logging.getLogger(__name__)
 
 
 class MotionDetector:
-    # Simple motion detector using the three frame differencing
-    # commonly attributed to Collins, et. al A system for video surveillance and monitoring. Technical report, 2000
-    # Defaults to 1% pixel difference threshold (good for many applications)
+    """Motion detector using three-frame differencing algorithm.
 
-    def __init__(self, pct_threshold: float = 1, val_threshold: int = 50) -> bool:
-        """
-        :param val_threshold: The minimum brightness change for a pixel for it to be considered changed
-        :param pct_threshold: Percent of pixels needed to change before motion is detected
-        """
+    This implements the motion detection algorithm described in:
+        Collins et al., "A System for Video Surveillance and Monitoring",
+        Carnegie Mellon University, Pittsburgh, PA, Technical Report CMU-RI-TR-00-12, May 2000.
+
+    The algorithm compares each new frame against the previous two frames to detect motion.
+    Motion is detected when a sufficient percentage of pixels show significant brightness changes
+    across consecutive frames.
+
+    Args:
+        pct_threshold (float, optional): Percentage of pixels that must change for motion to be detected.
+            Defaults to 1.0 (1% of pixels).
+        val_threshold (int, optional): Minimum brightness change required for a pixel to be considered changed.
+            Defaults to 50.
+    """
+
+    def __init__(self, pct_threshold: float = 1, val_threshold: int = 50) -> None:
         self.unused = True
         self.pixel_val_threshold = val_threshold
         self.pixel_pct_threshold = pct_threshold
         self.log_pixel_percent = True
 
-    def pixel_threshold(self, img: np.ndarray, threshold_val: float = None) -> bool:
-        """Returns true if more then pixel_pct_threshold% of pixels have value greater than pixel_val_threshold"""
+    def pixel_threshold(
+        self, img: np.ndarray, threshold_val: float | None = None
+    ) -> bool:
+        """Check if enough pixels exceed the brightness threshold.
+
+        Args:
+            img: Input image array
+            threshold_val: Optional override for the brightness threshold value.
+                If None, uses self.pixel_val_threshold.
+
+        Returns:
+            bool: True if percentage of changed pixels exceeds pct_threshold
+        """
         if threshold_val is None:
             threshold_val = self.pixel_val_threshold
         total_pixels = np.prod(img.shape)
@@ -32,10 +52,23 @@ class MotionDetector:
             return True
         else:
             if self.log_pixel_percent:
-                logger.debug(f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%")
+                logger.debug(
+                    f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%"
+                )
             return False
 
     def motion_detected(self, new_img: np.ndarray) -> bool:
+        """Process a new frame and detect if motion occurred.
+
+        Uses three-frame differencing - compares the new frame against the previous
+        two frames to detect consistent motion.
+
+        Args:
+            new_img: New frame to analyze for motion
+
+        Returns:
+            bool: True if motion was detected
+        """
         if self.unused:
             self.base_img = new_img
             self.base2 = self.base_img
@@ -53,8 +86,8 @@ class MotionDetector:
         self.base2 = self.base_img
         self.base_img = new_img
         binarized = (
-            diff1 & diff2
-        ) * 255  # The 255 here guarantees that every pixel which is detected to have changed is > pixel_val_threshold.
+            (diff1 & diff2) * 255
+        )  # The 255 here guarantees that every pixel which is detected to have changed is > pixel_val_threshold.
 
         motion_detected = self.pixel_threshold(binarized)
         motion_detected = not not motion_detected  # normalize a numpy.bool_ if needed
