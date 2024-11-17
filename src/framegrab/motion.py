@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -29,9 +30,7 @@ class MotionDetector:
         self.pixel_pct_threshold = pct_threshold
         self.log_pixel_percent = True
 
-    def pixel_threshold(
-        self, img: np.ndarray, threshold_val: Optional[float] = None
-    ) -> bool:
+    def pixel_threshold(self, img: np.ndarray, threshold_val: Optional[float] = None) -> bool:
         """Check if enough pixels exceed the brightness threshold.
 
         Args:
@@ -52,9 +51,7 @@ class MotionDetector:
             return True
         else:
             if self.log_pixel_percent:
-                logger.debug(
-                    f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%"
-                )
+                logger.debug(f"No motion detected: {pct_hi:.3f}% < {self.pixel_pct_threshold}%")
             return False
 
     def motion_detected(self, new_img: np.ndarray) -> bool:
@@ -86,8 +83,8 @@ class MotionDetector:
         self.base2 = self.base_img
         self.base_img = new_img
         binarized = (
-            (diff1 & diff2) * 255
-        )  # The 255 here guarantees that every pixel which is detected to have changed is > pixel_val_threshold.
+            diff1 & diff2
+        ) * 255  # The 255 here guarantees that every pixel which is detected to have changed is > pixel_val_threshold.
 
         motion_detected = self.pixel_threshold(binarized)
         motion_detected = not not motion_detected  # normalize a numpy.bool_ if needed
