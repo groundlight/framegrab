@@ -1,5 +1,5 @@
 import logging
-
+from typing import Optional
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class MotionDetector:
         self.log_pixel_percent = True
 
     def pixel_threshold(
-        self, img: np.ndarray, threshold_val: float | None = None
+        self, img: np.ndarray, threshold_val: Optional[float] = None
     ) -> bool:
         """Check if enough pixels exceed the brightness threshold.
 

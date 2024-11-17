@@ -22,7 +22,7 @@ image_sources:
     options:
       basler:
         ExposureTime: 60000
-  - name: International Space Station
+  - name: NamibiaCam Live stream at the Okaukuejo waterhole in Etosha National Park
     input_type: youtube_live
     id:
-      youtube_url: https://www.youtube.com/watch?v=xAieE-QtOeM
+      youtube_url: https://www.youtube.com/watch?v=DAmFZj1y_a0

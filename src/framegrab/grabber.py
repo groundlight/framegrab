@@ -298,7 +298,7 @@ class FrameGrabber(ABC):
         elif input_type == InputTypes.HLS:
             grabber = HttpLiveStreamingFrameGrabber(config)
         elif input_type == InputTypes.YOUTUBE_LIVE:
-            grabber = YoutubeLiveFrameGrabber(config)
+            grabber = YouTubeLiveFrameGrabber(config)
         elif input_type == InputTypes.MOCK:
             grabber = MockFrameGrabber(config)
         else:
@@ -1218,9 +1218,9 @@ class RaspberryPiCSI2FrameGrabber(FrameGrabber):
 class HttpLiveStreamingFrameGrabber(FrameGrabber):
     """Handles Http Live Streaming (HLS)
 
-    Can operate in two modes based on the `keep_connection_open` configuration:
-        1. If `true`, keeps the connection open for low-latency frame grabbing, but consumes more CPU and network bandwidth. (default)
-        2. If `false`, opens the connection only when needed, which conserves both CPU and network bandwidth but has higher latency.
+    Opens and closes the connection on every captured frame, which conserves
+    both CPU and network bandwidth but has higher latency. In practice, roughly
+    ~0.5 FPS is achievable with this strategy.
     """
 
     def __init__(self, config: dict):
@@ -1236,12 +1236,6 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
         self.hls_url = self.config["id"]["hls_url"]
 
         self.lock = Lock()
-        self.keep_connection_open = config.get("options", {}).get(
-            "keep_connection_open", True
-        )
-
-        if self.keep_connection_open:
-            self._open_connection()
 
     def _apply_camera_specific_options(self, options: dict) -> None:
         if options.get("resolution"):
@@ -1266,38 +1260,29 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
                 self.capture.release()
 
     def _grab_implementation(self) -> np.ndarray:
-        if not self.keep_connection_open:
-            self._open_connection()
-            try:
-                return self._grab_open()
-            finally:
-                self._close_connection()
-        else:
+        self._open_connection()
+        try:
             return self._grab_open()
+        finally:
+            self._close_connection()
 
     def _grab_open(self) -> np.ndarray:
         with self.lock:
-            ret, frame = (
-                self.capture.retrieve()
-                if self.keep_connection_open
-                else self.capture.read()
-            )
+            ret, frame = self.capture.read()
         if not ret:
             logger.error(f"Could not read frame from {self.capture}")
         return frame
 
     def release(self) -> None:
-        if self.keep_connection_open:
-            self.run = False  # to stop the buffer drain thread
-            self._close_connection()
+        pass
 
 
 class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
     """Grabs the most recent frame from a YouTube Live stream (which are HLS streams under the hood)
 
-    Can operate in two modes based on the `keep_connection_open` configuration:
-        1. If `true`, keeps the connection open for low-latency frame grabbing, but consumes more CPU and network bandwidth. (default)
-        2. If `false`, opens the connection only when needed, which conserves both CPU and network bandwidth but has higher latency.
+    Opens and closes the connection on every captured frame, which conserves
+    both CPU and network bandwidth but has higher latency. In practice, roughly
+    ~0.5 FPS is achievable with this strategy.
     """
 
     def __init__(self, config: dict):
@@ -1313,12 +1298,6 @@ class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
         self.config = config
 
         self.lock = Lock()
-        self.keep_connection_open = config.get("options", {}).get(
-            "keep_connection_open", True
-        )
-
-        if self.keep_connection_open:
-            self._open_connection()
 
     def _extract_hls_url(self, youtube_url: str) -> str:
         """Extracts the HLS URL from a YouTube Live URL."""

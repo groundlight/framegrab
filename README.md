@@ -189,7 +189,7 @@ The table below shows all available configurations and the cameras to which they
 | options.crop.relative.right | 0.9            | optional   | optional  | optional  | optional  | optional  | optional | optional |
 | options.depth.side_by_side | 1              | -          | -         | -         | optional  | -  | - | - |
 | options.num_90_deg_rotations | 2              | optional          | optional         | optional         | optional  | optional  | optional | optional |
-| options.keep_connection_open | True              | -          | optional         | -         | -  | - | optional | optional |
+| options.keep_connection_open | True              | -          | optional         | -         | -  | - | - | - |
 | options.max_fps | 30              | -          | optional         | -         | -  | - | - | - |
 
 
@@ -299,6 +299,8 @@ Here's an example of using FrameGrab to capture frames from a YouTube Live strea
 
 ```python
 from framegrab import FrameGrabber
+import cv2
+
 config = {
     'input_type': 'youtube_live',
     'id': {
@@ -308,24 +310,15 @@ config = {
 
 grabber = FrameGrabber.create_grabber(config)
 
-while True:
-    frame = grabber.grab()
-    if frame is None:
-        print("No frame captured!")
-        continue
+frame = grabber.grab()
+if frame is None:
+    raise Exception("No frame captured")
 
-    # Process the frame as needed
-    # For example, display it using cv2.imshow()
-    cv2.imshow('YouTube Live Stream', frame)
-
-    # Break loop on 'q' key press
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-grabber.release()
-cv2.destroyAllWindows()
+# Process the frame as needed
+# For example, display it using cv2.imshow()
+# For example, save it to a file
+cv2.imwrite('youtube_frame.jpg', frame)
 ```
-
 
 ## Contributing
 

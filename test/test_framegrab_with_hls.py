@@ -27,7 +27,6 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
         grabber = HttpLiveStreamingFrameGrabber(self.base_config)
 
         self.assertEqual(grabber.hls_url, "http://example.com/stream.m3u8")
-        self.assertTrue(grabber.keep_connection_open)
         mock_cv2.assert_called_once_with("http://example.com/stream.m3u8")
 
     def test_init_without_hls_url(self):
@@ -107,26 +106,3 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             grabber.apply_options(config["options"])
-
-    @patch("cv2.VideoCapture")
-    def test_connection_modes(self, mock_cv2):
-        """Test both keep_connection_open modes"""
-        # Setup mock
-        mock_capture = MagicMock()
-        mock_capture.isOpened.return_value = True
-        mock_capture.read.return_value = (True, self.mock_frame)
-        mock_capture.retrieve.return_value = (True, self.mock_frame)
-        mock_cv2.return_value = mock_capture
-
-        # Test with keep_connection_open = False
-        config = self.base_config.copy()
-        config["options"] = {"keep_connection_open": False}
-
-        grabber = HttpLiveStreamingFrameGrabber(config)
-        frame = grabber.grab()
-
-        self.assertIsNotNone(frame)
-        self.assertEqual(frame.shape, (480, 640, 3))
-        # Should have called read() instead of retrieve()
-        mock_capture.read.assert_called_once()
-        mock_capture.retrieve.assert_not_called()
