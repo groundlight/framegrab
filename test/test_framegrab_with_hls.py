@@ -32,6 +32,8 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
         mock_cv2.assert_called_once_with("http://example.com/stream.m3u8")
         mock_capture.read.assert_called_once()
         self.assertEqual(frame.shape, (480, 640, 3))
+
+        grabber.release()
         mock_capture.release.assert_called_once()
 
     def test_init_without_hls_url(self):
@@ -69,8 +71,6 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
 
         with self.assertRaises(Exception):
             grabber.grab()
-
-        mock_capture.release.assert_called_once()
 
     @patch("cv2.VideoCapture")
     def test_invalid_resolution_option(self, mock_cv2):
