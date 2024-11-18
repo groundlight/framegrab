@@ -1149,7 +1149,7 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
 
     def _apply_camera_specific_options(self, options: dict) -> None:
         if options.get("resolution"):
-            camera_name = self.config.get("name", "Unnamed {self.type} Stream")
+            camera_name = self.config.get("name", f"Unnamed {self.type} Stream")
             raise ValueError(
                 f"Resolution was set for {camera_name}, but resolution cannot be set for {self.type} streams."
             )
