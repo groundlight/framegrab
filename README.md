@@ -6,11 +6,24 @@ FrameGrab is an open-source Python library designed to make it easy to grab fram
 FrameGrab also provides basic motion detection functionality. FrameGrab requires Python 3.7 or higher.
 
 ## Table of Contents
-- [Installation](#installation)
-- [Usage](#usage)
-- [Examples](#examples)
-- [Contributing](#contributing)
-- [License](#license)
+
+- [FrameGrab by Groundlight](#framegrab-by-groundlight)
+  - [A user-friendly library for grabbing images from cameras or streams](#a-user-friendly-library-for-grabbing-images-from-cameras-or-streams)
+  - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+  - [Optional Dependencies](#optional-dependencies)
+  - [Usage](#usage)
+    - [Command line interface (CLI)](#command-line-interface-cli)
+    - [Frame Grabbing](#frame-grabbing)
+    - [Configurations](#configurations)
+    - [Autodiscovery](#autodiscovery)
+      - [RTSP Discovery](#rtsp-discovery)
+    - [Motion Detection](#motion-detection)
+  - [Examples](#examples)
+    - [Generic USB](#generic-usb)
+    - [YouTube Live](#youtube-live)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ## Installation
 
@@ -21,11 +34,27 @@ pip install framegrab
 ```
 
 ## Optional Dependencies
-Certain camera types have additional dependencies that must be installed separately. If you don't intend to use these camera types, you don't need to install these extra packages. 
+Certain camera types have additional dependencies that must be installed separately. If you don't intend to use these camera types, you don't need to install these extra packages.
 
 - To use a Basler USB or GigE camera, you must separately install the `pypylon` package.
 - To use Intel RealSense cameras, you must install `pyrealsense2`.
 - To use a Raspberry Pi "CSI2" camera (connected with a ribbon cable), you must install the `picamera2` library. See install instructions at the [picamera2 github repository](https://github.com/raspberrypi/picamera2).
+- To use a YouTube Live stream, you must install `streamlink`.
+
+We provide optional extras to install these dependencies. For example, to install the Basler camera dependencies, run:
+```
+pip install framegrab[basler]
+```
+
+To install YouTube Live stream dependencies, run:
+```
+pip install framegrab[youtube]
+```
+
+To install all optional dependencies, run:
+```
+pip install framegrab[all]
+```
 
 
 ## Usage
@@ -45,7 +74,7 @@ lists the sub-commands, including `autodiscover` and `preview`.
 Frame Grabbers are defined by a configuration dict which is usually stored as YAML.  The configuration combines the camera type, the camera ID, and the camera options.  The configuration is passed to the `FrameGrabber.create_grabber` method to create a grabber object.  The grabber object can then be used to grab frames from the camera.
 
 
-`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense`, `basler`, and `rpi_csi2`.
+`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense`, `basler`, `rpi_csi2`, `hls`, and `youtube_live`.
 
 Here's an example of a single USB camera configured with several options:
 ```python
@@ -92,13 +121,13 @@ When you are done with the camera, release the resource by running:
 grabber.release()
 ```
 
-You might have several cameras that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.create_grabbers`. Note that currently only a single Raspberry Pi CSI2 camera is supported, but these cameras can be used in conjunction with other types of cameras. 
+You might have several cameras that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.create_grabbers`. Note that currently only a single Raspberry Pi CSI2 camera is supported, but these cameras can be used in conjunction with other types of cameras.
 
 If you have multiple cameras of the same type plugged in, it's recommended that you include serial numbers in the configurations; this ensures that each configuration is paired with the correct camera. If you don't provide serial numbers in your configurations, configurations will be paired with cameras in a sequential manner.
 
 Below is a sample yaml file containing configurations for three different cameras.
 ```yaml
-image_sources: 
+image_sources:
   - name: On Robot Arm
     input_type: basler
     id:
@@ -139,28 +168,29 @@ for grabber in grabbers.values():
 ```
 ### Configurations
 The table below shows all available configurations and the cameras to which they apply.
-| Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense | Raspberry Pi CSI2 |
-|----------------------------|-----------------|------------|-----------|-----------|-----------|-----------|
-| name                       | On Robot Arm    | optional   | optional  | optional  | optional  | optional  |
-| input_type                 | generic_usb    | required   | required  | required  | required  | required  |
-| id.serial_number           | 23458234       | optional   | -         | optional  | optional  | -  |
-| id.rtsp_url                | rtsp://…        | -          | required  | -         | -         | -         |
-| options.resolution.height  | 480            | optional   | -         | -         | optional  | -  |
-| options.resolution.width   | 640            | optional   | -         | -         | optional  | -  |
-| options.zoom.digital       | 1.3            | optional   | optional  | optional  | optional  | optional  |
-| options.crop.pixels.top    | 100            | optional   | optional  | optional  | optional  | optional  |
-| options.crop.pixels.bottom | 400            | optional   | optional  | optional  | optional  | optional  |
-| options.crop.pixels.left   | 100            | optional   | optional  | optional  | optional  | optional  |
-| options.crop.pixels.right  | 400            | optional   | optional  | optional  | optional  | optional  |
-| options.crop.relative.top  | 0.1            | optional   | optional  | optional  | optional  | optional  |
-| options.crop.relative.bottom | 0.9          | optional   | optional  | optional  | optional  | optional  |
-| options.crop.relative.left | 0.1            | optional   | optional  | optional  | optional  | optional  |
-| options.crop.relative.right | 0.9            | optional   | optional  | optional  | optional  | optional  |
-| options.depth.side_by_side | 1              | -          | -         | -         | optional  | -  |
-| options.num_90_deg_rotations | 2              | optional          | optional         | optional         | optional  | optional  |
-| options.keep_connection_open | True              | -          | optional         | -         | -  | - |
-| options.max_fps | 30              | -          | optional         | -         | -  | - |
-
+| Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense | Raspberry Pi CSI2 | HLS | YouTube Live |
+|----------------------------|-----------------|------------|-----------|-----------|-----------|-----------|-----------|-----------|
+| name                       | On Robot Arm    | optional   | optional  | optional  | optional  | optional  | optional | optional |
+| input_type                 | generic_usb    | required   | required  | required  | required  | required  | required | required |
+| id.serial_number           | 23458234       | optional   | -         | optional  | optional  | -  | - | - |
+| id.rtsp_url                | rtsp://…        | -          | required  | -         | -         | -         | - | - |
+| id.hls_url                 | https://.../*.m3u8     | -          | -         | -         | -         | -         | required | - |
+| id.youtube_url             | https://www.youtube.com/watch?v=...     | -          | -         | -         | -         | -         | - | required |
+| options.resolution.height  | 480            | optional   | -         | -         | optional  | -  | - | - |
+| options.resolution.width   | 640            | optional   | -         | -         | optional  | -  | - | - |
+| options.zoom.digital       | 1.3            | optional   | optional  | optional  | optional  | optional  | optional | optional |
+| options.crop.pixels.top    | 100            | optional   | optional  | optional  | optional  | optional  | optional | optional |
+| options.crop.pixels.bottom | 400            | optional   | optional  | optional  | optional  | optional  | optional | optional |
+| options.crop.pixels.left   | 100            | optional   | optional  | optional  | optional  | optional  | optional | optional |
+| options.crop.pixels.right  | 400            | optional   | optional  | optional  | optional  | optional  | optional | optional |
+| options.crop.relative.top  | 0.1            | optional   | optional  | optional  | optional  | optional  | optional | optional |
+| options.crop.relative.bottom | 0.9          | optional   | optional  | optional  | optional  | optional  | optional | optional |
+| options.crop.relative.left | 0.1            | optional   | optional  | optional  | optional  | optional  | optional | optional |
+| options.crop.relative.right | 0.9            | optional   | optional  | optional  | optional  | optional  | optional | optional |
+| options.depth.side_by_side | 1              | -          | -         | -         | optional  | -  | - | - |
+| options.num_90_deg_rotations | 2              | optional          | optional         | optional         | optional  | optional  | optional | optional |
+| options.keep_connection_open | True              | -          | optional         | -         | -  | - | optional | optional |
+| options.max_fps | 30              | -          | optional         | -         | -  | - | - | - |
 
 
 
@@ -185,7 +215,7 @@ RTSP cameras with support for ONVIF can be discovered on your local network in t
 
 ```python
 from framegrab import RTSPDiscovery, ONVIFDeviceInfo
-        
+
 devices = RTSPDiscovery.discover_onvif_devices()
 ```
 
@@ -194,7 +224,7 @@ The `discover_onvif_devices()` will provide a list of devices that it finds in t
 - off: No discovery.
 - ip_only: Only discover the IP address of the camera.
 - light: Only try first two usernames and passwords ("admin:admin" and no username/password).
-- complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between. 
+- complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
 - complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
 
 
@@ -240,6 +270,7 @@ if m.motion_detected(frame):
 
 ## Examples
 
+### Generic USB
 Here's an example of using the FrameGrab library to continuously capture frames and detect motion from a video stream:
 
 ```python
@@ -263,6 +294,34 @@ while True:
         print("Motion detected!")
 ```
 
+### YouTube Live
+Here's an example of using FrameGrab to capture frames from a YouTube Live stream:
+
+```python
+from framegrab import FrameGrabber
+import cv2
+
+config = {
+    'input_type': 'youtube_live',
+    'id': {
+        'youtube_url': 'https://www.youtube.com/watch?v=your_video_id'
+    }
+}
+
+grabber = FrameGrabber.create_grabber(config)
+
+frame = grabber.grab()
+if frame is None:
+    raise Exception("No frame captured")
+
+# Process the frame as needed
+# For example, display it using cv2.imshow()
+# For example, save it to a file
+cv2.imwrite('youtube_frame.jpg', frame)
+
+grabber.release()
+```
+
 ## Contributing
 
 We welcome contributions to FrameGrab! If you would like to contribute, please follow these steps:
@@ -275,5 +334,3 @@ We welcome contributions to FrameGrab! If you would like to contribute, please f
 ## License
 
 FrameGrab is released under the MIT License. For more information, please refer to the [LICENSE.txt](https://github.com/groundlight/framegrab/blob/main/LICENSE.txt) file.
-
-

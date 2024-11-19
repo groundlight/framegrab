@@ -2,7 +2,6 @@ import traceback
 
 import click
 import yaml
-from imgcat import imgcat
 
 from framegrab import FrameGrabber
 from framegrab.cli.clitools import (
@@ -10,7 +9,6 @@ from framegrab.cli.clitools import (
     PREVIEW_RTSP_COMMAND_CHOICES,
     preview_image,
 )
-from framegrab.rtsp_discovery import AutodiscoverMode
 
 
 @click.command()
@@ -47,7 +45,10 @@ def autodiscover(preview: str, rtsp_discover_mode: str = "off"):
                 click.echo(f"Failed to grab sample frame from {camera_name}.", err=True)
                 continue
 
-            click.echo(f"Grabbed sample frame from {camera_name} with shape {frame.shape}", err=True)
+            click.echo(
+                f"Grabbed sample frame from {camera_name} with shape {frame.shape}",
+                err=True,
+            )
             click.echo(grabber.config, err=True)
             preview_image(frame, camera_name, preview)
 
