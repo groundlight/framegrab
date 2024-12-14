@@ -1,7 +1,7 @@
 # FrameGrab by Groundlight
 ## A user-friendly library for grabbing images from cameras or streams
 
-FrameGrab is an open-source Python library designed to make it easy to grab frames (images) from cameras or streams. The library supports generic USB cameras (such as webcams), RTSP streams, Basler USB cameras, Basler GigE cameras, and Intel RealSense depth cameras.
+FrameGrab is an open-source Python library designed to make it easy to grab frames (images) from cameras or streams. The library supports generic USB cameras (such as webcams), RTSP streams, Basler USB cameras, Basler GigE cameras, Intel RealSense depth cameras, and video file streams.
 
 FrameGrab also provides basic motion detection functionality. FrameGrab requires Python 3.7 or higher.
 
@@ -22,6 +22,7 @@ FrameGrab also provides basic motion detection functionality. FrameGrab requires
   - [Examples](#examples)
     - [Generic USB](#generic-usb)
     - [YouTube Live](#youtube-live)
+    - [File Stream](#file-stream)
   - [Contributing](#contributing)
   - [License](#license)
 
@@ -74,7 +75,7 @@ lists the sub-commands, including `autodiscover` and `preview`.
 Frame Grabbers are defined by a configuration dict which is usually stored as YAML.  The configuration combines the camera type, the camera ID, and the camera options.  The configuration is passed to the `FrameGrabber.create_grabber` method to create a grabber object.  The grabber object can then be used to grab frames from the camera.
 
 
-`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense`, `basler`, `rpi_csi2`, `hls`, and `youtube_live`.
+`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense`, `basler`, `rpi_csi2`, `hls`, `youtube_live`, and `file_stream`.
 
 Here's an example of a single USB camera configured with several options:
 ```python
@@ -168,30 +169,30 @@ for grabber in grabbers.values():
 ```
 ### Configurations
 The table below shows all available configurations and the cameras to which they apply.
-| Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense | Raspberry Pi CSI2 | HLS | YouTube Live |
-|----------------------------|-----------------|------------|-----------|-----------|-----------|-----------|-----------|-----------|
-| name                       | On Robot Arm    | optional   | optional  | optional  | optional  | optional  | optional | optional |
-| input_type                 | generic_usb    | required   | required  | required  | required  | required  | required | required |
-| id.serial_number           | 23458234       | optional   | -         | optional  | optional  | -  | - | - |
-| id.rtsp_url                | rtsp://…        | -          | required  | -         | -         | -         | - | - |
-| id.hls_url                 | https://.../*.m3u8     | -          | -         | -         | -         | -         | required | - |
-| id.youtube_url             | https://www.youtube.com/watch?v=...     | -          | -         | -         | -         | -         | - | required |
-| options.resolution.height  | 480            | optional   | -         | -         | optional  | -  | - | - |
-| options.resolution.width   | 640            | optional   | -         | -         | optional  | -  | - | - |
-| options.zoom.digital       | 1.3            | optional   | optional  | optional  | optional  | optional  | optional | optional |
-| options.crop.pixels.top    | 100            | optional   | optional  | optional  | optional  | optional  | optional | optional |
-| options.crop.pixels.bottom | 400            | optional   | optional  | optional  | optional  | optional  | optional | optional |
-| options.crop.pixels.left   | 100            | optional   | optional  | optional  | optional  | optional  | optional | optional |
-| options.crop.pixels.right  | 400            | optional   | optional  | optional  | optional  | optional  | optional | optional |
-| options.crop.relative.top  | 0.1            | optional   | optional  | optional  | optional  | optional  | optional | optional |
-| options.crop.relative.bottom | 0.9          | optional   | optional  | optional  | optional  | optional  | optional | optional |
-| options.crop.relative.left | 0.1            | optional   | optional  | optional  | optional  | optional  | optional | optional |
-| options.crop.relative.right | 0.9            | optional   | optional  | optional  | optional  | optional  | optional | optional |
-| options.depth.side_by_side | 1              | -          | -         | -         | optional  | -  | - | - |
-| options.num_90_deg_rotations | 2              | optional          | optional         | optional         | optional  | optional  | optional | optional |
-| options.keep_connection_open | True              | -          | optional         | -         | -  | - | optional | optional |
-| options.max_fps | 30              | -          | optional         | -         | -  | - | - | - |
-
+| Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense | Raspberry Pi CSI2 | HLS | YouTube Live | File Stream |
+|----------------------------|-----------------|------------|-----------|-----------|-----------|-----------|-----------|-----------|-------------|
+| name                       | On Robot Arm    | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
+| input_type                 | generic_usb    | required   | required  | required  | required  | required  | required | required | required |
+| id.serial_number           | 23458234       | optional   | -         | optional  | optional  | -  | - | - | - |
+| id.rtsp_url                | rtsp://…        | -          | required  | -         | -         | -         | - | - | - |
+| id.hls_url                 | https://.../*.m3u8     | -          | -         | -         | -         | -         | required | - | - |
+| id.youtube_url             | https://www.youtube.com/watch?v=...     | -          | -         | -         | -         | -         | - | required | - |
+| id.file_path               | http://.../*.mp4 | -          | -         | -         | -         | -         | - | - | required |
+| options.resolution.height  | 480            | optional   | -         | -         | optional  | -  | - | - | optional |
+| options.resolution.width   | 640            | optional   | -         | -         | optional  | -  | - | - | optional |
+| options.zoom.digital       | 1.3            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
+| options.crop.pixels.top    | 100            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
+| options.crop.pixels.bottom | 400            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
+| options.crop.pixels.left   | 100            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
+| options.crop.pixels.right  | 400            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
+| options.crop.relative.top  | 0.1            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
+| options.crop.relative.bottom | 0.9          | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
+| options.crop.relative.left | 0.1            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
+| options.crop.relative.right | 0.9            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
+| options.depth.side_by_side | 1              | -          | -         | -         | optional  | -  | - | - | - |
+| options.num_90_deg_rotations | 2              | optional          | optional         | optional         | optional  | optional  | optional | optional | optional |
+| options.keep_connection_open | True              | -          | optional         | -         | -  | - | optional | optional | - |
+| options.max_fps | 30              | -          | optional         | -         | -  | - | - | - | optional |
 
 
 In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
@@ -318,6 +319,37 @@ if frame is None:
 # For example, display it using cv2.imshow()
 # For example, save it to a file
 cv2.imwrite('youtube_frame.jpg', frame)
+
+grabber.release()
+```
+
+### File Stream
+Here's an example of using FrameGrab to capture frames from a video file:
+
+```python
+from framegrab import FrameGrabber
+import cv2
+
+config = {
+    'input_type': 'file_stream',
+    'id': {
+        'file_path': 'path/to/your/video.mjpeg'  # or .mp4, .avi, etc.
+    },
+    'options': {
+        'max_fps': 2,  # Decimate stream if FPS is too high
+    }
+}
+
+grabber = FrameGrabber.create_grabber(config)
+
+frame = grabber.grab()
+if frame is None:
+    raise Exception("No frame captured")
+
+# Process the frame as needed
+# For example, display it using cv2.imshow()
+# For example, save it to a file
+cv2.imwrite('file_stream_frame.jpg', frame)
 
 grabber.release()
 ```
