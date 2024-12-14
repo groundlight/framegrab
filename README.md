@@ -178,8 +178,8 @@ The table below shows all available configurations and the cameras to which they
 | id.hls_url                 | https://.../*.m3u8     | -          | -         | -         | -         | -         | required | - | - |
 | id.youtube_url             | https://www.youtube.com/watch?v=...     | -          | -         | -         | -         | -         | - | required | - |
 | id.file_path               | http://.../*.mp4 | -          | -         | -         | -         | -         | - | - | required |
-| options.resolution.height  | 480            | optional   | -         | -         | optional  | -  | - | - | optional |
-| options.resolution.width   | 640            | optional   | -         | -         | optional  | -  | - | - | optional |
+| options.resolution.height  | 480            | optional   | -         | -         | optional  | -  | - | - | - |
+| options.resolution.width   | 640            | optional   | -         | -         | optional  | -  | - | - | - |
 | options.zoom.digital       | 1.3            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
 | options.crop.pixels.top    | 100            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
 | options.crop.pixels.bottom | 400            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |

@@ -1234,13 +1234,6 @@ class FileStreamFrameGrabber(FrameGrabber):
     """
 
     def __init__(self, config: dict):
-        """Initialize the file stream grabber.
-
-        Args:
-            config: Dictionary containing configuration parameters.
-                Required: id.filename - Path to the video file
-                Optional: options.max_fps - Target output frame rate (default: 0 for no decimation)
-        """
         self.config = config
         filename = config.get("id", {}).get("filename")
         if not filename:
