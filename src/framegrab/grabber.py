@@ -5,6 +5,7 @@ import re
 import subprocess
 import time
 from abc import ABC, abstractmethod
+from pathlib import Path
 from threading import Lock, Thread
 from typing import Dict, List, Optional, Union
 from urllib.parse import urlparse
@@ -59,6 +60,7 @@ class InputTypes:
     RPI_CSI2 = "rpi_csi2"
     HLS = "hls"
     YOUTUBE_LIVE = "youtube_live"
+    FILE_STREAM = "file_stream"
     MOCK = "mock"
 
     def get_options() -> list:
@@ -275,6 +277,8 @@ class FrameGrabber(ABC):
             grabber = HttpLiveStreamingFrameGrabber(config)
         elif input_type == InputTypes.YOUTUBE_LIVE:
             grabber = YouTubeLiveFrameGrabber(config)
+        elif input_type == InputTypes.FILE_STREAM:
+            grabber = FileStreamFrameGrabber(config)
         elif input_type == InputTypes.MOCK:
             grabber = MockFrameGrabber(config)
         else:
@@ -564,6 +568,15 @@ class FrameGrabber(ABC):
     def release() -> None:
         """A cleanup method. Releases/closes the video capture, terminates any related threads, etc."""
         pass
+
+    def __enter__(self):
+        """Context manager entry point."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit point that ensures proper resource cleanup."""
+        self.release()
+        return False  # re-raise any exceptions that occurred
 
 
 class GenericUSBFrameGrabber(FrameGrabber):
@@ -1221,6 +1234,119 @@ class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
         if "best" not in available_streams:
             raise ValueError(f"No available HLS stream for {youtube_url=}\n{available_streams=}")
         return available_streams["best"].url
+
+
+class FileStreamFrameGrabber(FrameGrabber):
+    """Grabs frames from a video file stream, such as an MP4 or MOV file.
+
+    Supports dropping frames to achieve a target FPS.
+
+    Some of the supported formats: mp4, avi, mov, mjpeg
+
+    Configuration:
+        id:
+            filename: str  # Path to the video file
+        options:
+            max_fps: float  # Target frame rate (optional, defaults to source fps)
+
+    Example:
+        config = {
+            "id": {"filename": "video.mp4"},
+            "options": {"max_fps": 15.0}
+        }
+        grabber = FileStreamFrameGrabber(config)
+    """
+
+    def __init__(self, config: dict):
+        self.config = config
+        filename = config.get("id", {}).get("filename")
+        if not filename:
+            raise ValueError("No filename provided in config under id.filename")
+
+        self.filepath = Path(filename).resolve()
+        if not self.filepath.is_file():
+            raise OSError(f"File does not exist: {self.filepath}")
+
+        self.fps_target = config.get("options", {}).get(
+            "max_fps",
+            0,  # 0 means no dropping of frames
+        )
+        if self.fps_target < 0:
+            raise ValueError(f"Target FPS cannot be negative: {self.fps_target}")
+        self.remainder = 0.0
+
+        try:
+            self.capture = cv2.VideoCapture(filename)
+            try:
+                backend = self.capture.getBackendName()
+            except cv2.error:
+                raise ValueError(f"Could not open file {filename}. Is it a valid video file?")
+            logger.debug(f"Initialized video capture with {backend=}")
+
+            ret, _ = self.capture.read()
+            if not ret:
+                raise RuntimeError("Could not read first frame")
+
+            self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
+            if self.fps_source <= 0.1:
+                logger.warning(f"Captured framerate is very low or zero: {self.fps_source} FPS")
+            self.should_drop_frames = self.fps_target > 0 and self.fps_target < self.fps_source
+            logger.debug(
+                f"Source FPS: {self.fps_source}, Target FPS: {self.fps_target}, Drop Frames: {self.should_drop_frames}"
+            )
+
+        except (cv2.error, RuntimeError) as e:
+            logger.error(f"Could not initialize FileStreamFrameGrabber: {filename} is invalid or read error: {str(e)}")
+            raise
+        except OSError as e:
+            logger.error(f"Could not open file {filename}: {str(e)}")
+            raise
+
+    def _grab_implementation(self) -> np.ndarray:
+        """Grab a frame from the video file, decimating if needed to match target FPS.
+
+        Returns:
+            np.ndarray: The captured frame
+
+        Raises:
+            RuntimeWarning: If frame cannot be read, likely end of file
+        """
+        if self.should_drop_frames:
+            self._drop_frames()
+
+        ret, frame = self.capture.read()
+        if not ret:
+            raise RuntimeWarning("Could not read frame from video file. Possible end of file.")
+        return frame
+
+    def _drop_frames(self) -> None:
+        """Drop frames to achieve target frame rate using frame position seeking."""
+        drop_frames = (self.fps_source / self.fps_target) - 1 + self.remainder
+        frames_to_drop = round(drop_frames)
+
+        if frames_to_drop > 0:
+            current_pos = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
+            self.capture.set(cv2.CAP_PROP_POS_FRAMES, current_pos + frames_to_drop)
+
+        self.remainder = round(drop_frames - frames_to_drop, 2)
+        logger.debug(f"Dropped {frames_to_drop} frames to meet {self.fps_target} FPS target")
+
+    def _apply_camera_specific_options(self, options: dict) -> None:
+        """Handle camera-specific options for file streams.
+
+        For video files, most camera options like resolution cannot be modified since the video
+        is pre-recorded. This method validates that unsupported options aren't being set.
+        """
+        if options.get("resolution"):
+            camera_name = self.config.get("name", "Unnamed File Stream")
+            raise ValueError(
+                f"Resolution was set for {camera_name}, but resolution cannot be modified for video files."
+            )
+
+    def release(self) -> None:
+        """Release the video capture resources."""
+        if hasattr(self, "capture"):
+            self.capture.release()
 
 
 class MockFrameGrabber(FrameGrabber):

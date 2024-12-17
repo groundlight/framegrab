@@ -107,10 +107,7 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
     def test_create_grabber_with_name(self):
         user_provided_name = "my_camera"
 
-        config = {
-            "name": user_provided_name,
-            "input_type": "mock",
-        }
+        config = {"name": user_provided_name, "input_type": "mock"}
 
         grabber = FrameGrabber.create_grabber(config)
 
@@ -134,6 +131,14 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
 
         for grabber in grabbers.values():
             grabber.release()
+
+    def test_create_grabber_with_context_manager(self):
+        user_provided_name = "my_camera"
+
+        config = {"name": user_provided_name, "input_type": "mock"}
+
+        with FrameGrabber.create_grabber(config) as grabber:
+            assert grabber.config["name"] == user_provided_name
 
     def test_attempt_create_more_grabbers_than_exist(self):
         """Try to provide a config with more cameras than are actually plugged in.
