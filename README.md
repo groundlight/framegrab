@@ -1,7 +1,7 @@
 # FrameGrab by Groundlight
 ## A user-friendly library for grabbing images from cameras or streams
 
-FrameGrab is an open-source Python library designed to make it easy to grab frames (images) from cameras or streams. The library supports generic USB cameras (such as webcams), RTSP streams, Basler USB cameras, Basler GigE cameras, Intel RealSense depth cameras, and video file streams.
+FrameGrab is an open-source Python library designed to make it easy to grab frames (images) from cameras or streams. The library supports generic USB cameras (such as webcams), RTSP streams, Basler USB cameras, Basler GigE cameras, Intel RealSense depth cameras, and video file streams (mp4, mov, mjpeg, avi, etc.).
 
 FrameGrab also provides basic motion detection functionality. FrameGrab requires Python 3.7 or higher.
 
@@ -177,7 +177,7 @@ The table below shows all available configurations and the cameras to which they
 | id.rtsp_url                | rtsp://…        | -          | required  | -         | -         | -         | - | - | - |
 | id.hls_url                 | https://.../*.m3u8     | -          | -         | -         | -         | -         | required | - | - |
 | id.youtube_url             | https://www.youtube.com/watch?v=...     | -          | -         | -         | -         | -         | - | required | - |
-| id.file_path               | http://.../*.mp4 | -          | -         | -         | -         | -         | - | - | required |
+| id.filename               | http://.../*.mp4 | -          | -         | -         | -         | -         | - | - | required |
 | options.resolution.height  | 480            | optional   | -         | -         | optional  | -  | - | - | - |
 | options.resolution.width   | 640            | optional   | -         | -         | optional  | -  | - | - | - |
 | options.zoom.digital       | 1.3            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
@@ -333,10 +333,10 @@ import cv2
 config = {
     'input_type': 'file_stream',
     'id': {
-        'file_path': 'path/to/your/video.mjpeg'  # or .mp4, .avi, etc.
+        'filename': 'path/to/your/video.mjpeg'  # or .mp4, .avi, .mov, etc.
     },
     'options': {
-        'max_fps': 2,  # Decimate stream if FPS is too high
+        'max_fps': 2,  # if a lower FPS than the original video's FPS is specified, Framegrab will skip extra frames as needed.
     }
 }
 
