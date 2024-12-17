@@ -122,6 +122,12 @@ When you are done with the camera, release the resource by running:
 grabber.release()
 ```
 
+Alternatively, you can use a context manager which will automatically release the camera resources:
+```python
+with FrameGrabber.create_grabber_yaml(config) as grabber:
+    frame = grabber.grab()
+```
+
 You might have several cameras that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.create_grabbers`. Note that currently only a single Raspberry Pi CSI2 camera is supported, but these cameras can be used in conjunction with other types of cameras.
 
 If you have multiple cameras of the same type plugged in, it's recommended that you include serial numbers in the configurations; this ensures that each configuration is paired with the correct camera. If you don't provide serial numbers in your configurations, configurations will be paired with cameras in a sequential manner.
@@ -278,21 +284,21 @@ Here's an example of using the FrameGrab library to continuously capture frames 
 from framegrab import FrameGrabber, MotionDetector
 
 motion_threshold = 1.0
+m = MotionDetector(pct_threshold=motion_threshold)
 
 config = {
     'input_type': 'generic_usb',
 }
-grabber = FrameGrabber.create_grabber(config)
-m = MotionDetector(pct_threshold=motion_threshold)
 
-while True:
-    frame = grabber.grab()
-    if frame is None:
-        print("No frame captured!")
-        continue
+with FrameGrabber.create_grabber(config) as grabber:
+    while True:
+        frame = grabber.grab()
+        if frame is None:
+            print("No frame captured!")
+            continue
 
-    if m.motion_detected(frame):
-        print("Motion detected!")
+        if m.motion_detected(frame):
+            print("Motion detected!")
 ```
 
 ### YouTube Live
@@ -309,18 +315,15 @@ config = {
     }
 }
 
-grabber = FrameGrabber.create_grabber(config)
+with FrameGrabber.create_grabber(config) as grabber:
+    frame = grabber.grab()
+    if frame is None:
+        raise Exception("No frame captured")
 
-frame = grabber.grab()
-if frame is None:
-    raise Exception("No frame captured")
-
-# Process the frame as needed
-# For example, display it using cv2.imshow()
-# For example, save it to a file
-cv2.imwrite('youtube_frame.jpg', frame)
-
-grabber.release()
+    # Process the frame as needed
+    # For example, display it using cv2.imshow()
+    # For example, save it to a file
+    cv2.imwrite('youtube_frame.jpg', frame)
 ```
 
 ### File Stream
@@ -340,18 +343,15 @@ config = {
     }
 }
 
-grabber = FrameGrabber.create_grabber(config)
+with FrameGrabber.create_grabber(config) as grabber:
+  frame = grabber.grab()
+  if frame is None:
+      raise Exception("No frame captured")
 
-frame = grabber.grab()
-if frame is None:
-    raise Exception("No frame captured")
-
-# Process the frame as needed
-# For example, display it using cv2.imshow()
-# For example, save it to a file
-cv2.imwrite('file_stream_frame.jpg', frame)
-
-grabber.release()
+  # Process the frame as needed
+  # For example, display it using cv2.imshow()
+  # For example, save it to a file
+  cv2.imwrite('file_stream_frame.jpg', frame)
 ```
 
 ## Contributing

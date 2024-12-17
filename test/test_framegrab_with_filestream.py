@@ -60,18 +60,16 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
         """Test successful initialization with MP4."""
         grabber = FileStreamFrameGrabber(self.base_config_mp4)
         self.assertEqual(grabber.fps_source, 30.0)
-        self.assertFalse(grabber.should_decimate)
+        self.assertFalse(grabber.should_drop_frames)
         grabber.release()
 
     def test_init_success_mjpeg(self):
         """Test successful initialization with MJPEG."""
-        grabber = FileStreamFrameGrabber(self.base_config_mjpeg)
-
-        # MJPEG files have variable frame rates and also the FPS that cv2 returns is not accurate
-        self.assertGreater(grabber.fps_source, 20.0)
-        self.assertLess(grabber.fps_source, 40.0)
-        self.assertFalse(grabber.should_decimate)
-        grabber.release()
+        with FileStreamFrameGrabber(self.base_config_mjpeg) as grabber:
+            # MJPEG files have variable frame rates and also the FPS that cv2 returns is not accurate
+            self.assertGreater(grabber.fps_source, 20.0)
+            self.assertLess(grabber.fps_source, 40.0)
+            self.assertFalse(grabber.should_drop_frames)
 
     def test_init_with_fps_target_mp4(self):
         """Test initialization with FPS target for MP4."""
@@ -80,7 +78,7 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
         config["options"] = {"max_fps": target_fps}
 
         grabber = FileStreamFrameGrabber(config)
-        self.assertTrue(grabber.should_decimate)
+        self.assertTrue(grabber.should_drop_frames)
         self.assertEqual(grabber.fps_target, target_fps)
         grabber.release()
 
@@ -91,7 +89,7 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
         config["options"] = {"max_fps": target_fps}
 
         grabber = FileStreamFrameGrabber(config)
-        self.assertTrue(grabber.should_decimate)
+        self.assertTrue(grabber.should_drop_frames)
         self.assertEqual(grabber.fps_target, target_fps)
         grabber.release()
 
