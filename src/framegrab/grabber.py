@@ -1263,10 +1263,6 @@ class FileStreamFrameGrabber(FrameGrabber):
         if not filename:
             raise ValueError("No filename provided in config under id.filename")
 
-        self.filepath = Path(filename).resolve()
-        if not self.filepath.is_file():
-            raise OSError(f"File does not exist: {self.filepath}")
-
         self.fps_target = config.get("options", {}).get(
             "max_fps",
             0,  # 0 means no dropping of frames
