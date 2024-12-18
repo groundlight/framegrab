@@ -1263,10 +1263,6 @@ class FileStreamFrameGrabber(FrameGrabber):
         if not filename:
             raise ValueError("No filename provided in config under id.filename")
 
-        self.filepath = Path(filename).resolve()
-        if not self.filepath.is_file():
-            raise OSError(f"File does not exist: {self.filepath}")
-
         self.fps_target = config.get("options", {}).get(
             "max_fps",
             0,  # 0 means no dropping of frames
@@ -1275,32 +1271,24 @@ class FileStreamFrameGrabber(FrameGrabber):
             raise ValueError(f"Target FPS cannot be negative: {self.fps_target}")
         self.remainder = 0.0
 
-        try:
-            self.capture = cv2.VideoCapture(filename)
-            try:
-                backend = self.capture.getBackendName()
-            except cv2.error:
-                raise ValueError(f"Could not open file {filename}. Is it a valid video file?")
-            logger.debug(f"Initialized video capture with {backend=}")
+        self.capture = cv2.VideoCapture(filename)
+        if not self.capture.isOpened():
+            raise ValueError(f"Could not open file {filename}. Is it a valid video file?")
+        backend = self.capture.getBackendName()
+        logger.debug(f"Initialized video capture with {backend=}")
 
-            ret, _ = self.capture.read()
-            if not ret:
-                raise RuntimeError("Could not read first frame")
+        ret, _ = self.capture.read()
+        if not ret:
+            self.capture.release()
+            raise ValueError(f"Could not read first frame of file {filename}. Is it a valid video file?")
 
-            self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
-            if self.fps_source <= 0.1:
-                logger.warning(f"Captured framerate is very low or zero: {self.fps_source} FPS")
-            self.should_drop_frames = self.fps_target > 0 and self.fps_target < self.fps_source
-            logger.debug(
-                f"Source FPS: {self.fps_source}, Target FPS: {self.fps_target}, Drop Frames: {self.should_drop_frames}"
-            )
-
-        except (cv2.error, RuntimeError) as e:
-            logger.error(f"Could not initialize FileStreamFrameGrabber: {filename} is invalid or read error: {str(e)}")
-            raise
-        except OSError as e:
-            logger.error(f"Could not open file {filename}: {str(e)}")
-            raise
+        self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
+        if self.fps_source <= 0.1:
+            logger.warning(f"Captured framerate is very low or zero: {self.fps_source} FPS")
+        self.should_drop_frames = self.fps_target > 0 and self.fps_target < self.fps_source
+        logger.debug(
+            f"Source FPS: {self.fps_source}, Target FPS: {self.fps_target}, Drop Frames: {self.should_drop_frames}"
+        )
 
     def _grab_implementation(self) -> np.ndarray:
         """Grab a frame from the video file, decimating if needed to match target FPS.
