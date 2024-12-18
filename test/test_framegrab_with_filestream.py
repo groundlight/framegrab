@@ -123,7 +123,7 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
         config = self.base_config_mp4.copy()
         config["id"]["filename"] = "nonexistent.mp4"
 
-        with self.assertRaises(OSError):
+        with self.assertRaises(ValueError):
             FileStreamFrameGrabber(config)
 
     def test_invalid_resolution_option(self):
