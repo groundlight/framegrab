@@ -220,11 +220,10 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         
         `create_grabbers` should return a list of of all valid grabbers that it was able to create.
         """
-        1 / 0
         configs = [
             {
                 "id": {
-                    "serial_number": "123"
+                    "serial_number": "123" # valid 'mock' camera
                 },
                 "name": "Mock Camera 1",
                 "input_type": "mock",
@@ -238,7 +237,7 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
             },
                         {
                 "id": {
-                    "serial_number": "456"
+                    "serial_number": "456" # valid 'mock' camera
                 },
                 "name": "Mock Camera 2",
                 "input_type": "mock",
