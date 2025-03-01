@@ -218,7 +218,7 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         """
         Defines a list of camera configurations, where one of the configurations is invalid.
         
-        `create_grabbers` should return a list of of all valid grabbers that it was able to create.
+        `create_grabbers` should return all valid grabbers that it was able to create.
         """
         configs = [
             {
