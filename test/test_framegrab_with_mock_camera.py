@@ -248,5 +248,8 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         
         assert len(grabbers) == 2
         
+        for grabber in grabbers.values():
+            grabber.release()
+        
         
            
