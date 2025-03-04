@@ -212,3 +212,44 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         new_config = RTSPFrameGrabber._substitute_rtsp_password(config)
 
         assert new_config == config
+        
+        
+    def test_create_grabbers_with_one_invalid_config(self):
+        """
+        Defines a list of camera configurations, where one of the configurations is invalid.
+        
+        `create_grabbers` should return all valid grabbers that it was able to create.
+        """
+        configs = [
+            {
+                "id": {
+                    "serial_number": "123" # valid 'mock' camera
+                },
+                "name": "Mock Camera 1",
+                "input_type": "mock",
+            },
+            {
+                "id": {
+                    "rtsp_url": "rtsp://INVALID:INVALID@0.0.0.0:0" # invalid rtsp url
+                    },
+                "name": "Invalid RTSP Camera",
+                "input_type": "rtsp",
+            },
+                        {
+                "id": {
+                    "serial_number": "456" # valid 'mock' camera
+                },
+                "name": "Mock Camera 2",
+                "input_type": "mock",
+            },
+        ]
+        
+        grabbers = FrameGrabber.create_grabbers(configs)
+        for grabber in grabbers.values():
+            grabber.release()
+        
+        assert len(grabbers) == 2
+        
+        
+        
+           
