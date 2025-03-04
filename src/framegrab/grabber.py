@@ -136,7 +136,7 @@ class FrameGrabber(ABC):
                 grabber_list.append(grabber)
             except ValueError as e:
                 camera_name = config.get("name", "Unnamed Camera")
-                logger.warning(
+                logger.error(
                     f"Failed to connect to {camera_name}. Please check its connection and provided configuration: {config}",
                     exc_info=True,
                 )
