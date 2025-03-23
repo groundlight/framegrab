@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 import yaml
 
+from .config import FrameGrabberConfig, InputTypes
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
 from .unavailable_module import UnavailableModule
@@ -50,51 +51,21 @@ DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
 
 
-class InputTypes:
-    """Defines the available input types from FrameGrabber objects"""
-
-    GENERIC_USB = "generic_usb"
-    RTSP = "rtsp"
-    REALSENSE = "realsense"
-    BASLER = "basler"
-    RPI_CSI2 = "rpi_csi2"
-    HLS = "hls"
-    YOUTUBE_LIVE = "youtube_live"
-    FILE_STREAM = "file_stream"
-    MOCK = "mock"
-
-    def get_options() -> list:
-        """Get a list of the available InputType options"""
-        output = []
-        for attr_name in vars(InputTypes):
-            attr_value = getattr(InputTypes, attr_name)
-            if "__" not in attr_name and isinstance(attr_value, str):
-                output.append(attr_value)
-        return output
-
-
 class FrameGrabber(ABC):
     # for naming FrameGrabber objects that have no user-defined name
     unnamed_grabber_count = 0
 
     @staticmethod
-    def _validate_config(config: dict) -> dict:
+    def _validate_config(config: dict) -> FrameGrabberConfig:
         """Check the config to ensure it conforms to the required format and data types
         Returns a corrected version of the config.
         """
-        output_config = config.copy()
-
-        # Ensure that serial numbers are strings
         try:
-            output_config["id"]["serial_number"] = str(output_config["id"]["serial_number"])
-        except KeyError:
-            pass
+            validated_config = FrameGrabberConfig(**config)
+        except ValueError as e:
+            raise ValueError(f"Invalid configuration: {e}")
 
-        # Ensure that there are some options, even if they are empty
-        if not output_config.get("options"):
-            output_config["options"] = {}
-
-        return output_config
+        return validated_config
 
     @staticmethod
     def create_grabbers(configs: List[dict], warmup_delay: float = 1.0) -> Dict[str, "FrameGrabber"]:
@@ -264,11 +235,8 @@ class FrameGrabber(ABC):
         # Ensure the config is properly constructed and typed
         config = FrameGrabber._validate_config(config)
 
-        # At a minimum, input_type must be provided
-        input_type = config.get("input_type", None)
-        if input_type is None:
-            raise ValueError(f"No input_type provided. Valid types are {InputTypes.get_options()}")
-
+        input_type = config.input_type
+        
         # Based on input_type, create correct type of FrameGrabber
         if input_type == InputTypes.GENERIC_USB:
             grabber = GenericUSBFrameGrabber(config)
