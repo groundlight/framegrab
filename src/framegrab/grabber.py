@@ -236,7 +236,7 @@ class FrameGrabber(ABC):
         config = FrameGrabber._validate_config(config)
 
         input_type = config.input_type
-        
+
         # Based on input_type, create correct type of FrameGrabber
         if input_type == InputTypes.GENERIC_USB:
             grabber = GenericUSBFrameGrabber(config)
