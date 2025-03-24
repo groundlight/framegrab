@@ -1,23 +1,34 @@
-from pydantic import BaseModel, validator, create_model
-from typing import Optional, Dict
 from enum import Enum
-from .camera_options import CameraOptionsBasler, CameraOptionsGeneric, CameraOptionsWithResolution
+from typing import Dict, Optional
+
+from pydantic import BaseModel, create_model, validator
+
+from .camera_options import (
+    CameraOptionsBasler,
+    CameraOptionsGeneric,
+    CameraOptionsWithResolution,
+)
+
 
 @dataclass
 class IDFieldConfig:
     field_name: str
     is_required: bool
 
+
 class CameraID(Enum):
     """Enumeration of possible camera identifiers."""
+
     SERIAL_NUMBER = "serial_number"
     RTSP_URL = "rtsp_url"
     HLS_URL = "hls_url"
     YOUTUBE_URL = "youtube_url"
     FILENAME = "filename"
 
+
 class InputTypes(str, Enum):
     """Defines the available input types for FrameGrabber objects."""
+
     GENERIC_USB = "generic_usb"
     RTSP = "rtsp"
     REALSENSE = "realsense"
@@ -59,13 +70,12 @@ class InputTypes(str, Enum):
 
 # Dynamically create a model to expose all camera ID fields as potential fields for FrameGrabberConfig
 # That way you can specify "rtsp_url" or "serial_number" or "filename" etc on the config model.
-CameraIDFields = create_model(
-    'CameraIDFields',
-    **{id_.value: (Optional[str], None) for id_ in CameraID}
-)
+CameraIDFields = create_model("CameraIDFields", **{id_.value: (Optional[str], None) for id_ in CameraID})
+
 
 class FrameGrabberConfig(BaseModel):
     """Configuration model for FrameGrabber."""
+
     input_type: InputTypes
     options: Optional[CameraOptions] = None
     name: Optional[str] = None
@@ -73,10 +83,10 @@ class FrameGrabberConfig(BaseModel):
     # Include all CameraID fields
     __annotations__ = {**CameraIDFields.__annotations__}
 
-    @validator('serial_number', 'rtsp_url', 'hls_url', 'youtube_url', 'filename', pre=True, always=True)
+    @validator("serial_number", "rtsp_url", "hls_url", "youtube_url", "filename", pre=True, always=True)
     def validate_id(cls, v, values, field):
         """Validator to ensure the correct ID field is set based on input type."""
-        input_type = values.get('input_type')
+        input_type = values.get("input_type")
         id_field_config = InputTypes.ID_FIELDS.get(input_type)
 
         if field.name == required_field.field_name:
@@ -87,19 +97,20 @@ class FrameGrabberConfig(BaseModel):
                 raise ValueError(f"{field.name} should not be set for input type {input_type}")
 
         return v
-    
-    @validator('options', pre=True, always=True)
+
+    @validator("options", pre=True, always=True)
     def validate_options(cls, v, values):
         """Validator to ensure options are of the correct type based on input type."""
-        input_type = values.get('input_type')
+        input_type = values.get("input_type")
         expected_options_class = InputTypes.CAMERA_OPTIONS_FOR_INPUT_TYPE.get(input_type)
-        
+
         if expected_options_class is None:
             raise ValueError(f"Invalid input type: {input_type}")
 
         if not isinstance(v, expected_options_class):
             raise ValueError(f"options must be of type {expected_options_class.__name__} for input type {input_type}")
         return v
+
 
 # Example usage:
 # config = FrameGrabberConfig(
