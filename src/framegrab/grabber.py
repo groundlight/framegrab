@@ -47,7 +47,6 @@ except ImportError as e:
 logger = logging.getLogger(__name__)
 
 OPERATING_SYSTEM = platform.system()
-DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
 
 
@@ -448,11 +447,11 @@ class FrameGrabber(ABC):
         """
         options = self.config.options
 
-        relative_crop_params = options.crop.relative or None
+        relative_crop_params = options.crop.get("relative")
         if relative_crop_params:
             return self._crop_relative(frame, relative_crop_params)
 
-        pixel_crop_params = options.crop.pixels or None
+        pixel_crop_params = options.crop.get("pixels")
         if pixel_crop_params:
             return self._crop_pixels(frame, pixel_crop_params)
 
@@ -483,11 +482,9 @@ class FrameGrabber(ABC):
         return frame
 
     def _digital_zoom(self, frame: np.ndarray) -> np.ndarray:
-        digital_zoom = self.config.options.zoom.digital or None
+        digital_zoom = self.config.options.digital_zoom
 
-        if digital_zoom is None:
-            pass
-        else:
+        if digital_zoom is not None:
             top = (frame.shape[0] - frame.shape[0] / digital_zoom) / 2
             bottom = frame.shape[0] - top
             left = (frame.shape[1] - frame.shape[1] / digital_zoom) / 2
@@ -499,7 +496,7 @@ class FrameGrabber(ABC):
     def _rotate(self, frame: np.ndarray) -> np.ndarray:
         """Rotates the provided frame a specified number of 90 degree rotations clockwise"""
 
-        num_90_deg_rotations = self.config.options.num_90_deg_rotations or 0
+        num_90_deg_rotations = self.config.options.num_90_deg_rotations
 
         for n in range(num_90_deg_rotations):
             frame = np.rot90(frame)
@@ -535,36 +532,6 @@ class FrameGrabber(ABC):
         """Update generic options such as crop and zoom as well as
         camera-specific options.
         """
-
-        # Ensure that the user hasn't provided pixel cropping parameters and relative cropping parameters
-        pixel_crop_params = options.crop.pixels or None
-        relative_crop_params = options.crop.relative or None
-        if pixel_crop_params and relative_crop_params:
-            camera_name = self.config.name
-            raise ValueError(
-                f"Pixel cropping parameters and relative cropping parameters were set for "
-                f"{camera_name}. Pixel cropping and relative cropping cannot be "
-                f"used together. Please adjust your configurations to use one or the other."
-            )
-
-        # Ensure valid relative cropping parameters (between 0 and 1)
-        for param_name, param_value in relative_crop_params.items():
-            if param_value < 0 or param_value > 1:
-                camera_name = self.config.name
-                raise ValueError(
-                    f"Relative cropping parameter ({param_name}) on {camera_name} is {param_value}, which is invalid. "
-                    f"Relative cropping parameters must be between 0 and 1, where 1 represents the full "
-                    f"width or length of the image. "
-                )
-
-        # Validate digital zoom level
-        digital_zoom = options.zoom.digital or None
-        if digital_zoom and (digital_zoom < 1 or digital_zoom > DIGITAL_ZOOM_MAX):
-            raise ValueError(
-                f"Invalid value for digital_zoom ({digital_zoom}). "
-                f"Digital zoom must >= 1 and <= {DIGITAL_ZOOM_MAX}."
-            )
-
         # Apply camera specific options
         self._apply_camera_specific_options(options)
 
@@ -889,7 +856,7 @@ class RTSPFrameGrabber(FrameGrabber):
         if not self.keep_connection_open:
             return  # No need to drain if we're not keeping the connection open
 
-        max_fps = self.config.options.max_fps or 30
+        max_fps = self.config.options.max_fps
         self.drain_rate = 1 / max_fps
         thread = Thread(target=self._drain)
         thread.daemon = True

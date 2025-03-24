@@ -3,13 +3,14 @@ from pydantic import BaseModel, validator, create_model
 from typing import Optional, Dict
 from enum import Enum
 
+DIGITAL_ZOOM_MAX = 4
+
 class CameraOptionsGeneric(BaseModel):
     """Configuration options for camera settings."""
     crop: Optional[Dict[str, Dict[str, float]]] = None
-    zoom: Optional[Dict[str, float]] = None
+    digital_zoom: Optional[confloat(ge=1, le=DIGITAL_ZOOM_MAX)] = None
     num_90_deg_rotations: Optional[int] = 0
     keep_connection_open: Optional[bool] = True
-    max_fps: Optional[float] = None
 
     @validator('crop', pre=True, always=True)
     def validate_crop(cls, v):
@@ -28,8 +29,31 @@ class CameraOptionsGeneric(BaseModel):
         """Ensure that at least one crop side is specified."""
         if not any(side in crop_dict for side in ['top', 'bottom', 'left', 'right']):
             raise ValueError(f"At least one side must be specified in {crop_type} crop options.")
+        
+        if crop_type == 'relative':
+            for param_name, param_value in crop_dict.items():
+                if param_value < 0 or param_value > 1:
+                    raise ValueError(
+                        f"Relative cropping parameter ({param_name}) is {param_value}, which is invalid. "
+                        f"Relative cropping parameters must be between 0 and 1, where 1 represents the full "
+                        f"width or length of the image."
+                    )
 
+    def to_dict(self) -> dict:
+        base_dict = self.dict()
+        if self.zoom_digital is not None:
+            base_dict['digital'] = {'zoom': self.digital_zoom}
+            del base_dict['digital_zoom']
+        return base_dict
 
+    @classmethod
+    def from_dict(cls, data: dict):
+        if 'digital' in data:
+            digital = data.pop('digital')
+            data['digital_zoom'] = digital.get('zoom')
+        return cls(**data)
+
+      
 
 class CameraOptionsWithResolution(CameraOptionsGeneric):
     resolution_width: Optional[int] = None
@@ -64,4 +88,10 @@ class CameraOptionsWithResolution(CameraOptionsGeneric):
 class CameraOptionsBasler(CameraOptionsGeneric):
     # Should we validate these or let the basler library do it?
     basler: Optional[Dict[str, Any]] = None
+
+class CameraOptionsRTSP(CameraOptionsGeneric):
+    max_fps: Optional[confloat(ge=0)] = 30
+    keep_connection_open: Optional[bool] = True
+
+    
     

@@ -41,13 +41,13 @@ class InputTypes(str, Enum):
     }
 
     CAMERA_OPTIONS_FOR_INPUT_TYPE = {
-        InputTypes.RTSP: CameraOptionsGeneric,
+        InputTypes.RTSP: CameraOptionsRTSP,
         InputTypes.REALSENSE: CameraOptionsWithResolution,
         InputTypes.BASLER: CameraOptionsBasler,
         InputTypes.RPI_CSI2: CameraOptionsGeneric,
         InputTypes.HLS: CameraOptionsGeneric,
         InputTypes.YOUTUBE_LIVE: CameraOptionsGeneric,
-        InputTypes.FILE_STREAM: CameraOptionsGeneric,
+        InputTypes.FILE_STREAM: CameraOptionsRTSP,
         InputTypes.MOCK: CameraOptionsGeneric,
     }
 
