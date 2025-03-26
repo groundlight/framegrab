@@ -2,10 +2,14 @@ from pydantic import BaseModel, validator, create_model, confloat
 from typing import Optional, Dict
 from enum import Enum
 from config.camera_options import (
+    RaspberryPiCSI2Options,
+    HttpLiveStreamingOptions,
+    YouTubeLiveOptions,
+    FileStreamOptions,
+    RTSPOptions,
     CameraOptionsBasler,
     CameraOptionsRealSense,
-    CameraOptionsGenericUSB,
-
+    CameraOptionsGenericUSB
 )
 
 @dataclass
@@ -50,14 +54,14 @@ class InputTypes(str, Enum):
     }
 
     CAMERA_OPTIONS_FOR_INPUT_TYPE = {
-        InputTypes.RTSP: CameraOptionsRTSP,
-        InputTypes.REALSENSE: CameraOptionsWithResolution,
+        InputTypes.RTSP: RTSPOptions,
+        InputTypes.REALSENSE: CameraOptionsRealSense,
         InputTypes.BASLER: CameraOptionsBasler,
-        InputTypes.RPI_CSI2: CameraOptionsGeneric,
-        InputTypes.HLS: CameraOptionsGeneric,
-        InputTypes.YOUTUBE_LIVE: CameraOptionsGeneric,
-        InputTypes.FILE_STREAM: CameraOptionsRTSP,
-        InputTypes.MOCK: CameraOptionsGeneric,
+        InputTypes.RPI_CSI2: RaspberryPiCSI2Options,
+        InputTypes.HLS: HttpLiveStreamingOptions,
+        InputTypes.YOUTUBE_LIVE: YouTubeLiveOptions,
+        InputTypes.FILE_STREAM: FileStreamOptions,
+        InputTypes.MOCK: CameraOptionsGenericUSB,
     }
 
     @staticmethod
