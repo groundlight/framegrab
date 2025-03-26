@@ -42,12 +42,12 @@ try:
 except ImportError as e:
     streamlink = UnavailableModule(e)
 
-# Only used for ROS2 grabbers 
+# Only used for ROS2 grabbers
 try:
     from .ros2_client import ROS2Client
 except ImportError as e:
     ROS2Client = UnavailableModule(e)
-    
+
 logger = logging.getLogger(__name__)
 
 OPERATING_SYSTEM = platform.system()
