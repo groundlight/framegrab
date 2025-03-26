@@ -42,5 +42,5 @@ class ROS2Client(Node):
         cv_image = bridge.imgmsg_to_cv2(self._latest_msg, desired_encoding="bgr8")
         return cv_image
 
-    def cleanup(self) -> None:
+    def release(self) -> None:
         self.destroy_node()

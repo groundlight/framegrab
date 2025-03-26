@@ -611,7 +611,7 @@ class ROS2FrameGrabber(FrameGrabber):
         pass  # no camera-specific options for ROS2FrameGrabber
 
     def release(self) -> None:
-        self._ros2_client.cleanup()
+        self._ros2_client.release()
 
 
 class GenericUSBFrameGrabber(FrameGrabber):
