@@ -5,7 +5,6 @@ import re
 import subprocess
 import time
 from abc import ABC, abstractmethod
-from pathlib import Path
 from threading import Lock, Thread
 from typing import Dict, List, Optional, Union
 from urllib.parse import urlparse
@@ -17,6 +16,9 @@ import yaml
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
 from .unavailable_module import UnavailableModule
+
+# TODO handle optional imports
+from .ros2_client import ROS2Client
 
 # -- Optional imports --
 # Only used for Basler cameras, not required otherwise
@@ -62,6 +64,7 @@ class InputTypes:
     YOUTUBE_LIVE = "youtube_live"
     FILE_STREAM = "file_stream"
     MOCK = "mock"
+    ROS2 = "ros2"
 
     def get_options() -> list:
         """Get a list of the available InputType options"""
@@ -288,6 +291,8 @@ class FrameGrabber(ABC):
             grabber = FileStreamFrameGrabber(config)
         elif input_type == InputTypes.MOCK:
             grabber = MockFrameGrabber(config)
+        elif input_type == InputTypes.ROS2:
+            grabber = ROS2FrameGrabber(config)            
         else:
             raise ValueError(
                 f"The provided input_type ({input_type}) is not valid. Valid types are {InputTypes.get_options()}"
@@ -584,7 +589,26 @@ class FrameGrabber(ABC):
         """Context manager exit point that ensures proper resource cleanup."""
         self.release()
         return False  # re-raise any exceptions that occurred
+    
+    
+class ROS2FrameGrabber(FrameGrabber):
+    def __init__(self, config: dict):
+        self.config = config
 
+        topic = self.config.get("id", {}).get("topic")
+        if not topic:
+            raise ValueError("No topic provided for ROS2FrameGrabber")
+        
+        self._ros2_client = ROS2Client(topic)
+    
+    def _grab_implementation(self) -> np.ndarray:
+        return self._ros2_client.grab()
+    
+    def _apply_camera_specific_options(self, options: dict) -> None:
+        pass # no camera-specific options for ROS2FrameGrabber
+    
+    def release(self) -> None:
+        self._ros2_client.cleanup()
 
 class GenericUSBFrameGrabber(FrameGrabber):
     """For any generic USB camera, such as a webcam"""
