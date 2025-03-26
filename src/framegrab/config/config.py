@@ -1,7 +1,12 @@
-from pydantic import BaseModel, validator, create_model
+from pydantic import BaseModel, validator, create_model, confloat
 from typing import Optional, Dict
 from enum import Enum
-from .camera_options import CameraOptionsBasler, CameraOptionsGeneric, CameraOptionsWithResolution
+from config.camera_options import (
+    CameraOptionsBasler,
+    CameraOptionsRealSense,
+    CameraOptionsGenericUSB,
+
+)
 
 @dataclass
 class IDFieldConfig:

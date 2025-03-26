@@ -1,7 +1,8 @@
 
-from pydantic import BaseModel, validator, create_model
+from pydantic import BaseModel, validator, create_model, confloat
 from typing import Optional, Dict
 from enum import Enum
+from typing import Any
 
 DIGITAL_ZOOM_MAX = 4
 
@@ -10,7 +11,6 @@ class CameraOptionsGeneric(BaseModel):
     crop: Optional[Dict[str, Dict[str, float]]] = None
     digital_zoom: Optional[confloat(ge=1, le=DIGITAL_ZOOM_MAX)] = None
     num_90_deg_rotations: Optional[int] = 0
-    keep_connection_open: Optional[bool] = True
 
     @validator('crop', pre=True, always=True)
     def validate_crop(cls, v):
@@ -53,8 +53,6 @@ class CameraOptionsGeneric(BaseModel):
             data['digital_zoom'] = digital.get('zoom')
         return cls(**data)
 
-      
-
 class CameraOptionsWithResolution(CameraOptionsGeneric):
     resolution_width: Optional[int] = None
     resolution_height: Optional[int] = None
@@ -85,13 +83,41 @@ class CameraOptionsWithResolution(CameraOptionsGeneric):
         return cls(**data)
 
 
+
+class RaspberryPiCSI2Options(CameraOptionsGeneric):
+    pass
+
+class HttpLiveStreamingOptions(CameraOptionsGeneric):
+    keep_connection_open: Optional[bool] = True
+
+class YouTubeLiveOptions(HttpLiveStreamingOptions):
+    pass
+
+class FileStreamOptions(CameraOptionsGeneric):
+    max_fps: Optional[confloat(ge=0)] = 30
+
+class RTSPOptions(FileStreamOptions, HttpLiveStreamingOptions):
+    pass
+
 class CameraOptionsBasler(CameraOptionsGeneric):
     # Should we validate these or let the basler library do it?
     basler: Optional[Dict[str, Any]] = None
 
-class CameraOptionsRTSP(CameraOptionsGeneric):
-    max_fps: Optional[confloat(ge=0)] = 30
-    keep_connection_open: Optional[bool] = True
+class CameraOptionsRealSense(CameraOptionsWithResolution):
+    side_by_side_depth: Optional[bool] = False
 
-    
-    
+    def to_dict(self) -> dict:
+        base_dict = super().dict()
+        del base_dict['side_by_side_depth']
+        base_dict['depth'] = {'side_by_side': self.side_by_side_depth}
+        return base_dict
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        if 'depth' in data:
+            depth = data.pop('depth')
+            data['side_by_side_depth'] = depth.get('side_by_side')
+        return cls(**data)
+
+class CameraOptionsGenericUSB(CameraOptionsWithResolution):
+    pass
