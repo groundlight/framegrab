@@ -15,11 +15,6 @@ import yaml
 
 from .exceptions import GrabError
 
-# TODO handle optional imports
-from .ros2_client import ROS2Client
-from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
-from .unavailable_module import UnavailableModule
-
 # -- Optional imports --
 # Only used for Basler cameras, not required otherwise
 try:
@@ -45,6 +40,12 @@ try:
 except ImportError as e:
     streamlink = UnavailableModule(e)
 
+# Only used for ROS2 grabbers 
+try:
+    from .ros2_client import ROS2Client
+except ImportError as e:
+    ROS2Client = UnavailableModule(e)
+    
 logger = logging.getLogger(__name__)
 
 OPERATING_SYSTEM = platform.system()

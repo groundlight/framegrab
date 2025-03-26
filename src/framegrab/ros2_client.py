@@ -44,25 +44,3 @@ class ROS2Client(Node):
 
     def cleanup(self) -> None:
         self.destroy_node()
-
-
-# Sample usage
-def main():
-    ros2client = ROS2Client("/groundlight/sample_image")
-
-    while True:
-        frame = ros2client.grab()
-        if frame is not None:
-            cv2.imshow("Received Image", frame)
-            key = cv2.waitKey(0)
-            if key == ord("q"):
-                break
-        else:
-            print("No frame received.")
-            break
-
-    ros2client.cleanup()
-
-
-if __name__ == "__main__":
-    main()
