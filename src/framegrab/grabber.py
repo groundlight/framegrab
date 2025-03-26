@@ -14,6 +14,8 @@ import numpy as np
 import yaml
 
 from .exceptions import GrabError
+from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
+from .unavailable_module import UnavailableModule
 
 # -- Optional imports --
 # Only used for Basler cameras, not required otherwise

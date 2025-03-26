@@ -41,3 +41,6 @@ while True:
     grabber.apply_options(options)
             
     frame = grabber.grab()
+    
+grabber.release()
+cv2.destroyAllWindows()
