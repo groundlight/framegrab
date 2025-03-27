@@ -15,38 +15,38 @@ import yaml
 
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
-from .unavailable_module import UnavailableModule
+from .unavailable_module import UnavailableModuleOrObject
 
 # -- Optional imports --
 # Only used for Basler cameras, not required otherwise
 try:
     from pypylon import pylon
 except ImportError as e:
-    pylon = UnavailableModule(e)
+    pylon = UnavailableModuleOrObject(e)
 
 # Only used for RealSense cameras, not required otherwise
 try:
     from pyrealsense2 import pyrealsense2 as rs
 except ImportError as e:
-    rs = UnavailableModule(e)
+    rs = UnavailableModuleOrObject(e)
 
 # Only used for CSI2 cameras with Raspberry Pi, not required otherwise
 try:
     from picamera2 import Picamera2
 except ImportError as e:
-    Picamera2 = UnavailableModule(e)
+    Picamera2 = UnavailableModuleOrObject(e)
 
 # Only used for Youtube Live streams, not required otherwise
 try:
     import streamlink
 except ImportError as e:
-    streamlink = UnavailableModule(e)
+    streamlink = UnavailableModuleOrObject(e)
 
 # Only used for ROS2 grabbers
 try:
     from .ros2_client import ROS2Client
 except ImportError as e:
-    ROS2Client = UnavailableModule(e)
+    ROS2Client = UnavailableModuleOrObject(e)
 
 logger = logging.getLogger(__name__)
 

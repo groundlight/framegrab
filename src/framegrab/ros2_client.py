@@ -1,7 +1,6 @@
 import uuid
 from threading import Event
 
-import cv2
 import numpy as np
 import rclpy
 from cv_bridge import CvBridge
@@ -13,7 +12,6 @@ bridge = CvBridge()
 # start the ROS client if it isn't already started
 if not rclpy.ok():
     rclpy.init()
-
 
 class ROS2Client(Node):
     def __init__(self, topic: str):

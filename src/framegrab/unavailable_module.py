@@ -1,6 +1,6 @@
-class UnavailableModule:
+class UnavailableModuleOrObject:
     """Useful for optional dependencies. If an optional dependency fails to be
-    imported, create an UnavailableModule instance and use it as a placeholder.
+    imported, create an UnavailableModuleOrObject instance and use it as a placeholder.
     Attempting to do anything with the UnavailableModule instance will raise
     the original exception.
 
@@ -12,7 +12,16 @@ class UnavailableModule:
         self.e = e  # save the original exception for later
 
     def __getattr__(self, name):
-        """Raise the original exception when the user tries to do anything with
+        """
+        Raise the original exception when the user tries to do anything with
         an instance of this class.
         """
         raise self.e
+    
+    def __call__(self, *args, **kwargs):
+        """
+        Raise the original exception when the user tries to create an instance of this class.
+        """
+        raise self.e
+    
+    
