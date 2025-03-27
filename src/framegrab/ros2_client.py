@@ -13,6 +13,7 @@ bridge = CvBridge()
 if not rclpy.ok():
     rclpy.init()
 
+
 class ROS2Client(Node):
     def __init__(self, topic: str):
         # create a unique node name so that multiple clients can be run simultaneously
