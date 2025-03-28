@@ -9,6 +9,7 @@ from pathlib import Path
 from threading import Lock, Thread
 from typing import Dict, List, Optional, Union
 from urllib.parse import urlparse
+from pydantic import BaseModel
 
 import cv2
 import numpy as np
@@ -50,36 +51,127 @@ OPERATING_SYSTEM = platform.system()
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
 
 
-class FrameGrabber(ABC):
-    # for naming FrameGrabber objects that have no user-defined name
-    unnamed_grabber_count = 0
-    # The input type of the specific FrameGrabber, ie generic_usb, rtsp, etc.
-    input_type: InputTypes
 
-    @abstractmethod
-    def __init__(self, config: FrameGrabberConfig):
-        self.config = config
-        self._validate_config_input_type()
+class InputTypes(str, Enum):
+    """Defines the available input types for FrameGrabber objects."""
+
+    GENERIC_USB = "generic_usb"
+    RTSP = "rtsp"
+    REALSENSE = "realsense"
+    BASLER = "basler"
+    RPI_CSI2 = "rpi_csi2"
+    HLS = "hls"
+    YOUTUBE_LIVE = "youtube_live"
+    FILE_STREAM = "file_stream"
+    MOCK = "mock"
+
+    INPUT_TYPE_TO_GRABBER = {
+        InputTypes.GENERIC_USB: GenericUSBFrameGrabber,
+        InputTypes.RTSP: RTSPFrameGrabber,
+        InputTypes.REALSENSE: RealSenseFrameGrabber,
+        InputTypes.BASLER: BaslerFrameGrabber,
+        InputTypes.RPI_CSI2: RaspberryPiCSI2FrameGrabber,
+        InputTypes.HLS: HttpLiveStreamingFrameGrabber,
+        InputTypes.YOUTUBE_LIVE: YouTubeLiveFrameGrabber,
+        InputTypes.FILE_STREAM: FileStreamFrameGrabber,
+        InputTypes.MOCK: MockFrameGrabber,
+    }
 
     @staticmethod
-    def _validate_config(config: dict) -> FrameGrabberConfig:
-        """Check the config to ensure it conforms to the required format and data types
-        Returns a corrected version of the config.
+    def get_options() -> list:
+        """Returns a list of available InputType options."""
+        return [item.value for item in InputTypes]
+
+class FrameGrabber(ABC, BaseModel):
+    # for naming FrameGrabber objects that have no user-defined name
+    unnamed_grabber_count = 0
+
+    name: Optional[str] = None
+    crop: Optional[Dict[str, Dict[str, float]]] = None
+    digital_zoom: Optional[confloat(ge=1, le=DIGITAL_ZOOM_MAX)] = None
+    num_90_deg_rotations: Optional[int] = 0
+    autogenerate_name: bool = False
+
+    def __post_init__(self):
+        if not self.name and self.autogenerate_name:
+            grabber._autogenerate_name()
+        self._apply_camera_specific_options()
+
+    @validator("crop", pre=True, always=True)
+    def validate_crop(cls, v):
+        """Ensure that crop options are correctly specified."""
+        if v:
+            if "relative" in v and "pixels" in v:
+                raise ValueError("Cannot specify both 'relative' and 'pixels' in crop options.")
+            if "relative" in v:
+                cls._validate_at_least_one_side(v["relative"], "relative")
+            if "pixels" in v:
+                cls._validate_at_least_one_side(v["pixels"], "pixels")
+        return v
+    
+    @staticmethod
+    def _validate_at_least_one_side(crop_dict, crop_type):
+        """Ensure that at least one crop side is specified."""
+        if not any(side in crop_dict for side in ["top", "bottom", "left", "right"]):
+            raise ValueError(f"At least one side must be specified in {crop_type} crop options.")
+
+        if crop_type == "relative":
+            for param_name, param_value in crop_dict.items():
+                if param_value < 0 or param_value > 1:
+                    raise ValueError(
+                        f"Relative cropping parameter ({param_name}) is {param_value}, which is invalid. "
+                        f"Relative cropping parameters must be between 0 and 1, where 1 represents the full "
+                        f"width or length of the image."
+                    )
+    
+    # TODO: work on this
+    def to_dict(self) -> dict:
+        base_dict = self.dict()
+        if self.zoom_digital is not None:
+            base_dict["digital"] = {"zoom": self.digital_zoom}
+            del base_dict["digital_zoom"]
+        return base_dict
+
+    # TODO: work on this
+    @classmethod
+    def from_dict(cls, data: dict):
+        if "digital" in data:
+            digital = data.pop("digital")
+            data["digital_zoom"] = digital.get("zoom")
+        return cls(**data)
+    
+    @staticmethod
+    def create_grabber(config: dict, autogenerate_name: bool = True, warmup_delay: float = 1.0):
+        """Create a FrameGrabber object based on the provided *DICTIONARY* configuration.
+
+        Parameters:
+            config (dict): A dictionary containing configuration settings for the FrameGrabber.
+
+            autogenerate_name (bool, optional): A flag to indicate whether to automatically
+                generate a name for the FrameGrabber object if not explicitly provided. Defaults
+                to True.
+
+            warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
+                cameras often need a moment to warm up before they can be used; grabbing frames too early
+                might result in dark or blurry images.
+                Defaults to 1.0. Only applicable to generic_usb cameras.
+
+        Returns:
+                An instance of a FrameGrabber subclass based on the provided
+                configuration. The specific subclass will be determined by the content of the
+                configuration dictionary.
+
         """
-        try:
-            validated_config = FrameGrabberConfig(**config)
-        except ValueError as e:
-            raise ValueError(f"Invalid configuration: {e}")
+        input_type = config.pop("input_type")
+        grabber_class = InputTypes.INPUT_TYPE_TO_GRABBER[input_type](config)
 
-        return validated_config
+        # these are provided on the model, but shouldn't be provided in a 
+        # declaritive yaml or dictionary version of the camera. so we add them here.
+        config["autogenerate_name"] = autogenerate_name
+        config["warmup_delay"] = warmup_delay
 
-    def _validate_config_input_type(self) -> InputTypes:
-        """Intented for submodels to call to validate that they got the right config type"""
-        if self.config.input_type != self.input_type:
-            raise ValueError(
-                f"Invalid config type for {self.__class__.__name__}. "
-                f"Expected {self.input_type}, got {self.config.input_type}."
-            )
+        grabber = grabber_class.from_dict(**config)
+        return grabber
 
     def create_grabbers(self, configs: List[FrameGrabberConfig]) -> Dict[str, "FrameGrabber"]:
         """
@@ -137,7 +229,7 @@ class FrameGrabber(ABC):
         return grabbers
 
     @staticmethod
-    def create_grabbers_from_dict(configs: List[dict], warmup_delay: float = 1.0) -> Dict[str, "FrameGrabber"]:
+    def create_grabbers(configs: List[dict], warmup_delay: float = 1.0) -> Dict[str, "FrameGrabber"]:
         """
         Creates multiple FrameGrab objects based on user-provided *DICTIONARY* configurations
 
@@ -154,9 +246,7 @@ class FrameGrabber(ABC):
         dict: A dictionary where the keys are the camera names, and the values are FrameGrab
         objects.
         """
-
-        configs = [FrameGrabberConfig(**config) for config in configs]
-        grabbers = self.create_grabbers(configs)
+        grabbers = [self.create_grabber_from_dict(config, autogenerate_name=False, warmup_delay=0) for config in configs]
         return grabbers
 
     @staticmethod
@@ -263,7 +353,7 @@ class FrameGrabber(ABC):
         return grabber
 
     @staticmethod
-    def create_grabber_yaml(yaml_config: str, autogenerate_name: bool = True, warmup_delay: float = 1.0):
+    def create_grabber_from_yaml(yaml_config: str, autogenerate_name: bool = True, warmup_delay: float = 1.0):
         """Create a FrameGrabber object based on the provided configuration.
 
         Parameters:
@@ -283,36 +373,9 @@ class FrameGrabber(ABC):
                 configuration. The specific subclass will be determined by the content of the
                 configuration dictionary.
         """
-        config = yaml.safe_load(yaml_config)
-        grabber = FrameGrabber.create_grabber(config, autogenerate_name, warmup_delay)
+        dictionary_config = yaml.safe_load(yaml_config)
+        grabber = self.create_grabber_from_dict(dictionary_config, autogenerate_name, warmup_delay)
         return grabber
-
-    @staticmethod
-    def create_grabber_dict(config: dict, autogenerate_name: bool = True, warmup_delay: float = 1.0):
-        """Create a FrameGrabber object based on the provided *DICTIONARY* configuration.
-
-        Parameters:
-            config (dict): A dictionary containing configuration settings for the FrameGrabber.
-
-            autogenerate_name (bool, optional): A flag to indicate whether to automatically
-                generate a name for the FrameGrabber object if not explicitly provided. Defaults
-                to True.
-
-            warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
-                cameras often need a moment to warm up before they can be used; grabbing frames too early
-                might result in dark or blurry images.
-                Defaults to 1.0. Only applicable to generic_usb cameras.
-
-        Returns:
-                An instance of a FrameGrabber subclass based on the provided
-                configuration. The specific subclass will be determined by the content of the
-                configuration dictionary.
-
-        """
-
-        # Ensure the config is properly constructed and typed
-        config = FrameGrabber._validate_config(config)
-        return FrameGrabber.create_grabber_from_config(config, autogenerate_name, warmup_delay)
 
     @staticmethod
     def autodiscover(
@@ -560,9 +623,19 @@ class FrameGrabber(ABC):
 class GenericUSBFrameGrabber(FrameGrabber):
     """For any generic USB camera, such as a webcam"""
 
+    warmup_delay: float = 1.0
+
     input_type = InputTypes.GENERIC_USB
     # keep track of the cameras that are already in use so that we don't try to connect to them twice
     indices_in_use = set()
+
+    def __post_init__(self):
+        super().__post_init__()
+        logger.info(
+                f"Waiting {warmup_delay} seconds for camera to warm up. "
+                "Pass in warmup_delay = 0 to suppress this behavior."
+            )
+        time.sleep(warmup_delay)
 
     def __init__(self, config: FrameGrabberConfig):
         super().__init__(config)
