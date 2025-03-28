@@ -9,5 +9,6 @@ This directory contains utilities for developing and testing FrameGrab on ROS2 H
 1. In another terminal window, launch the demo: `docker exec -it framegrab_ros_container /framegrab/ros2/demo.sh`.
 1. You should now see two windows: 1. RViz2 streaming camera frames directly from the camera publisher node 2. An OpenCV window that renders images that framegrab captured from the ROS2 topic
 
-![FrameGrab on ROS2 Demo](assets/ros2_demo.png)
+<img src="assets/ros2_demo.png" alt="FrameGrab on ROS2 Demo" width="800">
+
 
