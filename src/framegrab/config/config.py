@@ -1,16 +1,18 @@
-from pydantic import BaseModel, validator, create_model, confloat
-from typing import Optional, Dict
 from enum import Enum
+from typing import Dict, Optional
+
 from config.camera_options import (
-    RaspberryPiCSI2Options,
-    HttpLiveStreamingOptions,
-    YouTubeLiveOptions,
-    FileStreamOptions,
-    RTSPOptions,
     CameraOptionsBasler,
+    CameraOptionsGenericUSB,
     CameraOptionsRealSense,
-    CameraOptionsGenericUSB
+    FileStreamOptions,
+    HttpLiveStreamingOptions,
+    RaspberryPiCSI2Options,
+    RTSPOptions,
+    YouTubeLiveOptions,
 )
+from pydantic import BaseModel, confloat, create_model, validator
+
 
 @dataclass
 class IDFieldConfig:
