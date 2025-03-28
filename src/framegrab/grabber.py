@@ -63,6 +63,18 @@ class InputTypes:
     FILE_STREAM = "file_stream"
     MOCK = "mock"
 
+    INPUT_TYPE_TO_GRABBER = {
+        InputTypes.GENERIC_USB: GenericUSBFrameGrabber,
+        InputTypes.RTSP: RTSPFrameGrabber,
+        InputTypes.REALSENSE: RealSenseFrameGrabber,
+        InputTypes.BASLER: BaslerFrameGrabber,
+        InputTypes.RPI_CSI2: RaspberryPiCSI2FrameGrabber,
+        InputTypes.HLS: HttpLiveStreamingFrameGrabber,
+        InputTypes.YOUTUBE_LIVE: YouTubeLiveFrameGrabber,
+        InputTypes.FILE_STREAM: FileStreamFrameGrabber,
+        InputTypes.MOCK: MockFrameGrabber,
+    }
+
     def get_options() -> list:
         """Get a list of the available InputType options"""
         output = []
