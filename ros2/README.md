@@ -5,8 +5,8 @@ This directory contains utilities for developing and testing FrameGrab on ROS2 H
 ## Run the Demo
 1. This demo creates GUI elements in the container (RViz2 and OpenCV). In order to see them, you need to install and run [XLaunch](https://sourceforge.net/projects/vcxsrv/).
 1. Bring up the docker container. From this directory, run `docker compose up -d`. This will build the container, mount the `framegrab` diretory into the container, and pip install `framegrab` in editable mode. This can be helpful for interactive development.
-1. Enter the container: `docker exec -it framegrab_ros_container bash`
-1. Inside the container, launch the demo: `python3 /framegrab/ros2/ros2_demo.py`.
+1. In one terminal window, start the camera publishing node: `docker exec -it framegrab_ros_container /framegrab/ros2/start_camera.sh`
+1. In another terminal window, launch the demo: `docker exec -it framegrab_ros_container /framegrab/ros2/demo.sh`.
 
 ![FrameGrab on ROS2 Demo](assets/ros2_demo.png)
 

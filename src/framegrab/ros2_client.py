@@ -24,13 +24,13 @@ class ROS2Client(Node):
         self._subscription = self.create_subscription(Image, topic, self._callback, 10)
 
     def _callback(self, msg: Image) -> None:
-        self.get_logger().info("Received a message.")
+        self.get_logger().debug("Received a message.")
         self._latest_msg = msg
         self._msg_event.set()
 
     def grab(self) -> np.ndarray:
         rclpy.spin_once(self, timeout_sec=5.0)
-        self.get_logger().info("Waiting for a message...")
+        self.get_logger().debug("Waiting for a message...")
         self._msg_event.wait(timeout=5.0)
 
         if self._latest_msg is None:
