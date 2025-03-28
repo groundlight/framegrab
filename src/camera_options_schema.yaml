@@ -1,0 +1,308 @@
+# This YAML file documents the avialable parameters for each camera options pydantic model.
+# When creating a framegrabber object, you can pass in these models as the camera_options parameter.
+
+# Example RTSPOptions object:
+# camera_options = RTSPOptions(crop={'relative': {'top': 0.1, 'bottom': 0.1}}, digital_zoom=2)
+# config = FrameGrabberConfig(input_type=InputTypes.RTSP, rtsp_url='rtsp://example.com/stream', options=camera_options)
+# grabber = create_grabber(config=config)
+
+RaspberryPiCSI2Options:
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4.0
+        minimum: 1.0
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+  title: RaspberryPiCSI2Options
+  type: object
+
+HttpLiveStreamingOptions:
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4.0
+        minimum: 1.0
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    keep_connection_open:
+      anyOf:
+      - type: boolean
+      - type: 'null'
+      default: true
+      title: Keep Connection Open
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+  title: HttpLiveStreamingOptions
+  type: object
+
+YouTubeLiveOptions:
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4.0
+        minimum: 1.0
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    keep_connection_open:
+      anyOf:
+      - type: boolean
+      - type: 'null'
+      default: true
+      title: Keep Connection Open
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+  title: YouTubeLiveOptions
+  type: object
+
+FileStreamOptions:
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4.0
+        minimum: 1.0
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    max_fps:
+      anyOf:
+      - minimum: 0.0
+        type: number
+      - type: 'null'
+      default: 30
+      title: Max Fps
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+  title: FileStreamOptions
+  type: object
+
+RTSPOptions:
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4.0
+        minimum: 1.0
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    keep_connection_open:
+      anyOf:
+      - type: boolean
+      - type: 'null'
+      default: true
+      title: Keep Connection Open
+    max_fps:
+      anyOf:
+      - minimum: 0.0
+        type: number
+      - type: 'null'
+      default: 30
+      title: Max Fps
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+  title: RTSPOptions
+  type: object
+
+CameraOptionsBasler:
+  properties:
+    basler:
+      anyOf:
+      - type: object
+      - type: 'null'
+      default: null
+      title: Basler
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4.0
+        minimum: 1.0
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+  title: CameraOptionsBasler
+  type: object
+
+CameraOptionsRealSense:
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4.0
+        minimum: 1.0
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+    resolution_height:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: null
+      title: Resolution Height
+    resolution_width:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: null
+      title: Resolution Width
+    side_by_side_depth:
+      anyOf:
+      - type: boolean
+      - type: 'null'
+      default: false
+      title: Side By Side Depth
+  title: CameraOptionsRealSense
+  type: object
+
+CameraOptionsGenericUSB:
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4.0
+        minimum: 1.0
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+    resolution_height:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: null
+      title: Resolution Height
+    resolution_width:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: null
+      title: Resolution Width
+  title: CameraOptionsGenericUSB
+  type: object
+
