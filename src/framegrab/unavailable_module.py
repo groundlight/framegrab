@@ -17,11 +17,9 @@ class UnavailableModuleOrObject:
         an instance of this class.
         """
         raise self.e
-    
+
     def __call__(self, *args, **kwargs):
         """
         Raise the original exception when the user tries to create an instance of this class.
         """
         raise self.e
-    
-    
