@@ -23,6 +23,8 @@ from .unavailable_module import UnavailableModule
 root_logger = logging.getLogger()
 if root_logger.hasHandlers():
     root_logger.handlers.clear()
+    
+logger = logging.getLogger(__name__)
 
 # Create a logger for this module
 # -- Optional imports --
@@ -50,7 +52,6 @@ try:
 except ImportError as e:
     streamlink = UnavailableModule(e)
 
-logger = logging.getLogger(__name__)
 
 OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
