@@ -651,7 +651,7 @@ class GenericUSBFrameGrabber(WithSerialNumberAndResolutionMixin):
     warmup_delay: float = 1.0
 
     # keep track of the cameras that are already in use so that we don't try to connect to them twice
-    indices_in_use: ClassVar[set] = set()
+    _indices_in_use: ClassVar[set] = PrivateAttr(default_factory=set)
     _idx: Optional[int] = PrivateAttr(default=None)
 
     def __init__(self, **kwargs):
@@ -684,7 +684,7 @@ class GenericUSBFrameGrabber(WithSerialNumberAndResolutionMixin):
                     continue
 
                 idx = found_cam["idx"]
-                if idx in GenericUSBFrameGrabber.indices_in_use:
+                if idx in GenericUSBFrameGrabber._indices_in_use:
                     continue
 
                 capture = self._connect_and_validate_capture(found_cam)
@@ -700,7 +700,7 @@ class GenericUSBFrameGrabber(WithSerialNumberAndResolutionMixin):
         else:
             logger.debug("No USB cameras found with Linux commands. Assigning camera by index.")
             for idx in range(20):  # an arbitrarily high number to make sure we check for enough cams
-                if idx in GenericUSBFrameGrabber.indices_in_use:
+                if idx in GenericUSBFrameGrabber._indices_in_use:
                     continue  # Camera is already in use, moving on
 
                 capture = cv2.VideoCapture(idx)
@@ -722,7 +722,7 @@ class GenericUSBFrameGrabber(WithSerialNumberAndResolutionMixin):
 
         # Log the current camera index as 'in use' to prevent other GenericUSBFrameGrabbers from stepping on it
         self._idx = idx
-        GenericUSBFrameGrabber.indices_in_use.add(idx)
+        GenericUSBFrameGrabber._indices_in_use.add(idx)
     
     def to_dict(self) -> dict:
         dictionary_config = super().to_dict()
@@ -794,7 +794,7 @@ class GenericUSBFrameGrabber(WithSerialNumberAndResolutionMixin):
         return frame
 
     def release(self) -> None:
-        GenericUSBFrameGrabber.indices_in_use.remove(self.idx)
+        GenericUSBFrameGrabber._indices_in_use.remove(self.idx)
         self._capture.release()
 
     def apply_options(self, options: dict) -> None:
@@ -998,15 +998,17 @@ class RTSPFrameGrabber(FrameGrabber):
 class BaslerFrameGrabber(WithSerialNumberMixin):
     """Basler USB and Basler GigE Cameras"""
 
-    serial_numbers_in_use: ClassVar[set] = set()
-    basler_options: dict = Field(default_factory=dict)
+    _serial_numbers_in_use: ClassVar[set] = PrivateAttr(default_factory=set)
+    _basler_options: dict = PrivateAttr(default_factory=dict)
+    _converter: pylon.ImageFormatConverter = PrivateAttr(default_factory=pylon.ImageFormatConverter)
+    _camera: Optional[pylon.InstantCamera] = PrivateAttr(default=None)
 
-    def __post_init__(self):
+    def __init__(self, **kwargs):
         # Basler cameras grab frames in different pixel formats, most of which cannot be displayed directly
         # by OpenCV. self.convert will convert them to BGR which can be used by OpenCV
-        self.converter = pylon.ImageFormatConverter()
-        self.converter.OutputPixelFormat = pylon.PixelType_BGR8packed
-        self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+        super().__init__(**kwargs)
+        self._converter.OutputPixelFormat = pylon.PixelType_BGR8packed
+        self._converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
         tlf = pylon.TlFactory.GetInstance()
         devices = tlf.EnumerateDevices()
@@ -1019,7 +1021,7 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
         serial_number = self.serial_number
         for device in devices:
             curr_serial_number = device.GetSerialNumber()
-            if curr_serial_number in BaslerFrameGrabber.serial_numbers_in_use:
+            if curr_serial_number in BaslerFrameGrabber._serial_numbers_in_use:
                 continue
             if serial_number is None or serial_number == curr_serial_number:
                 camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateDevice(device))
@@ -1037,11 +1039,11 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
 
         # A valid camera has been found, remember the serial_number to prevent
         # other FrameGrabbers from using it
-        self.camera = camera
-        BaslerFrameGrabber.serial_numbers_in_use.add(self.serial_number)
+        self._camera = camera
+        BaslerFrameGrabber._serial_numbers_in_use.add(self.serial_number)
 
     def _grab_implementation(self) -> np.ndarray:
-        with self.camera.GrabOne(2000) as result:
+        with self._camera.GrabOne(2000) as result:
             if result.GrabSucceeded():
                 # Convert the image to BGR for OpenCV
                 image = self.converter.Convert(result)
@@ -1072,15 +1074,27 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
         return frame
 
     def release(self) -> None:
-        BaslerFrameGrabber.serial_numbers_in_use.remove(self.serial_number)
+        BaslerFrameGrabber._serial_numbers_in_use.remove(self.serial_number)
         self.camera.Close()
 
     def apply_options(self, options: dict) -> None:
         super().apply_options(options)
         node_map = self.camera.GetNodeMap()
-        for property_name, value in self.basler_options.items():
+        for property_name, value in self._basler_options.items():
             node = node_map.GetNode(property_name)
             node.SetValue(value)
+    
+    def to_dict(self) -> dict:
+        dictionary_config = super().to_dict()
+        dictionary_config["options"]["basler_options"] = self._basler_options
+        return dictionary_config
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        data = copy.deepcopy(data)
+        basler_options = data.pop("options").pop("basler_options")
+        new_data = {**data, "basler_options": basler_options}
+        return FrameGrabber.from_dict(dictionary_config=new_data)
 
 
 class RealSenseFrameGrabber(WithSerialNumberAndResolutionMixin):
