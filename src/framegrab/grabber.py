@@ -25,14 +25,14 @@ if root_logger.hasHandlers():
     root_logger.handlers.clear()
 
 # Create a logger for this module
-logger = logging.getLogger(__name__)
-
-# Optional imports
+# -- Optional imports --
+# Only used for Basler cameras, not required otherwise
 try:
     from pypylon import pylon
 except ImportError as e:
     pylon = UnavailableModule(e)
 
+# Only used for RealSense cameras, not required otherwise
 try:
     from pyrealsense2 import pyrealsense2 as rs
 except ImportError as e:
@@ -43,6 +43,14 @@ try:
     from picamera2 import Picamera2
 except ImportError as e:
     Picamera2 = UnavailableModule(e)
+
+# Only used for Youtube Live streams, not required otherwise
+try:
+    import streamlink
+except ImportError as e:
+    streamlink = UnavailableModule(e)
+
+logger = logging.getLogger(__name__)
 
 OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
@@ -57,6 +65,9 @@ class InputTypes:
     REALSENSE = "realsense"
     BASLER = "basler"
     RPI_CSI2 = "rpi_csi2"
+    HLS = "hls"
+    YOUTUBE_LIVE = "youtube_live"
+    FILE_STREAM = "file_stream"
     MOCK = "mock"
 
     def get_options() -> list:
@@ -127,8 +138,15 @@ class FrameGrabber(ABC):
         # Create the grabbers
         grabber_list = []
         for config in configs:
-            grabber = FrameGrabber.create_grabber(config, autogenerate_name=False, warmup_delay=0)
-            grabber_list.append(grabber)
+            try:
+                grabber = FrameGrabber.create_grabber(config, autogenerate_name=False, warmup_delay=0)
+                grabber_list.append(grabber)
+            except ValueError as e:
+                camera_name = config.get("name", "Unnamed Camera")
+                logger.error(
+                    f"Failed to connect to {camera_name}. Please check its connection and provided configuration: {config}",
+                    exc_info=True,
+                )
 
         grabbers = FrameGrabber.grabbers_to_dict(grabber_list)
 
@@ -145,12 +163,16 @@ class FrameGrabber(ABC):
 
     @staticmethod
     def from_yaml(filename: Optional[str] = None, yaml_str: Optional[str] = None) -> List["FrameGrabber"]:
-        """Creates multiple FrameGrab objects based on a YAML file or YAML string.
-        Either filename or yaml_str must be provided, but not both.
+        """Creates multiple FrameGrabber objects based on a YAML file or YAML string.
 
-        :param filename: The filename of the YAML file to load.
-        :param yaml_str: A YAML string to parse.
-        :return: A dictionary where the keys are the camera names, and the values are FrameGrabber objects.
+        Args:
+            filename (str, optional): The filename of the YAML file to load.
+                Either filename or yaml_str must be provided, but not both.
+            yaml_str (str, optional): A YAML string to parse.
+                Either filename or yaml_str must be provided, but not both.
+
+        Returns:
+            List[FrameGrabber]: A list of FrameGrabber objects created from the YAML configuration.
         """
         if filename is None and yaml_str is None:
             raise ValueError("Either filename or yaml_str must be provided.")
@@ -265,6 +287,12 @@ class FrameGrabber(ABC):
             grabber = RealSenseFrameGrabber(config)
         elif input_type == InputTypes.RPI_CSI2:
             grabber = RaspberryPiCSI2FrameGrabber(config)
+        elif input_type == InputTypes.HLS:
+            grabber = HttpLiveStreamingFrameGrabber(config)
+        elif input_type == InputTypes.YOUTUBE_LIVE:
+            grabber = YouTubeLiveFrameGrabber(config)
+        elif input_type == InputTypes.FILE_STREAM:
+            grabber = FileStreamFrameGrabber(config)
         elif input_type == InputTypes.MOCK:
             grabber = MockFrameGrabber(config)
         else:
@@ -290,7 +318,10 @@ class FrameGrabber(ABC):
         return grabber
 
     @staticmethod
-    def autodiscover(warmup_delay: float = 1.0, rtsp_discover_mode: AutodiscoverMode = AutodiscoverMode.off) -> dict:
+    def autodiscover(
+        warmup_delay: float = 1.0,
+        rtsp_discover_mode: AutodiscoverMode = AutodiscoverMode.off,
+    ) -> dict:
         """Autodiscovers cameras and returns a dictionary of FrameGrabber objects
 
         warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
@@ -552,6 +583,15 @@ class FrameGrabber(ABC):
         """A cleanup method. Releases/closes the video capture, terminates any related threads, etc."""
         pass
 
+    def __enter__(self):
+        """Context manager entry point."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit point that ensures proper resource cleanup."""
+        self.release()
+        return False  # re-raise any exceptions that occurred
+
 
 class GenericUSBFrameGrabber(FrameGrabber):
     """For any generic USB camera, such as a webcam"""
@@ -758,9 +798,11 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
 
 class RTSPFrameGrabber(FrameGrabber):
-    """Handles RTSP streams. Can operate in two modes based on the `keep_connection_open` configuration:
-    1.  If `true`, keeps the connection open for low-latency frame grabbing, but consumes more CPU.  (default)
-    2. If `false`, opens the connection only when needed, which is slower but conserves resources.
+    """Handles RTSP streams.
+
+    Can operate in two modes based on the `keep_connection_open` configuration:
+        1. If `true`, keeps the connection open for low-latency frame grabbing, but consumes more CPU.  (default)
+        2. If `false`, opens the connection only when needed, which is slower but conserves resources.
     """
 
     def __init__(self, config: dict):
@@ -1103,6 +1145,210 @@ class RaspberryPiCSI2FrameGrabber(FrameGrabber):
 
     def release(self) -> None:
         self.camera.close()
+
+
+class HttpLiveStreamingFrameGrabber(FrameGrabber):
+    """Handles Http Live Streaming (HLS)
+
+    Supports two modes:
+    1. Keep connection open (default): Opens the connection once and keeps it open for high-fps frame grabbing.
+    2. Open connection on every frame: Opens and closes the connection on every captured frame, which conserves
+        both CPU and network bandwidth but has higher latency. In practice, roughly 1FPS is achievable with this strategy.
+    """
+
+    def __init__(self, config: dict):
+        hls_url = config.get("id", {}).get("hls_url")
+        if not hls_url:
+            camera_name = config.get("name", "Unnamed HLS Stream")
+            raise ValueError(
+                f"No HLS URL provided for {camera_name}. Please add an hls_url attribute to the config under id."
+            )
+
+        self.type = "HLS"
+        self.config = config
+        self.hls_url = self.config["id"]["hls_url"]
+
+        self.lock = Lock()
+        self.keep_connection_open = config.get("options", {}).get("keep_connection_open", True)
+
+        if self.keep_connection_open:
+            self._open_connection()
+
+    def _apply_camera_specific_options(self, options: dict) -> None:
+        if options.get("resolution"):
+            camera_name = self.config.get("name", f"Unnamed {self.type} Stream")
+            raise ValueError(
+                f"Resolution was set for {camera_name}, but resolution cannot be set for {self.type} streams."
+            )
+
+    def _open_connection(self):
+        self.capture = cv2.VideoCapture(self.hls_url)
+        if not self.capture.isOpened():
+            raise ValueError(f"Could not open {self.type} stream: {self.hls_url}. Is the HLS URL correct?")
+        logger.warning(f"Initialized video capture with backend={self.capture.getBackendName()}")
+
+    def _close_connection(self):
+        logger.warning(f"Closing connection to {self.type} stream")
+        with self.lock:
+            if self.capture is not None:
+                self.capture.release()
+
+    def _grab_implementation(self) -> np.ndarray:
+        if not self.keep_connection_open:
+            self._open_connection()
+            try:
+                return self._grab_open()
+            finally:
+                self._close_connection()
+        else:
+            return self._grab_open()
+
+    def _grab_open(self) -> np.ndarray:
+        with self.lock:
+            ret, frame = self.capture.read()
+        if not ret:
+            logger.error(f"Could not read frame from {self.capture}")
+        return frame
+
+    def release(self) -> None:
+        if self.keep_connection_open:
+            self._close_connection()
+
+
+class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
+    """Grabs the most recent frame from a YouTube Live stream (which are HLS streams under the hood)
+
+    Supports two modes:
+    1. Keep connection open (default): Opens the connection once and keeps it open for high-fps frame grabbing.
+    2. Open connection on every frame: Opens and closes the connection on every captured frame, which conserves
+        both CPU and network bandwidth but has higher latency. In practice, roughly 1FPS is achievable with this strategy.
+    """
+
+    def __init__(self, config: dict):
+        youtube_url = config.get("id", {}).get("youtube_url")
+        if not youtube_url:
+            camera_name = config.get("name", "Unnamed YouTube Live Stream")
+            raise ValueError(
+                f"No YouTube Live URL provided for {camera_name}. Please add an youtube_url attribute to the config under id."
+            )
+
+        self.type = "YouTube Live"
+        self.hls_url = self._extract_hls_url(youtube_url)
+        self.config = config
+
+        self.lock = Lock()
+        self.keep_connection_open = config.get("options", {}).get("keep_connection_open", True)
+
+        if self.keep_connection_open:
+            self._open_connection()
+
+    def _extract_hls_url(self, youtube_url: str) -> str:
+        """Extracts the HLS URL from a YouTube Live URL."""
+        available_streams = streamlink.streams(youtube_url)
+        if "best" not in available_streams:
+            raise ValueError(f"No available HLS stream for {youtube_url=}\n{available_streams=}")
+        return available_streams["best"].url
+
+
+class FileStreamFrameGrabber(FrameGrabber):
+    """Grabs frames from a video file stream, such as an MP4 or MOV file.
+
+    Supports dropping frames to achieve a target FPS.
+
+    Some of the supported formats: mp4, avi, mov, mjpeg
+
+    Configuration:
+        id:
+            filename: str  # Path to the video file
+        options:
+            max_fps: float  # Target frame rate (optional, defaults to source fps)
+
+    Example:
+        config = {
+            "id": {"filename": "video.mp4"},
+            "options": {"max_fps": 15.0}
+        }
+        grabber = FileStreamFrameGrabber(config)
+    """
+
+    def __init__(self, config: dict):
+        self.config = config
+        filename = config.get("id", {}).get("filename")
+        if not filename:
+            raise ValueError("No filename provided in config under id.filename")
+
+        self.fps_target = config.get("options", {}).get(
+            "max_fps",
+            0,  # 0 means no dropping of frames
+        )
+        if self.fps_target < 0:
+            raise ValueError(f"Target FPS cannot be negative: {self.fps_target}")
+        self.remainder = 0.0
+
+        self.capture = cv2.VideoCapture(filename)
+        if not self.capture.isOpened():
+            raise ValueError(f"Could not open file {filename}. Is it a valid video file?")
+        backend = self.capture.getBackendName()
+        logger.debug(f"Initialized video capture with {backend=}")
+
+        ret, _ = self.capture.read()
+        if not ret:
+            self.capture.release()
+            raise ValueError(f"Could not read first frame of file {filename}. Is it a valid video file?")
+
+        self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
+        if self.fps_source <= 0.1:
+            logger.warning(f"Captured framerate is very low or zero: {self.fps_source} FPS")
+        self.should_drop_frames = self.fps_target > 0 and self.fps_target < self.fps_source
+        logger.debug(
+            f"Source FPS: {self.fps_source}, Target FPS: {self.fps_target}, Drop Frames: {self.should_drop_frames}"
+        )
+
+    def _grab_implementation(self) -> np.ndarray:
+        """Grab a frame from the video file, decimating if needed to match target FPS.
+
+        Returns:
+            np.ndarray: The captured frame
+
+        Raises:
+            RuntimeWarning: If frame cannot be read, likely end of file
+        """
+        if self.should_drop_frames:
+            self._drop_frames()
+
+        ret, frame = self.capture.read()
+        if not ret:
+            raise RuntimeWarning("Could not read frame from video file. Possible end of file.")
+        return frame
+
+    def _drop_frames(self) -> None:
+        """Drop frames to achieve target frame rate using frame position seeking."""
+        drop_frames = (self.fps_source / self.fps_target) - 1 + self.remainder
+        frames_to_drop = round(drop_frames)
+
+        if frames_to_drop > 0:
+            current_pos = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
+            self.capture.set(cv2.CAP_PROP_POS_FRAMES, current_pos + frames_to_drop)
+
+        self.remainder = round(drop_frames - frames_to_drop, 2)
+        logger.debug(f"Dropped {frames_to_drop} frames to meet {self.fps_target} FPS target")
+
+    def _apply_camera_specific_options(self, options: dict) -> None:
+        """Handle camera-specific options for file streams.
+
+        For video files, most camera options like resolution cannot be modified since the video
+        is pre-recorded. This method validates that unsupported options aren't being set.
+        """
+        if options.get("resolution"):
+            camera_name = self.config.get("name", "Unnamed File Stream")
+            raise ValueError(
+                f"Resolution was set for {camera_name}, but resolution cannot be modified for video files."
+            )
+
+    def release(self) -> None:
+        """Release the video capture resources."""
+        if hasattr(self, "capture"):
+            self.capture.release()
 
 
 class MockFrameGrabber(FrameGrabber):

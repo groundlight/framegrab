@@ -1,12 +1,7 @@
-import shutil
 import traceback
 
-import ascii_magic
 import click
-import cv2
 import yaml
-from imgcat import imgcat
-from PIL import Image
 
 from framegrab import FrameGrabber, preview_image
 

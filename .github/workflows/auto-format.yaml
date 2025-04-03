@@ -23,7 +23,7 @@ jobs:
         with:
           src: "src"
           options: "--verbose --line-length 120"
-      - name: Check if any files were modikfied
+      - name: Check if any files were modified
         id: git-check
         run: echo ::set-output name=modified::$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)
       - name: Push changes if needed
@@ -34,4 +34,3 @@ jobs:
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
           git commit -am "Automatically reformatting code with black and isort"
           git push
-
