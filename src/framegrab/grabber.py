@@ -23,7 +23,7 @@ from .unavailable_module import UnavailableModule
 root_logger = logging.getLogger()
 if root_logger.hasHandlers():
     root_logger.handlers.clear()
-    
+
 logger = logging.getLogger(__name__)
 
 # Create a logger for this module
