@@ -516,14 +516,28 @@ class FrameGrabber(ABC):
 
         new_height = resolution.get("height")
         new_width = resolution.get("width")
-
-        if new_width:
+        
+        if new_height is None and new_width is None:
+            # no changes requested
+            return 
+        elif (new_height is None and new_width is not None) or \
+            (new_height is not None and new_width is None):
+            # If resolution is to be changed, a height and width must be entered
+            raise ValueError(
+                'Please provide both resolution.height and resolution.width'
+            )
+        else:
+            # Check  the current resolution and change if needed
             current_width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-            if new_width != current_width:
-                self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, new_width)
-        if new_height:
             current_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            if new_height != current_height:
+            if new_height != current_height or new_width != current_width:
+                if new_height == 2160 and new_width == 3840:
+                    logger.info(f'Changing fourcc to MJPG in order to support 4K.')
+                    fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G') 
+                    self.capture.set(cv2.CAP_PROP_FOURCC, fourcc)
+                
+                # Set the resolution
+                self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, new_width)
                 self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
 
     def apply_options(self, options: dict) -> None:
@@ -715,7 +729,8 @@ class GenericUSBFrameGrabber(FrameGrabber):
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
         # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
         # Assuming buffer size of 1, we need to read twice to get the current frame.
-        for _ in range(2):
+        i = 1 if self._is_video() else 2
+        for _ in range(i):
             _, frame = self.capture.read()
 
         return frame
@@ -727,8 +742,13 @@ class GenericUSBFrameGrabber(FrameGrabber):
     def _apply_camera_specific_options(self, options: dict) -> None:
         self._set_cv2_resolution()
 
-        # set the buffer size to 1 to always get the most recent frame
-        self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        # If not streaming video, set the buffer size to 1 to always get the most recent frame
+        # Streaming video will tear down the buffer at a sufficient rate, so we don't need to worry about the buffer in this case
+        if self._is_video():
+            self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            
+    def _is_video(self) -> bool:
+        return self.config.get("options", {}).get("is_video", False)
 
     @staticmethod
     def _run_system_command(command: str) -> str:
