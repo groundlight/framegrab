@@ -740,7 +740,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         i = 1 if self._is_video() else 2
         for _ in range(i):
             _, frame = self.capture.read()
-
+            
         return frame
 
     def release(self) -> None:
@@ -752,7 +752,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
 
         # If not streaming video, set the buffer size to 1 to always get the most recent frame
         # Streaming video will tear down the buffer at a sufficient rate, so we don't need to worry about the buffer in this case
-        if self._is_video():
+        if not self._is_video():
             self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
             
     def _is_video(self) -> bool:
