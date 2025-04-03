@@ -32,18 +32,18 @@ from pydantic import BaseModel, Field, PrivateAttr, confloat, validator
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
 from .unavailable_module import UnavailableModule
-
+import pdb
 # -- Optional imports --
 # Only used for Basler cameras, not required otherwise
 try:
     from pypylon import pylon
-except ImportError as e:
+except (ImportError, ModuleNotFoundError) as e:
     pylon = UnavailableModule(e)
 
 # Only used for RealSense cameras, not required otherwise
 try:
     from pyrealsense2 import pyrealsense2 as rs
-except ImportError as e:
+except (ImportError, ModuleNotFoundError) as e:
     rs = UnavailableModule(e)
 
 # Only used for CSI2 cameras with Raspberry Pi, not required otherwise
@@ -77,27 +77,6 @@ class InputTypes:
     YOUTUBE_LIVE = "youtube_live"
     FILE_STREAM = "file_stream"
     MOCK = "mock"
-
-    INPUT_TYPE_TO_GRABBER = {
-        InputTypes.GENERIC_USB: GenericUSBFrameGrabber,
-        InputTypes.RTSP: RTSPFrameGrabber,
-        InputTypes.REALSENSE: RealSenseFrameGrabber,
-        InputTypes.BASLER: BaslerFrameGrabber,
-        InputTypes.RPI_CSI2: RaspberryPiCSI2FrameGrabber,
-        InputTypes.HLS: HttpLiveStreamingFrameGrabber,
-        InputTypes.YOUTUBE_LIVE: YouTubeLiveFrameGrabber,
-        InputTypes.FILE_STREAM: FileStreamFrameGrabber,
-        InputTypes.MOCK: MockFrameGrabber,
-    }
-
-    def get_options() -> list:
-        """Get a list of the available InputType options"""
-        output = []
-        for attr_name in vars(InputTypes):
-            attr_value = getattr(InputTypes, attr_name)
-            if "__" not in attr_name and isinstance(attr_value, str):
-                output.append(attr_value)
-        return output
 
 
 class FrameGrabber(ABC, BaseModel):
@@ -656,7 +635,7 @@ class GenericUSBFrameGrabber(WithSerialNumberAndResolutionMixin):
     warmup_delay: float = 1.0
 
     # keep track of the cameras that are already in use so that we don't try to connect to them twice
-    _indices_in_use: ClassVar[set] = PrivateAttr(default_factory=set)
+    _indices_in_use: ClassVar[set] = PrivateAttr(default=set())
     _idx: Optional[int] = PrivateAttr(default=None)
 
     def __init__(self, **kwargs):
@@ -698,7 +677,7 @@ class GenericUSBFrameGrabber(WithSerialNumberAndResolutionMixin):
 
             else:
                 raise ValueError(
-                    f"Unable to find USB camera with the specified serial_number: {serial_number}. "
+                    f"Unable to find USB camera with the specified serial_number: {self.serial_number}. "
                     "Please ensure that the serial number is correct, that the camera is plugged in, and that the camera is not already in use."
                 )
         # If we don't know the serial numbers of the cameras, just assign the next available camera by index
@@ -755,7 +734,6 @@ class GenericUSBFrameGrabber(WithSerialNumberAndResolutionMixin):
         idx = camera_details["idx"]
         camera_name = camera_details["camera_name"]
         device_path = camera_details["device_path"]
-
         capture = cv2.VideoCapture(idx)
         if not capture.isOpened():
             logger.warning(f"Could not open camera with index {idx}")
@@ -797,7 +775,7 @@ class GenericUSBFrameGrabber(WithSerialNumberAndResolutionMixin):
         return frame
 
     def release(self) -> None:
-        GenericUSBFrameGrabber._indices_in_use.remove(self.idx)
+        GenericUSBFrameGrabber._indices_in_use.remove(self._idx)
         self._capture.release()
 
     def apply_options(self, options: dict) -> None:
@@ -1003,18 +981,19 @@ class RTSPFrameGrabber(FrameGrabber):
 class BaslerFrameGrabber(WithSerialNumberMixin):
     """Basler USB and Basler GigE Cameras"""
 
-    _serial_numbers_in_use: ClassVar[set] = PrivateAttr(default_factory=set)
-    _basler_options: dict = PrivateAttr(default_factory=dict)
-    _converter: pylon.ImageFormatConverter = PrivateAttr(default_factory=pylon.ImageFormatConverter)
-    _camera: Optional[pylon.InstantCamera] = PrivateAttr(default=None)
+    basler_options: dict = {}
+    
+    _serial_numbers_in_use: ClassVar[set] = PrivateAttr(default=set())
+    _converter: "pylon.ImageFormatConverter" = PrivateAttr(default=None)
+    _camera: Optional["pylon.InstantCamera"] = PrivateAttr(default=None)
 
     def __init__(self, **kwargs):
         # Basler cameras grab frames in different pixel formats, most of which cannot be displayed directly
         # by OpenCV. self.convert will convert them to BGR which can be used by OpenCV
         super().__init__(**kwargs)
+        self._converter = pylon.ImageFormatConverter()
         self._converter.OutputPixelFormat = pylon.PixelType_BGR8packed
         self._converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
-
         tlf = pylon.TlFactory.GetInstance()
         devices = tlf.EnumerateDevices()
 
@@ -1051,7 +1030,7 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
         with self._camera.GrabOne(2000) as result:
             if result.GrabSucceeded():
                 # Convert the image to BGR for OpenCV
-                image = self.converter.Convert(result)
+                image = self._converter.Convert(result)
                 frame = image.GetArray()
             else:
                 error_info = {
@@ -1080,18 +1059,18 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
 
     def release(self) -> None:
         BaslerFrameGrabber._serial_numbers_in_use.remove(self.serial_number)
-        self.camera.Close()
+        self._camera.Close()
 
     def apply_options(self, options: dict) -> None:
         super().apply_options(options)
         node_map = self.camera.GetNodeMap()
-        for property_name, value in self._basler_options.items():
+        for property_name, value in self.basler_options.items():
             node = node_map.GetNode(property_name)
             node.SetValue(value)
 
     def to_dict(self) -> dict:
         dictionary_config = super().to_dict()
-        dictionary_config["options"]["basler_options"] = self._basler_options
+        dictionary_config["options"]["basler_options"] = self.basler_options
         return dictionary_config
 
     @classmethod
@@ -1099,17 +1078,20 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
         data = copy.deepcopy(data)
         basler_options = data.pop("options").pop("basler_options")
         new_data = {**data, "basler_options": basler_options}
-        return FrameGrabber.from_dict(dictionary_config=new_data)
-
+        return super().from_dict(new_data)
 
 class RealSenseFrameGrabber(WithSerialNumberAndResolutionMixin):
     """Intel RealSense Depth Camera"""
 
     side_by_side_depth: bool = Field(default=False)
 
-    def __post_init__(
+    _pipeline: Optional["rs.pipeline"] = PrivateAttr(default=None)
+    _rs_config: Optional["rs.config"] = PrivateAttr(default=None)
+
+    def __init__(
         self,
     ):
+        super().__init__()
         ctx = rs.context()
         if len(ctx.devices) == 0:
             raise ValueError("No Intel RealSense cameras detected. Is your camera plugged in?")
@@ -1140,14 +1122,14 @@ class RealSenseFrameGrabber(WithSerialNumberAndResolutionMixin):
             )
 
         # A valid pipeline was found, save the pipeline and RealSense config for later
-        self.pipeline = pipeline
-        self.rs_config = rs_config
+        self._pipeline = pipeline
+        self._rs_config = rs_config
 
         # In case the serial_number wasn't provided by the user, add it to the config
         self.serial_number = curr_serial_number
 
     def _grab_implementation(self) -> np.ndarray:
-        frames = self.pipeline.wait_for_frames()
+        frames = self._pipeline.wait_for_frames()
 
         # Convert color images to numpy arrays and convert from RGB to BGR
         color_frame = frames.get_color_frame()
@@ -1181,7 +1163,7 @@ class RealSenseFrameGrabber(WithSerialNumberAndResolutionMixin):
         return sidebyside
 
     def release(self) -> None:
-        self.pipeline.stop()
+        self._pipeline.stop()
 
     def apply_options(self, options: dict) -> None:
         new_width = options.get("resolution", {}).get("width")
@@ -1189,10 +1171,10 @@ class RealSenseFrameGrabber(WithSerialNumberAndResolutionMixin):
 
         super().apply_options(options)
         if new_width and new_height:
-            self.pipeline.stop()  # pipeline needs to be temporarily stopped in order to change the resolution
-            self.rs_config.enable_stream(rs.stream.color, new_width, new_height)
-            self.rs_config.enable_stream(rs.stream.depth, new_width, new_height)
-            self.pipeline.start(self.rs_config)  # Restart the pipeline with the new configuration
+            self._pipeline.stop()  # pipeline needs to be temporarily stopped in order to change the resolution
+            self._rs_config.enable_stream(rs.stream.color, new_width, new_height)
+            self._rs_config.enable_stream(rs.stream.depth, new_width, new_height)
+            self._pipeline.start(self._rs_config)  # Restart the pipeline with the new configuration
 
 
 class RaspberryPiCSI2FrameGrabber(WithSerialNumberMixin):

@@ -18,10 +18,10 @@ ascii-magic = "^2.3.0"
 wsdiscovery = "^2.0.0"
 onvif-zeep = "^0.2.12"
 pydantic = "^2.9.2"
-pypylon = { version = ">=3.0.0", optional = true }
 pyrealsense2 = { version = "^2.55.1.6486", optional = true }
 picamera2 = { version = ">=0.3.21", optional = true }
 streamlink = { version = "^7.0.0", optional = true }
+pypylon = "^4.1.0"
 
 [tool.poetry.extras]
 basler = ["pypylon"]
