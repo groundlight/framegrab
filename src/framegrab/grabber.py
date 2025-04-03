@@ -716,7 +716,7 @@ class GenericUSBFrameGrabber(WithSerialNumberAndResolutionMixin):
         # Log the current camera index as 'in use' to prevent other GenericUSBFrameGrabbers from stepping on it
         self._idx = idx
         GenericUSBFrameGrabber._indices_in_use.add(idx)
-    
+
     def to_dict(self) -> dict:
         dictionary_config = super().to_dict()
         del dictionary_config["warmup_delay"]
@@ -1076,7 +1076,7 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
         for property_name, value in self._basler_options.items():
             node = node_map.GetNode(property_name)
             node.SetValue(value)
-    
+
     def to_dict(self) -> dict:
         dictionary_config = super().to_dict()
         dictionary_config["options"]["basler_options"] = self._basler_options
