@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field, PrivateAttr, confloat, validator
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
 from .unavailable_module import UnavailableModule
-import pdb
+
 # -- Optional imports --
 # Only used for Basler cameras, not required otherwise
 try:
@@ -982,7 +982,7 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
     """Basler USB and Basler GigE Cameras"""
 
     basler_options: dict = {}
-    
+
     _serial_numbers_in_use: ClassVar[set] = PrivateAttr(default=set())
     _converter: "pylon.ImageFormatConverter" = PrivateAttr(default=None)
     _camera: Optional["pylon.InstantCamera"] = PrivateAttr(default=None)
@@ -1079,6 +1079,7 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
         basler_options = data.pop("options").pop("basler_options")
         new_data = {**data, "basler_options": basler_options}
         return super().from_dict(new_data)
+
 
 class RealSenseFrameGrabber(WithSerialNumberAndResolutionMixin):
     """Intel RealSense Depth Camera"""
