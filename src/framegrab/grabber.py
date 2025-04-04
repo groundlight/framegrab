@@ -1,4 +1,5 @@
 # TODO:
+# - make other tests pass
 # - Reevalute _apply_camera_specific_options, apply options stuff
 # - Figure out serializtion
 # - check duplicate serial number logic
@@ -6,9 +7,12 @@
 # - camera_name -> name, review logic for  (add tests?)
 # - does to_dict need to be dict?
 # - sort imports
-# - set forbid on all classes?
 # - add actual test for youtube grabber
 # - does rtsp have the fps thing?
+# - double check parameters, make sure the options in the test are serialized correctly
+# - ensure all coremethods are run in tests
+# - make pydantic errors pretty?
+# - test rasperry pi
 
 # Things updated:
 # - _apply_camera_specific_options I think breaks some python best practices. We should use inheritence
@@ -1348,9 +1352,9 @@ class FileStreamFrameGrabber(FrameGrabber):
         self._fps_source = round(self._capture.get(cv2.CAP_PROP_FPS), 2)
         if self._fps_source <= 0.1:
             logger.warning(f"Captured framerate is very low or zero: {self._fps_source} FPS")
-        self.should_drop_frames = self.fps_target > 0 and self.fps_target < self._fps_source
+        self._should_drop_frames = self.fps_target > 0 and self.fps_target < self._fps_source
         logger.debug(
-            f"Source FPS: {self._fps_source}, Target FPS: {self.fps_target}, Drop Frames: {self.should_drop_frames}"
+            f"Source FPS: {self._fps_source}, Target FPS: {self.fps_target}, Drop Frames: {self._should_drop_frames}"
         )
 
     def _autogenerate_name(self) -> None:
@@ -1365,7 +1369,7 @@ class FileStreamFrameGrabber(FrameGrabber):
         Raises:
             RuntimeWarning: If frame cannot be read, likely end of file
         """
-        if self.should_drop_frames:
+        if self._should_drop_frames:
             self._drop_frames()
 
         ret, frame = self._capture.read()

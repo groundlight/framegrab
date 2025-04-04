@@ -3,10 +3,10 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from framegrab.grabber import BaslerFrameGrabber, GenericUSBFrameGrabber, RTSPFrameGrabber, HttpLiveStreamingFrameGrabber, RealSenseFrameGrabber, YouTubeLiveFrameGrabber, RaspberryPiCSI2FrameGrabber
+from framegrab.grabber import BaslerFrameGrabber, FileStreamFrameGrabber, GenericUSBFrameGrabber, HttpLiveStreamingFrameGrabber, RaspberryPiCSI2FrameGrabber, RTSPFrameGrabber, RealSenseFrameGrabber, YouTubeLiveFrameGrabber
 import pdb
-import copy
 import cv2
+
 class TestAllGrabberTypes(unittest.TestCase):
 
     def _get_mock_image(self):
@@ -91,6 +91,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         basler_framegrabber = BaslerFrameGrabber(camera_name="basler_framegrabber", serial_number="1234567890", basler_options={"ExposureTime": 10000})
         self._test_grabber_helper(basler_framegrabber)
    
+    @unittest.skip("This test needs to be run on a realsesne compatible device")
     @patch('pyrealsense2.pyrealsense2.context')
     @patch('pyrealsense2.pyrealsense2.pipeline')
     @patch('pyrealsense2.pyrealsense2.config')
@@ -158,7 +159,20 @@ class TestAllGrabberTypes(unittest.TestCase):
         }
         youtube_framegrabber = YouTubeLiveFrameGrabber(camera_name="youtube_framegrabber", youtube_url="https://www.youtube.com/watch?v=7_srED6k0bE", keep_connection_open=False, crop=crop)
         self._test_grabber_helper(youtube_framegrabber)
-    
-    def test_filesystem_grabber(self):
-        filesystem_framegrabber = FileSystemFrameGrabber(camera_name="filesystem_framegrabber", filesystem_path="test.mp4")
+
+    @patch('cv2.VideoCapture')
+    def test_filesystem_grabber(self, mock_video_capture):
+        mock_capture_instance = MagicMock()
+        mock_video_capture.return_value = mock_capture_instance
+        mock_capture_instance.isOpened.return_value = True
+        mock_capture_instance.read.return_value = (True, self._get_mock_image())
+        mock_capture_instance.get.return_value = 30.0
+        mock_video_capture.return_value = mock_capture_instance
+
+        filesystem_framegrabber = FileStreamFrameGrabber(camera_name="filesystem_framegrabber", filename="test.mp4")
         self._test_grabber_helper(filesystem_framegrabber)
+    
+    def test_mock_grabber(self):
+        mock_grabber = MagicMock()
+        mock_grabber.grab.return_value = self._get_mock_image()
+        self._test_grabber_helper(mock_grabber)
