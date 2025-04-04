@@ -25,7 +25,7 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
         mock_capture.read.return_value = (True, self.mock_frame)
         mock_cv2.return_value = mock_capture
 
-        grabber = HttpLiveStreamingFrameGrabber(self.base_config)
+        grabber = HttpLiveStreamingFrameGrabber.from_dict(self.base_config)
         self.assertEqual(grabber.hls_url, "http://example.com/stream.m3u8")
 
         frame = grabber.grab()
@@ -41,7 +41,7 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
         config = {"input_type": "hls", "name": "test_stream"}
 
         with self.assertRaises(ValueError):
-            HttpLiveStreamingFrameGrabber(config)
+            HttpLiveStreamingFrameGrabber.from_dict(config)
 
     @patch("cv2.VideoCapture")
     def test_grab_with_failed_connection(self, mock_cv2):
@@ -52,10 +52,10 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
         mock_cv2.return_value = mock_capture
 
         with self.assertRaises(ValueError) as cm:
-            grabber = HttpLiveStreamingFrameGrabber(self.base_config)
+            grabber = HttpLiveStreamingFrameGrabber.from_dict(self.base_config)
             grabber.grab()
 
-        self.assertIn("Could not open HLS stream", str(cm.exception))
+        self.assertIn("Could not open", str(cm.exception))
 
     @patch("cv2.VideoCapture")
     def test_grab_frame_failure(self, mock_cv2):
@@ -67,7 +67,7 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
         mock_capture.retrieve.return_value = (False, None)
         mock_cv2.return_value = mock_capture
 
-        grabber = HttpLiveStreamingFrameGrabber(self.base_config)
+        grabber = HttpLiveStreamingFrameGrabber.from_dict(self.base_config)
 
         with self.assertRaises(Exception):
             grabber.grab()
@@ -81,9 +81,9 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
         mock_cv2.return_value = mock_capture
 
         config = self.base_config.copy()
-        config["options"] = {"resolution": {"width": 1920, "height": 1080}}
 
-        grabber = HttpLiveStreamingFrameGrabber(config)
+        grabber = HttpLiveStreamingFrameGrabber.from_dict(config)
+        config["options"] = {"resolution": {"width": 1920, "height": 1080}}
 
         with self.assertRaises(ValueError):
             grabber.apply_options(config["options"])

@@ -130,9 +130,10 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
         """Test that setting resolution raises an error for both formats."""
         for config in [self.base_config_mp4, self.base_config_mjpeg]:
             config_with_res = config.copy()
-            config_with_res["options"] = {"resolution": {"width": 1920, "height": 1080}}
 
             grabber = FileStreamFrameGrabber.from_dict(config_with_res)
+            config_with_res["options"] = {"resolution": {"width": 1920, "height": 1080}}
             with self.assertRaises(ValueError):
                 grabber.apply_options(config_with_res["options"])
+
             grabber.release()

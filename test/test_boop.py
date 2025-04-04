@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 from framegrab.grabber import BaslerFrameGrabber, FrameGrabber, FileStreamFrameGrabber, GenericUSBFrameGrabber, HttpLiveStreamingFrameGrabber, MockFrameGrabber, RaspberryPiCSI2FrameGrabber, RTSPFrameGrabber, RealSenseFrameGrabber, YouTubeLiveFrameGrabber
-import pdb
 import cv2
 
 class TestAllGrabberTypes(unittest.TestCase):
@@ -14,7 +13,6 @@ class TestAllGrabberTypes(unittest.TestCase):
     
     def _test_grabber_helper(self, grabber, resolution_width = None, resolution_height = None):
         grabber_as_dict = grabber.to_dict()
-
         expected_input_type = next(key for key, value in FrameGrabber.get_input_type_to_class_dict().items() if value == type(grabber))
         self.assertEqual(grabber_as_dict["input_type"], expected_input_type)
 
@@ -24,17 +22,24 @@ class TestAllGrabberTypes(unittest.TestCase):
         self.assertNotIn(expected_id_key, grabber_as_dict)
 
         grabber.release()
+
         new_grabber = grabber.from_dict(grabber_as_dict)
         self.assertEqual(new_grabber.to_dict(), grabber_as_dict)
-        frame = grabber.grab()
+
+        frame = new_grabber.grab()
         expected_frame = self._get_mock_image()
-        expected_frame = grabber._crop(expected_frame)
+        expected_frame = new_grabber._crop(expected_frame)
 
         if resolution_width and resolution_height:
             expected_frame = cv2.resize(expected_frame, (resolution_width, resolution_height))
 
-        expected_frame = grabber._digital_zoom(expected_frame)
+        expected_frame = new_grabber._digital_zoom(expected_frame)
         np.testing.assert_array_equal(frame, expected_frame)
+
+        new_options = {"zoom": {"digital": 4}}
+        new_grabber.apply_options(new_options)
+        self.assertEqual(new_grabber.digital_zoom, 4)
+        new_grabber.release()
 
     @patch('framegrab.grabber.GenericUSBFrameGrabber._find_cameras')
     @patch('cv2.VideoCapture')
@@ -78,7 +83,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         rtsp_url = "rtsp://localhost:8000/test"
         rtsp_framegrabber = RTSPFrameGrabber(name="rtsp_framegrabber", rtsp_url=rtsp_url, keep_connection_open=False, max_fps=10)
         self._test_grabber_helper(rtsp_framegrabber)
-    
+
     @patch('pypylon.pylon.TlFactory')
     @patch('pypylon.pylon.InstantCamera')
     @patch('pypylon.pylon.ImageFormatConverter')
@@ -90,6 +95,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         mock_tl_factory_instance.EnumerateDevices.return_value = [mock_device]
         
         mock_camera_instance = MagicMock()
+        mock_camera_instance.GetNodeMap.return_value = MagicMock()
         mock_instant_camera.return_value = mock_camera_instance
         mock_grab_result = MagicMock()
         mock_grab_result.GrabSucceeded.return_value = True
@@ -180,7 +186,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         mock_capture_instance.get.return_value = 30.0
         mock_video_capture.return_value = mock_capture_instance
 
-        filesystem_framegrabber = FileStreamFrameGrabber(camera_name="filesystem_framegrabber", filename="test.mp4")
+        filesystem_framegrabber = FileStreamFrameGrabber(name="filesystem_framegrabber", filename="test.mp4")
         self._test_grabber_helper(filesystem_framegrabber)
     
     @patch('framegrab.grabber.MockFrameGrabber._grab_implementation')
