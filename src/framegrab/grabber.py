@@ -8,6 +8,7 @@
 # - sort imports
 # - set forbid on all classes?
 # - add actual test for youtube grabber
+# - does rtsp have the fps thing?
 
 # Things updated:
 # - _apply_camera_specific_options I think breaks some python best practices. We should use inheritence
@@ -466,7 +467,6 @@ class FrameGrabber(ABC, BaseModel):
 
         Returns a cropped frame.
         """
-
         if self.crop:
             relative_crop_params = self.crop.get("relative")
             if relative_crop_params:
@@ -1328,26 +1328,29 @@ class FileStreamFrameGrabber(FrameGrabber):
     filename: str = Field(..., pattern=r"^.+\.(mp4|avi|mov|mjpeg)$")
     fps_target: float = Field(default=0, ge=0)
 
-    def __post_init__(self):
-        self.remainder = 0.0
+    _remainder: float = PrivateAttr(default=0.0)
+    _capture: Optional[cv2.VideoCapture] = PrivateAttr(default=None)
+    _fps_source: float = PrivateAttr(default=0.0)
 
-        self._capture = cv2.VideoCapture(filename)
-        if not self.capture.isOpened():
-            raise ValueError(f"Could not open file {filename}. Is it a valid video file?")
-        backend = self.capture.getBackendName()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._capture = cv2.VideoCapture(self.filename)
+        if not self._capture.isOpened():
+            raise ValueError(f"Could not open file {self.filename}. Is it a valid video file?")
+        backend = self._capture.getBackendName()
         logger.debug(f"Initialized video capture with {backend=}")
 
-        ret, _ = self.capture.read()
+        ret, _ = self._capture.read()
         if not ret:
-            self.capture.release()
-            raise ValueError(f"Could not read first frame of file {filename}. Is it a valid video file?")
+            self._capture.release()
+            raise ValueError(f"Could not read first frame of file {self.filename}. Is it a valid video file?")
 
-        self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
-        if self.fps_source <= 0.1:
-            logger.warning(f"Captured framerate is very low or zero: {self.fps_source} FPS")
-        self.should_drop_frames = self.fps_target > 0 and self.fps_target < self.fps_source
+        self._fps_source = round(self._capture.get(cv2.CAP_PROP_FPS), 2)
+        if self._fps_source <= 0.1:
+            logger.warning(f"Captured framerate is very low or zero: {self._fps_source} FPS")
+        self.should_drop_frames = self.fps_target > 0 and self.fps_target < self._fps_source
         logger.debug(
-            f"Source FPS: {self.fps_source}, Target FPS: {self.fps_target}, Drop Frames: {self.should_drop_frames}"
+            f"Source FPS: {self._fps_source}, Target FPS: {self.fps_target}, Drop Frames: {self.should_drop_frames}"
         )
 
     def _autogenerate_name(self) -> None:
@@ -1365,7 +1368,7 @@ class FileStreamFrameGrabber(FrameGrabber):
         if self.should_drop_frames:
             self._drop_frames()
 
-        ret, frame = self.capture.read()
+        ret, frame = self._capture.read()
         if not ret:
             raise RuntimeWarning("Could not read frame from video file. Possible end of file.")
         return frame
@@ -1376,8 +1379,8 @@ class FileStreamFrameGrabber(FrameGrabber):
         frames_to_drop = round(drop_frames)
 
         if frames_to_drop > 0:
-            current_pos = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
-            self.capture.set(cv2.CAP_PROP_POS_FRAMES, current_pos + frames_to_drop)
+            current_pos = self._capture.get(cv2.CAP_PROP_POS_FRAMES)
+            self._capture.set(cv2.CAP_PROP_POS_FRAMES, current_pos + frames_to_drop)
 
         self.remainder = round(drop_frames - frames_to_drop, 2)
         logger.debug(f"Dropped {frames_to_drop} frames to meet {self.fps_target} FPS target")
