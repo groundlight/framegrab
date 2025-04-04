@@ -36,14 +36,13 @@ import subprocess
 import time
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
-from typing import ClassVar, Dict, List, Optional, Union
+from typing import Any, ClassVar, Dict, List, Optional, Union
 from urllib.parse import urlparse
 
 import cv2
 import numpy as np
 import yaml
 from pydantic import BaseModel, Field, PrivateAttr, confloat, validator
-from typing import Any
 
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
@@ -191,7 +190,7 @@ class FrameGrabber(ABC, BaseModel):
 
         dictionary_config["options"] = options
         return dictionary_config
-    
+
     @classmethod
     def from_config_dict_to_model_dict(cls, dictionary_config: dict) -> dict:
         del dictionary_config["input_type"]
@@ -201,7 +200,7 @@ class FrameGrabber(ABC, BaseModel):
         if "id" in dictionary_config or not cls._id_field_optional:
             if "id" not in dictionary_config:
                 raise ValueError("The 'id' field is missing in the configuration dictionary.")
-        
+
             id = dictionary_config.pop("id")
             id_field_name = list(id.keys())[0]
             id_field_value = id[id_field_name]
@@ -217,7 +216,7 @@ class FrameGrabber(ABC, BaseModel):
             "num_90_deg_rotations": num_90_deg_rotations,
             **({id_field_name: id_field_value} if id_field_name else {}),
             **dictionary_config,
-            **options
+            **options,
         }
 
     @classmethod
@@ -600,8 +599,8 @@ class FrameGrabber(ABC, BaseModel):
 
         # create a version of the configuration with the new options
         new_config_dict = self.to_dict()
-        new_config_dict['options'].update(options)
-        
+        new_config_dict["options"].update(options)
+
         new_model_dict = self.from_config_dict_to_model_dict(new_config_dict)
 
         # now update the necesary fields, pydantic validates assignment
@@ -658,11 +657,11 @@ class WithSerialNumberAndResolutionMixin(WithSerialNumberMixin, ABC):
             base_dict["options"]["resolution"] = {"width": self.resolution_width, "height": self.resolution_height}
 
         return base_dict
-    
+
     @classmethod
     def from_config_dict_to_model_dict(cls, config_dict: dict) -> dict:
         data = copy.deepcopy(config_dict)
-        
+
         options = data.get("options", {})
         if "resolution" in options:
             resolution = options.pop("resolution")
@@ -844,7 +843,7 @@ class GenericUSBFrameGrabber(WithSerialNumberAndResolutionMixin):
     def release(self) -> None:
         GenericUSBFrameGrabber._indices_in_use.remove(self._idx)
         self._capture.release()
-    
+
     def _set_resolution_and_buffer_size(self) -> None:
         self._set_cv2_resolution()
         self._capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
@@ -948,7 +947,7 @@ class RTSPFrameGrabber(FrameGrabber):
         del dictionary_config["max_fps"]
 
         return dictionary_config
-    
+
     @classmethod
     def from_config_dict_to_model_dict(cls, config_dict: dict) -> dict:
         data = copy.deepcopy(config_dict)
@@ -1128,7 +1127,7 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
     def release(self) -> None:
         BaslerFrameGrabber._serial_numbers_in_use.remove(self.serial_number)
         self._camera.Close()
-    
+
     def _set_basler_options(self) -> None:
         node_map = self._camera.GetNodeMap()
         for property_name, value in self.basler_options.items():
@@ -1237,7 +1236,7 @@ class RealSenseFrameGrabber(WithSerialNumberAndResolutionMixin):
 
     def release(self) -> None:
         self._pipeline.stop()
-    
+
     def _set_rs_options(self, new_width: int, new_height: int) -> None:
         self._pipeline.stop()  # pipeline needs to be temporarily stopped in order to change the resolution
         self._rs_config.enable_stream(rs.stream.color, new_width, new_height)
@@ -1251,6 +1250,7 @@ class RealSenseFrameGrabber(WithSerialNumberAndResolutionMixin):
         super().apply_options(options)
         if new_width and new_height:
             self._set_rs_options(new_width, new_height)
+
 
 class RaspberryPiCSI2FrameGrabber(WithSerialNumberMixin):
     "For CSI2 cameras connected to Raspberry Pis through their dedicated camera port"
