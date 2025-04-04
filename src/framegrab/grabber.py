@@ -1092,10 +1092,7 @@ class RealSenseFrameGrabber(WithSerialNumberAndResolutionMixin):
     _pipeline: Optional["rs.pipeline"] = PrivateAttr(default=None)
     _rs_config: Optional["rs.config"] = PrivateAttr(default=None)
 
-    def __init__(
-        self,
-        **kwargs
-    ):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         ctx = rs.context()
         if len(ctx.devices) == 0:
@@ -1284,6 +1281,7 @@ class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
     2. Open connection on every frame: Opens and closes the connection on every captured frame, which conserves
         both CPU and network bandwidth but has higher latency. In practice, roughly 1FPS is achievable with this strategy.
     """
+
     youtube_url: str = Field(..., pattern=r"^https?://")
     keep_connection_open: bool = Field(default=True)
 
