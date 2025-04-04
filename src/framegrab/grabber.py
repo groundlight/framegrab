@@ -1266,9 +1266,9 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
 
     def _grab_open(self) -> np.ndarray:
         with self._lock:
-            ret, frame = self.capture.read()
+            ret, frame = self._capture.read()
         if not ret:
-            logger.error(f"Could not read frame from {self.capture}")
+            logger.error(f"Could not read frame from {self._capture}")
         return frame
 
     def release(self) -> None:
@@ -1387,7 +1387,7 @@ class FileStreamFrameGrabber(FrameGrabber):
     def release(self) -> None:
         """Release the video capture resources."""
         if hasattr(self, "capture"):
-            self.capture.release()
+            self._capture.release()
 
 
 class MockFrameGrabber(WithSerialNumberAndResolutionMixin):

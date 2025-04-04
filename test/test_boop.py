@@ -16,7 +16,6 @@ class TestAllGrabberTypes(unittest.TestCase):
         grabber_as_dict = grabber.to_dict()
         grabber.release()
         new_grabber = grabber.from_dict(grabber_as_dict)
-        pdb.set_trace()
         self.assertEqual(new_grabber.to_dict(), grabber_as_dict)
         frame = grabber.grab()
         expected_frame = cv2.resize(self._get_mock_image(), (resolution_width // digital_zoom, resolution_height // digital_zoom))
@@ -125,6 +124,10 @@ class TestAllGrabberTypes(unittest.TestCase):
 
         raspberry_pi_framegrabber = RaspberryPiCSI2FrameGrabber(camera_name="raspberry_pi_framegrabber")
         self._test_grabber_helper(raspberry_pi_framegrabber)
+
+    def test_http_grabber(self):
+        http_framegrabber = HTTPFrameGrabber(camera_name="http_framegrabber", http_url="http://localhost:8000/test")
+        self._test_grabber_helper(http_framegrabber)
 
     @patch('framegrab.grabber.YouTubeLiveFrameGrabber._extract_hls_url', return_value="https://fakeurl.com")
     @patch('cv2.VideoCapture')
