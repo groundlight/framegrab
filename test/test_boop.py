@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from framegrab.grabber import BaslerFrameGrabber, FileStreamFrameGrabber, GenericUSBFrameGrabber, HttpLiveStreamingFrameGrabber, RaspberryPiCSI2FrameGrabber, RTSPFrameGrabber, RealSenseFrameGrabber, YouTubeLiveFrameGrabber
+from framegrab.grabber import BaslerFrameGrabber, FrameGrabber, FileStreamFrameGrabber, GenericUSBFrameGrabber, HttpLiveStreamingFrameGrabber, MockFrameGrabber, RaspberryPiCSI2FrameGrabber, RTSPFrameGrabber, RealSenseFrameGrabber, YouTubeLiveFrameGrabber
 import pdb
 import cv2
 
@@ -14,14 +14,25 @@ class TestAllGrabberTypes(unittest.TestCase):
     
     def _test_grabber_helper(self, grabber, resolution_width = None, resolution_height = None):
         grabber_as_dict = grabber.to_dict()
+
+        expected_input_type = next(key for key, value in FrameGrabber.get_input_type_to_class_dict().items() if value == type(grabber))
+        self.assertEqual(grabber_as_dict["input_type"], expected_input_type)
+
+        expected_id_key = FrameGrabber.get_input_type_to_id_dict()[expected_input_type]
+        # make sure the id field moves from a direct attribute to nested under the id key
+        self.assertEqual(grabber_as_dict["id"][expected_id_key], getattr(grabber, expected_id_key))
+        self.assertNotIn(expected_id_key, grabber_as_dict)
+
         grabber.release()
         new_grabber = grabber.from_dict(grabber_as_dict)
         self.assertEqual(new_grabber.to_dict(), grabber_as_dict)
         frame = grabber.grab()
         expected_frame = self._get_mock_image()
         expected_frame = grabber._crop(expected_frame)
+
         if resolution_width and resolution_height:
             expected_frame = cv2.resize(expected_frame, (resolution_width, resolution_height))
+
         expected_frame = grabber._digital_zoom(expected_frame)
         np.testing.assert_array_equal(frame, expected_frame)
 
@@ -48,7 +59,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         resolution_height = 480
         digital_zoom = 2
         usb_framegrabber = GenericUSBFrameGrabber(
-            camera_name="usb_framegrabber",
+            name="usb_framegrabber",
             serial_number=serial_number,
             resolution_width=resolution_width,
             resolution_height=resolution_height,
@@ -65,7 +76,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         mock_video_capture.return_value.isOpened.return_value = True
 
         rtsp_url = "rtsp://localhost:8000/test"
-        rtsp_framegrabber = RTSPFrameGrabber(camera_name="rtsp_framegrabber", rtsp_url=rtsp_url, keep_connection_open=False, max_fps=10)
+        rtsp_framegrabber = RTSPFrameGrabber(name="rtsp_framegrabber", rtsp_url=rtsp_url, keep_connection_open=False, max_fps=10)
         self._test_grabber_helper(rtsp_framegrabber)
     
     @patch('pypylon.pylon.TlFactory')
@@ -88,7 +99,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         mock_image.GetArray.return_value = self._get_mock_image()
         mock_image_format_converter.return_value.Convert.return_value = mock_image
 
-        basler_framegrabber = BaslerFrameGrabber(camera_name="basler_framegrabber", serial_number="1234567890", basler_options={"ExposureTime": 10000})
+        basler_framegrabber = BaslerFrameGrabber(name="basler_framegrabber", serial_number="1234567890", basler_options={"ExposureTime": 10000})
         self._test_grabber_helper(basler_framegrabber)
    
     @unittest.skip("This test needs to be run on a realsesne compatible device")
@@ -116,7 +127,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         mock_rs_config_instance = MagicMock()
         mock_rs_config.return_value = mock_rs_config_instance
 
-        realsense_framegrabber = RealSenseFrameGrabber(camera_name="realsense_framegrabber")
+        realsense_framegrabber = RealSenseFrameGrabber(name="realsense_framegrabber")
         self._test_grabber_helper(realsense_framegrabber)
     
 
@@ -127,7 +138,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         mock_global_camera_info.return_value = mock_camera_instance
         mock_camera_instance.capture_array.return_value = self._get_mock_image()
 
-        raspberry_pi_framegrabber = RaspberryPiCSI2FrameGrabber(camera_name="raspberry_pi_framegrabber")
+        raspberry_pi_framegrabber = RaspberryPiCSI2FrameGrabber(name="raspberry_pi_framegrabber")
         self._test_grabber_helper(raspberry_pi_framegrabber)
 
     @patch('framegrab.grabber.YouTubeLiveFrameGrabber._extract_hls_url', return_value="https://fakeurl.com")
@@ -138,7 +149,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         mock_capture_instance.read.return_value = (True, self._get_mock_image())
         mock_video_capture.return_value = mock_capture_instance
 
-        http_framegrabber = HttpLiveStreamingFrameGrabber(camera_name="http_framegrabber", hls_url="http://randomurl.com/test")
+        http_framegrabber = HttpLiveStreamingFrameGrabber(name="http_framegrabber", hls_url="http://randomurl.com/test")
         self._test_grabber_helper(http_framegrabber)
 
     @patch('framegrab.grabber.YouTubeLiveFrameGrabber._extract_hls_url', return_value="https://fakeurl.com")
@@ -157,7 +168,7 @@ class TestAllGrabberTypes(unittest.TestCase):
                 "right": 0.97
             }
         }
-        youtube_framegrabber = YouTubeLiveFrameGrabber(camera_name="youtube_framegrabber", youtube_url="https://www.youtube.com/watch?v=7_srED6k0bE", keep_connection_open=False, crop=crop)
+        youtube_framegrabber = YouTubeLiveFrameGrabber(name="youtube_framegrabber", youtube_url="https://www.youtube.com/watch?v=7_srED6k0bE", keep_connection_open=False, crop=crop)
         self._test_grabber_helper(youtube_framegrabber)
 
     @patch('cv2.VideoCapture')
@@ -172,7 +183,8 @@ class TestAllGrabberTypes(unittest.TestCase):
         filesystem_framegrabber = FileStreamFrameGrabber(camera_name="filesystem_framegrabber", filename="test.mp4")
         self._test_grabber_helper(filesystem_framegrabber)
     
-    def test_mock_grabber(self):
-        mock_grabber = MagicMock()
-        mock_grabber.grab.return_value = self._get_mock_image()
+    @patch('framegrab.grabber.MockFrameGrabber._grab_implementation')
+    def test_mock_framegrabber(self, mock_grab_implementation):
+        mock_grab_implementation.return_value = self._get_mock_image()
+        mock_grabber = MockFrameGrabber(serial_number="123")
         self._test_grabber_helper(mock_grabber)

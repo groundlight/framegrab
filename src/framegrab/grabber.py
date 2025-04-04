@@ -9,10 +9,11 @@
 # - sort imports
 # - add actual test for youtube grabber
 # - does rtsp have the fps thing?
-# - double check parameters, make sure the options in the test are serialized correctly
+# - double check parameters, make sure the options in the test are serialized correctly make sure we don't pop optional things
 # - ensure all coremethods are run in tests
 # - make pydantic errors pretty?
 # - test rasperry pi
+# - get rid of pdb
 
 # Things updated:
 # - _apply_camera_specific_options I think breaks some python best practices. We should use inheritence
@@ -82,7 +83,7 @@ class InputTypes:
     RPI_CSI2 = "rpi_csi2"
     HLS = "hls"
     YOUTUBE_LIVE = "youtube_live"
-    FILE_STREAM = "file_stream"
+    FILE_STREAM = "file"
     MOCK = "mock"
 
 
@@ -94,7 +95,7 @@ class FrameGrabber(ABC, BaseModel):
     digital_zoom: Optional[confloat(ge=1, le=DIGITAL_ZOOM_MAX)] = None
     num_90_deg_rotations: Optional[int] = 0
 
-    camera_name: Optional[str] = None
+    name: Optional[str] = None
     autogenerate_name: bool = False
 
     class Config:
@@ -114,10 +115,25 @@ class FrameGrabber(ABC, BaseModel):
             InputTypes.MOCK: MockFrameGrabber,
         }
         return input_type_to_class
+    
+    @classmethod
+    def get_input_type_to_id_dict(cls) -> dict:
+        input_type_to_id = {
+            InputTypes.GENERIC_USB: "serial_number",
+            InputTypes.RTSP: "rtsp_url",
+            InputTypes.BASLER: "serial_number",
+            InputTypes.REALSENSE: "serial_number",
+            InputTypes.RPI_CSI2: "serial_number",
+            InputTypes.HLS: "hls_url",
+            InputTypes.YOUTUBE_LIVE: "youtube_url",
+            InputTypes.FILE_STREAM: "filename",
+            InputTypes.MOCK: "serial_number",
+        }
+        return input_type_to_id
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        if not self.camera_name and self.autogenerate_name:
+        if not self.name and self.autogenerate_name:
             self._autogenerate_name()
 
         # # TODO: figure out what to do here
@@ -125,13 +141,21 @@ class FrameGrabber(ABC, BaseModel):
 
     def to_dict(self):
         dictionary_config = super().dict()
+
+        input_type = next(key for key, value in self.get_input_type_to_class_dict().items() if value == self.__class__)
+        dictionary_config["input_type"] = input_type
+
+        # structure the id field like this: {"input_type": {"id_field": "id_value"}}
+        id_field = self.get_input_type_to_id_dict()[input_type]
+        dictionary_config["id"] = {id_field: getattr(self, id_field)}
+        del dictionary_config[id_field]
+        
+        # these go in the options field
         del dictionary_config["crop"]
         del dictionary_config["digital_zoom"]
         del dictionary_config["num_90_deg_rotations"]
         del dictionary_config["autogenerate_name"]
 
-        input_type = next(key for key, value in self.get_input_type_to_class_dict().items() if value == self.__class__)
-        dictionary_config["input_type"] = input_type
 
         options = {}
         if self.crop:
@@ -147,17 +171,28 @@ class FrameGrabber(ABC, BaseModel):
     @classmethod
     def from_dict(cls, dictionary_config: dict) -> "FrameGrabber":
         dictionary_config = copy.deepcopy(dictionary_config)
-        input_type = dictionary_config.pop("input_type")
 
+        input_type = dictionary_config.pop("input_type")
         subclass = cls.get_input_type_to_class_dict()[input_type]
+
+        if "id" not in dictionary_config:
+            raise ValueError("The 'id' field is missing in the configuration dictionary.")
+        
+        id = dictionary_config.pop("id")
+        id_field_name = list(id.keys())[0]
+        id_field_value = id[id_field_name]
 
         options = dictionary_config.pop("options", {})
 
         crop = options.get("crop")
         digital_zoom = options.get("zoom", {}).get("digital")
         num_90_deg_rotations = options.get("rotation", {}).get("num_90_deg_rotations", 0)
+        
         instance = subclass(
-            crop=crop, digital_zoom=digital_zoom, num_90_deg_rotations=num_90_deg_rotations, **dictionary_config
+            crop=crop,
+            digital_zoom=digital_zoom,
+            num_90_deg_rotations=num_90_deg_rotations,
+            **{id_field_name: id_field_value, **dictionary_config}
         )
 
         return instance
@@ -228,9 +263,9 @@ class FrameGrabber(ABC, BaseModel):
                 grabber = FrameGrabber.create_grabber(config, autogenerate_name=False, warmup_delay=0)
                 grabber_list.append(grabber)
             except ValueError as e:
-                camera_name = config.get("name", "Unnamed Camera")
+                name = config.get("name", "Unnamed Camera")
                 logger.error(
-                    f"Failed to connect to {camera_name}. Please check its connection and provided configuration: {config}",
+                    f"Failed to connect to {name}. Please check its connection and provided configuration: {config}",
                     exc_info=True,
                 )
 
@@ -446,7 +481,7 @@ class FrameGrabber(ABC, BaseModel):
         frame = self._grab_implementation()
 
         if frame is None:
-            name = self.camera_name  # all grabbers should have a name, either user-provided or generated
+            name = self.name  # all grabbers should have a name, either user-provided or generated
             error_msg = f"Failed to grab frame from {name}"
             raise GrabError(error_msg)
 
@@ -562,21 +597,8 @@ class WithSerialNumberMixin(FrameGrabber, ABC):
             FrameGrabber.unnamed_grabber_count += 1
             unnamed_grabber_id = FrameGrabber.unnamed_grabber_count
         autogenerated_name = f"{InputTypes.GENERIC_USB.upper()} Camera - {unnamed_grabber_id}"
-        self.camera_name = autogenerated_name
+        self.name = autogenerated_name
 
-    def to_dict(self) -> dict:
-        base_dict = super().to_dict()
-        del base_dict["serial_number"]
-        if self.serial_number:
-            base_dict["id"] = {"serial_number": self.serial_number}
-        return base_dict
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        data = copy.deepcopy(data)
-        if "id" in data and "serial_number" in data["id"]:
-            data["serial_number"] = data.pop("id").pop("serial_number")
-        return super().from_dict(data)
 
 
 class WithSerialNumberAndResolutionMixin(WithSerialNumberMixin, ABC):
@@ -880,9 +902,6 @@ class RTSPFrameGrabber(FrameGrabber):
     def to_dict(self) -> dict:
         dictionary_config = super().to_dict()
 
-        del dictionary_config["rtsp_url"]
-        dictionary_config["id"] = {"rtsp_url": self.rtsp_url}
-
         dictionary_config["options"]["keep_connection_open"] = self.keep_connection_open
         dictionary_config["options"]["max_fps"] = self.max_fps
         del dictionary_config["keep_connection_open"]
@@ -893,13 +912,12 @@ class RTSPFrameGrabber(FrameGrabber):
     @classmethod
     def from_dict(cls, data: dict):
         data = copy.deepcopy(data)
-        rtsp_url = data.pop("id").pop("rtsp_url")
 
         options = data["options"]
         keep_connection_open = options.pop("keep_connection_open")
         max_fps = options.pop("max_fps")
 
-        new_data = {**data, "rtsp_url": rtsp_url, "keep_connection_open": keep_connection_open, "max_fps": max_fps}
+        new_data = {**data, "keep_connection_open": keep_connection_open, "max_fps": max_fps}
         return FrameGrabber.from_dict(dictionary_config=new_data)
 
     def _autogenerate_name(self) -> None:
@@ -1053,9 +1071,9 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
 
                 error_message = "\n".join(f"{k}: {v}" for k, v in error_info.items())
 
-                camera_name = self.camera_name or "Unnamed Basler Camera"
+                name = self.name or "Unnamed Basler Camera"
                 logger.warning(
-                    f"Could not grab a frame from {camera_name}\n"
+                    f"Could not grab a frame from {name}\n"
                     f"{error_message}\n"
                     f"---------------------------------------------------\n"
                 )
@@ -1083,7 +1101,7 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
     @classmethod
     def from_dict(cls, data: dict):
         data = copy.deepcopy(data)
-        basler_options = data.pop("options").pop("basler_options")
+        basler_options = data.pop("options", {}).pop("basler_options", {})
         new_data = {**data, "basler_options": basler_options}
         return super().from_dict(new_data)
 
@@ -1330,11 +1348,12 @@ class FileStreamFrameGrabber(FrameGrabber):
     """
 
     filename: str = Field(..., pattern=r"^.+\.(mp4|avi|mov|mjpeg)$")
-    fps_target: float = Field(default=0, ge=0)
+    max_fps: float = Field(default=0, ge=0)
 
     _remainder: float = PrivateAttr(default=0.0)
     _capture: Optional[cv2.VideoCapture] = PrivateAttr(default=None)
     _fps_source: float = PrivateAttr(default=0.0)
+    _should_drop_frames: bool = PrivateAttr(default=False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1352,10 +1371,25 @@ class FileStreamFrameGrabber(FrameGrabber):
         self._fps_source = round(self._capture.get(cv2.CAP_PROP_FPS), 2)
         if self._fps_source <= 0.1:
             logger.warning(f"Captured framerate is very low or zero: {self._fps_source} FPS")
-        self._should_drop_frames = self.fps_target > 0 and self.fps_target < self._fps_source
+        self._should_drop_frames = self.max_fps > 0 and self.max_fps < self._fps_source
         logger.debug(
-            f"Source FPS: {self._fps_source}, Target FPS: {self.fps_target}, Drop Frames: {self._should_drop_frames}"
+            f"Source FPS: {self._fps_source}, Target FPS: {self.max_fps}, Drop Frames: {self._should_drop_frames}"
         )
+
+    def to_dict(self) -> dict:
+        base_dict = super().to_dict()
+        base_dict["options"]["max_fps"] = self.max_fps
+        del base_dict["max_fps"]
+        return base_dict
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "FileStreamFrameGrabber":
+        data = copy.deepcopy(data)
+        max_fps = data.get("options", {}).get("max_fps", 0)
+        if "options" in data and "max_fps" in data["options"]:
+            max_fps = data["options"].pop("max_fps")
+        new_data = {**data, "max_fps": max_fps}
+        return super().from_dict(new_data)
 
     def _autogenerate_name(self) -> None:
         return self.filename
@@ -1379,15 +1413,15 @@ class FileStreamFrameGrabber(FrameGrabber):
 
     def _drop_frames(self) -> None:
         """Drop frames to achieve target frame rate using frame position seeking."""
-        drop_frames = (self.fps_source / self.fps_target) - 1 + self.remainder
+        drop_frames = (self._fps_source / self.max_fps) - 1 + self._remainder
         frames_to_drop = round(drop_frames)
 
         if frames_to_drop > 0:
             current_pos = self._capture.get(cv2.CAP_PROP_POS_FRAMES)
             self._capture.set(cv2.CAP_PROP_POS_FRAMES, current_pos + frames_to_drop)
 
-        self.remainder = round(drop_frames - frames_to_drop, 2)
-        logger.debug(f"Dropped {frames_to_drop} frames to meet {self.fps_target} FPS target")
+        self._remainder = round(drop_frames - frames_to_drop, 2)
+        logger.debug(f"Dropped {frames_to_drop} frames to meet {self.max_fps} FPS target")
 
     def release(self) -> None:
         """Release the video capture resources."""
@@ -1404,7 +1438,8 @@ class MockFrameGrabber(WithSerialNumberAndResolutionMixin):
     # Keeps track of the available serial numbers so that we don't try to connect to them twice
     serial_numbers_in_use: ClassVar[set] = set()
 
-    def __post_init__(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         provided_serial_number = self.serial_number
 
         # Iterate through each detected camera and attempt to match it with the provided camera config

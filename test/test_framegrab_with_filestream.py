@@ -5,7 +5,7 @@ import unittest
 
 import cv2
 import numpy as np
-
+import pdb
 from framegrab.grabber import FileStreamFrameGrabber
 
 
@@ -58,18 +58,18 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
 
     def test_init_success_mp4(self):
         """Test successful initialization with MP4."""
-        grabber = FileStreamFrameGrabber(self.base_config_mp4)
-        self.assertEqual(grabber.fps_source, 30.0)
-        self.assertFalse(grabber.should_drop_frames)
+        grabber = FileStreamFrameGrabber.from_dict(self.base_config_mp4)
+        self.assertEqual(grabber._fps_source, 30.0)
+        self.assertFalse(grabber._should_drop_frames)
         grabber.release()
 
     def test_init_success_mjpeg(self):
         """Test successful initialization with MJPEG."""
-        with FileStreamFrameGrabber(self.base_config_mjpeg) as grabber:
+        with FileStreamFrameGrabber.from_dict(self.base_config_mjpeg) as grabber:
             # MJPEG files have variable frame rates and also the FPS that cv2 returns is not accurate
-            self.assertGreater(grabber.fps_source, 20.0)
-            self.assertLess(grabber.fps_source, 40.0)
-            self.assertFalse(grabber.should_drop_frames)
+            self.assertGreater(grabber._fps_source, 20.0)
+            self.assertLess(grabber._fps_source, 40.0)
+            self.assertFalse(grabber._should_drop_frames)
 
     def test_init_with_fps_target_mp4(self):
         """Test initialization with FPS target for MP4."""
@@ -77,9 +77,9 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
         config = self.base_config_mp4.copy()
         config["options"] = {"max_fps": target_fps}
 
-        grabber = FileStreamFrameGrabber(config)
-        self.assertTrue(grabber.should_drop_frames)
-        self.assertEqual(grabber.fps_target, target_fps)
+        grabber = FileStreamFrameGrabber.from_dict(config)
+        self.assertTrue(grabber._should_drop_frames)
+        self.assertEqual(grabber.max_fps, target_fps)
         grabber.release()
 
     def test_init_with_fps_target_mjpeg(self):
@@ -88,9 +88,9 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
         config = self.base_config_mjpeg.copy()
         config["options"] = {"max_fps": target_fps}
 
-        grabber = FileStreamFrameGrabber(config)
-        self.assertTrue(grabber.should_drop_frames)
-        self.assertEqual(grabber.fps_target, target_fps)
+        grabber = FileStreamFrameGrabber.from_dict(config)
+        self.assertTrue(grabber._should_drop_frames)
+        self.assertEqual(grabber.max_fps, target_fps)
         grabber.release()
 
     def test_init_without_filename(self):
@@ -98,11 +98,11 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
         config = {"input_type": "file", "name": "test_video"}
 
         with self.assertRaises(ValueError):
-            FileStreamFrameGrabber(config)
+            FileStreamFrameGrabber.from_dict(config)
 
     def test_grab_frame_mp4(self):
         """Test frame grabbing from MP4."""
-        grabber = FileStreamFrameGrabber(self.base_config_mp4)
+        grabber = FileStreamFrameGrabber.from_dict(self.base_config_mp4)
         frame = grabber.grab()
 
         self.assertIsInstance(frame, np.ndarray)
@@ -111,7 +111,7 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
 
     def test_grab_frame_mjpeg(self):
         """Test frame grabbing from MJPEG."""
-        grabber = FileStreamFrameGrabber(self.base_config_mjpeg)
+        grabber = FileStreamFrameGrabber.from_dict(self.base_config_mjpeg)
         frame = grabber.grab()
 
         self.assertIsInstance(frame, np.ndarray)
@@ -124,7 +124,7 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
         config["id"]["filename"] = "nonexistent.mp4"
 
         with self.assertRaises(ValueError):
-            FileStreamFrameGrabber(config)
+            FileStreamFrameGrabber.from_dict(config)
 
     def test_invalid_resolution_option(self):
         """Test that setting resolution raises an error for both formats."""
@@ -132,7 +132,7 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
             config_with_res = config.copy()
             config_with_res["options"] = {"resolution": {"width": 1920, "height": 1080}}
 
-            grabber = FileStreamFrameGrabber(config_with_res)
+            grabber = FileStreamFrameGrabber.from_dict(config_with_res)
             with self.assertRaises(ValueError):
                 grabber.apply_options(config_with_res["options"])
             grabber.release()
