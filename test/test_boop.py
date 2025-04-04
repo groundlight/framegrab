@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from framegrab.grabber import BaslerFrameGrabber, RTSPFrameGrabber, GenericUSBFrameGrabber
+from framegrab.grabber import BaslerFrameGrabber, GenericUSBFrameGrabber, RTSPFrameGrabber, RealSenseFrameGrabber, YouTubeLiveFrameGrabber, RaspberryPiCSI2FrameGrabber
 import pdb
 import copy
 import cv2
@@ -16,6 +16,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         grabber_as_dict = grabber.to_dict()
         grabber.release()
         new_grabber = grabber.from_dict(grabber_as_dict)
+        pdb.set_trace()
         self.assertEqual(new_grabber.to_dict(), grabber_as_dict)
         frame = grabber.grab()
         expected_frame = cv2.resize(self._get_mock_image(), (resolution_width // digital_zoom, resolution_height // digital_zoom))
@@ -86,3 +87,52 @@ class TestAllGrabberTypes(unittest.TestCase):
 
         basler_framegrabber = BaslerFrameGrabber(camera_name="basler_framegrabber", serial_number="1234567890", basler_options={"ExposureTime": 10000})
         self._test_grabber_helper(basler_framegrabber)
+   
+    @patch('pyrealsense2.pyrealsense2.context')
+    @patch('pyrealsense2.pyrealsense2.pipeline')
+    @patch('pyrealsense2.pyrealsense2.config')
+    def test_realsense_grabber(self, mock_rs_config, mock_pipeline, mock_context):
+        mock_ctx_instance = MagicMock()
+
+        mock_device = MagicMock()
+        serial_number = "1234567890"
+        mock_device.get_info.return_value = serial_number
+        mock_ctx_instance.devices = [mock_device]
+
+        mock_context.return_value = mock_ctx_instance
+        
+        mock_pipeline_instance = MagicMock()
+        mock_pipeline.return_value = mock_pipeline_instance
+        mock_frames = MagicMock()
+        mock_color_frame = MagicMock()
+        mock_color_frame.get_data.return_value = self._get_mock_image()
+        mock_frames.get_color_frame.return_value = mock_color_frame
+        mock_pipeline_instance.wait_for_frames.return_value = mock_frames
+
+        mock_rs_config_instance = MagicMock()
+        mock_rs_config.return_value = mock_rs_config_instance
+
+        realsense_framegrabber = RealSenseFrameGrabber(camera_name="realsense_framegrabber")
+        self._test_grabber_helper(realsense_framegrabber)
+    
+
+    @unittest.skip("This test needs to be run on a Raspberry Pi due to imports")
+    @patch('picamera2.Picamera2.global_camera_info')
+    def test_raspberry_pi_grabber(self, mock_global_camera_info):
+        mock_camera_instance = MagicMock()
+        mock_global_camera_info.return_value = mock_camera_instance
+        mock_camera_instance.capture_array.return_value = self._get_mock_image()
+
+        raspberry_pi_framegrabber = RaspberryPiCSI2FrameGrabber(camera_name="raspberry_pi_framegrabber")
+        self._test_grabber_helper(raspberry_pi_framegrabber)
+
+    @patch('framegrab.grabber.YouTubeLiveFrameGrabber._extract_hls_url', return_value="https://fakeurl.com")
+    @patch('cv2.VideoCapture')
+    def test_youtube_grabber(self, mock_video_capture, mock_extract_hls_url):
+        mock_capture_instance = MagicMock()
+        mock_capture_instance.isOpened.return_value = True
+        mock_capture_instance.read.return_value = (True, self._get_mock_image())
+        mock_video_capture.return_value = mock_capture_instance
+
+        youtube_framegrabber = YouTubeLiveFrameGrabber(camera_name="youtube_framegrabber", youtube_url="https://www.youtube.com/watch?v=7_srED6k0bE", keep_connection_open=False)
+        self._test_grabber_helper(youtube_framegrabber)

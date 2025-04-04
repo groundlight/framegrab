@@ -1,11 +1,13 @@
 # TODO:
-# - Reevalute _apply_camera_specific_options
+# - Reevalute _apply_camera_specific_options, apply options stuff
 # - Figure out serializtion
 # - check duplicate serial number logic
 # - check about serial numbers in use and available serial numbers
 # - camera_name -> name, review logic for  (add tests?)
 # - does to_dict need to be dict?
 # - sort imports
+# - set forbid on all classes?
+# - add actual test for youtube grabber
 
 # Things updated:
 # - _apply_camera_specific_options I think breaks some python best practices. We should use inheritence
@@ -49,7 +51,7 @@ except (ImportError, ModuleNotFoundError) as e:
 # Only used for CSI2 cameras with Raspberry Pi, not required otherwise
 try:
     from picamera2 import Picamera2
-except ImportError as e:
+except (ImportError, ModuleNotFoundError) as e:
     Picamera2 = UnavailableModule(e)
 
 # Only used for Youtube Live streams, not required otherwise
@@ -108,12 +110,13 @@ class FrameGrabber(ABC, BaseModel):
         }
         return input_type_to_class
 
-    def __post_init__(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         if not self.camera_name and self.autogenerate_name:
             self._autogenerate_name()
 
-        # TODO: just expand this
-        self.apply_options(config["options"])
+        # # TODO: figure out what to do here
+        # self.apply_options(config["options"])
 
     def to_dict(self):
         dictionary_config = super().dict()
@@ -1090,8 +1093,9 @@ class RealSenseFrameGrabber(WithSerialNumberAndResolutionMixin):
 
     def __init__(
         self,
+        **kwargs
     ):
-        super().__init__()
+        super().__init__(**kwargs)
         ctx = rs.context()
         if len(ctx.devices) == 0:
             raise ValueError("No Intel RealSense cameras detected. Is your camera plugged in?")
@@ -1180,7 +1184,10 @@ class RealSenseFrameGrabber(WithSerialNumberAndResolutionMixin):
 class RaspberryPiCSI2FrameGrabber(WithSerialNumberMixin):
     "For CSI2 cameras connected to Raspberry Pis through their dedicated camera port"
 
-    def __post_init__(self):
+    _camera: Optional["Picamera2"] = PrivateAttr(default=None)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         # This will also detect USB cameras, but according to the documentation CSI2
         # cameras attached to the dedicated camera port will always come before USB
         # cameras in the resulting list of camera dictionaries
@@ -1198,10 +1205,10 @@ class RaspberryPiCSI2FrameGrabber(WithSerialNumberMixin):
         picam2.start()
         logger.info(f"Connected to Raspberry Pi CSI2 camera with id {(cameras[0])['Id']}")
 
-        self.camera = picam2
+        self._camera = picam2
 
     def _grab_implementation(self) -> np.ndarray:
-        frame = self.camera.capture_array()
+        frame = self._camera.capture_array()
 
         # Convert to BGR for opencv
         frame = cv2.cvtColor(np.asanyarray(frame), cv2.COLOR_BGR2RGB)
@@ -1209,7 +1216,7 @@ class RaspberryPiCSI2FrameGrabber(WithSerialNumberMixin):
         return frame
 
     def release(self) -> None:
-        self.camera.close()
+        self.camera._close()
 
 
 class HttpLiveStreamingFrameGrabber(FrameGrabber):
@@ -1224,10 +1231,10 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
     hls_url: str = Field(..., pattern=r"^https?://")
     keep_connection_open: bool = Field(default=True)
 
-    def __post_init__(self):
-        self.lock = Lock()
-        self.keep_connection_open = config.get("options", {}).get("keep_connection_open", True)
+    _lock: Lock = PrivateAttr(default_factory=Lock)
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         if self.keep_connection_open:
             self._open_connection()
 
@@ -1237,12 +1244,12 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
     def _open_connection(self):
         self._capture = cv2.VideoCapture(self.hls_url)
         if not self._capture.isOpened():
-            raise ValueError(f"Could not open {self.type} stream: {self.hls_url}. Is the HLS URL correct?")
+            raise ValueError(f"Could not open {type(self)} stream: {self.hls_url}. Is the HLS URL correct?")
         logger.warning(f"Initialized video capture with backend={self._capture.getBackendName()}")
 
     def _close_connection(self):
-        logger.warning(f"Closing connection to {self.type} stream")
-        with self.lock:
+        logger.warning(f"Closing connection to {type(self)} stream")
+        with self._lock:
             if self._capture is not None:
                 self._capture.release()
 
@@ -1257,7 +1264,7 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
             return self._grab_open()
 
     def _grab_open(self) -> np.ndarray:
-        with self.lock:
+        with self._lock:
             ret, frame = self.capture.read()
         if not ret:
             logger.error(f"Could not read frame from {self.capture}")
@@ -1276,14 +1283,13 @@ class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
     2. Open connection on every frame: Opens and closes the connection on every captured frame, which conserves
         both CPU and network bandwidth but has higher latency. In practice, roughly 1FPS is achievable with this strategy.
     """
-
     youtube_url: str = Field(..., pattern=r"^https?://")
+    keep_connection_open: bool = Field(default=True)
 
-    def __post_init__(self):
-        self.hls_url = self._extract_hls_url(self.youtube_url)
-
-        self.lock = Lock()
-        self.keep_connection_open = config.get("options", {}).get("keep_connection_open", True)
+    def __init__(self, **kwargs):
+        hls_url = self._extract_hls_url(kwargs.get("youtube_url"))
+        kwargs["hls_url"] = hls_url
+        super().__init__(**kwargs)
 
         if self.keep_connection_open:
             self._open_connection()
@@ -1326,7 +1332,7 @@ class FileStreamFrameGrabber(FrameGrabber):
     def __post_init__(self):
         self.remainder = 0.0
 
-        self.capture = cv2.VideoCapture(filename)
+        self._capture = cv2.VideoCapture(filename)
         if not self.capture.isOpened():
             raise ValueError(f"Could not open file {filename}. Is it a valid video file?")
         backend = self.capture.getBackendName()
