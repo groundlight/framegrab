@@ -1,23 +1,11 @@
 # TODO:
-# - make other tests pass
-# - Reevalute _apply_camera_specific_options, apply options stuff
-# - Figure out serializtion
 # - check duplicate serial number logic
 # - check about serial numbers in use and available serial numbers
-# - camera_name -> name, review logic for  (add tests?)
-# - does to_dict need to be dict?
 # - sort imports
-# - add actual test for youtube grabber
-# - does rtsp have the fps thing?
-# - double check parameters, make sure the options in the test are serialized correctly make sure we don't pop optional things
-# - ensure all coremethods are run in tests
-# - make pydantic errors pretty?
 # - test rasperry pi
 # - check autogenerate_name logic??
-# - config class deprecated?
 # - get rid of pdb
-# - deal with warnings?
-# - double check _ variables
+# - fix warmup thing to how it used to be
 
 # Things updated:
 # - Motivation: passing in dicts as a constructor is annoying and error prone
@@ -25,11 +13,11 @@
 #   to handle camera specific options instead. So I updated that.
 # - a big change is that now, if you want to use the dict config to specify a grabber according to
 #   the original format, you need to use the from_dict method.
+# - not sure what grabbers.to_dict is used for?
 
 import copy
 import logging
 import os
-import pdb
 import platform
 import re
 import subprocess
@@ -42,12 +30,13 @@ from urllib.parse import urlparse
 import cv2
 import numpy as np
 import yaml
-from pydantic import BaseModel, Field, PrivateAttr, confloat, validator
+from pydantic import BaseModel, Field, PrivateAttr, confloat, field_validator, ConfigDict
 from typing import Any
 
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
 from .unavailable_module import UnavailableModule
+from .config import InputTypes
 
 # The wsdiscovery packages calls logging.basicConfig, which will wipe out any logging config
 # that framegrab users have set, which is not good. To clear the config that wsdiscovery sets, we
@@ -89,31 +78,7 @@ OPERATING_SYSTEM = platform.system()
 DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
 
-
-class InputTypes:
-    """Defines the available input types from FrameGrabber objects"""
-
-    GENERIC_USB = "generic_usb"
-    RTSP = "rtsp"
-    REALSENSE = "realsense"
-    BASLER = "basler"
-    RPI_CSI2 = "rpi_csi2"
-    HLS = "hls"
-    YOUTUBE_LIVE = "youtube_live"
-    FILE_STREAM = "file"
-    MOCK = "mock"
-
-    def get_options() -> list:
-        """Get a list of the available InputType options"""
-        output = []
-        for attr_name in vars(InputTypes):
-            attr_value = getattr(InputTypes, attr_name)
-            if "__" not in attr_name and isinstance(attr_value, str):
-                output.append(attr_value)
-        return output
-
-
-class FrameGrabber(ABC, BaseModel):
+class FrameGrabber(ABC):
     # for naming FrameGrabber objects that have no user-defined name
     unnamed_grabber_count: ClassVar[int] = 0
 
@@ -122,50 +87,18 @@ class FrameGrabber(ABC, BaseModel):
     num_90_deg_rotations: Optional[int] = 0
 
     name: Optional[str] = None
-    autogenerate_name: bool = False
 
+
+    _camera_initalized: bool = PrivateAttr(default=False)
     _id_field_optional: ClassVar[bool] = PrivateAttr(default=False)
 
-    class Config:
-        extra = "forbid"
-        validate_assignment = True
-
-    @classmethod
-    def get_input_type_to_class_dict(cls):
-        input_type_to_class = {
-            InputTypes.GENERIC_USB: GenericUSBFrameGrabber,
-            InputTypes.RTSP: RTSPFrameGrabber,
-            InputTypes.BASLER: BaslerFrameGrabber,
-            InputTypes.REALSENSE: RealSenseFrameGrabber,
-            InputTypes.RPI_CSI2: RaspberryPiCSI2FrameGrabber,
-            InputTypes.HLS: HttpLiveStreamingFrameGrabber,
-            InputTypes.YOUTUBE_LIVE: YouTubeLiveFrameGrabber,
-            InputTypes.FILE_STREAM: FileStreamFrameGrabber,
-            InputTypes.MOCK: MockFrameGrabber,
-        }
-        return input_type_to_class
-
-    @classmethod
-    def get_input_type_to_id_dict(cls) -> dict:
-        input_type_to_id = {
-            InputTypes.GENERIC_USB: "serial_number",
-            InputTypes.RTSP: "rtsp_url",
-            InputTypes.BASLER: "serial_number",
-            InputTypes.REALSENSE: "serial_number",
-            InputTypes.RPI_CSI2: "serial_number",
-            InputTypes.HLS: "hls_url",
-            InputTypes.YOUTUBE_LIVE: "youtube_url",
-            InputTypes.FILE_STREAM: "filename",
-            InputTypes.MOCK: "serial_number",
-        }
-        return input_type_to_id
-
+    
     def model_post_init(self, context: Any):
-        if not self.name and self.autogenerate_name:
+        if not self.name:
             self._autogenerate_name()
 
     def to_dict(self):
-        dictionary_config = super().dict()
+        dictionary_config = super().model_dump()
 
         input_type = next(key for key, value in self.get_input_type_to_class_dict().items() if value == self.__class__)
         dictionary_config["input_type"] = input_type
@@ -179,7 +112,6 @@ class FrameGrabber(ABC, BaseModel):
         del dictionary_config["crop"]
         del dictionary_config["digital_zoom"]
         del dictionary_config["num_90_deg_rotations"]
-        del dictionary_config["autogenerate_name"]
 
         options = {}
         if self.crop:
@@ -191,6 +123,11 @@ class FrameGrabber(ABC, BaseModel):
 
         dictionary_config["options"] = options
         return dictionary_config
+
+    def validate_config_dict(self, dictionary_config: dict):
+        """ Validate a config dictionary without actually instantiating a FrameGrabber object"""
+        model_dict = self.from_config_dict_to_model_dict(dictionary_config)
+        self.model_validate(model_dict)
     
     @classmethod
     def from_config_dict_to_model_dict(cls, dictionary_config: dict) -> dict:
@@ -217,7 +154,7 @@ class FrameGrabber(ABC, BaseModel):
             "num_90_deg_rotations": num_90_deg_rotations,
             **({id_field_name: id_field_value} if id_field_name else {}),
             **dictionary_config,
-            **options
+            **options # theoretically this should be empty. but if it's not, we'll send it downstream so the unexpected option params are validated
         }
 
     @classmethod
@@ -229,7 +166,7 @@ class FrameGrabber(ABC, BaseModel):
         instance = subclass(**kwargs)
         return instance
 
-    @validator("crop", pre=True, always=True)
+    @field_validator("crop", mode="before")
     def validate_crop(cls, v):
         """Ensure that crop options are correctly specified."""
         if v:
@@ -292,7 +229,7 @@ class FrameGrabber(ABC, BaseModel):
         grabber_list = []
         for config in configs:
             try:
-                grabber = FrameGrabber.create_grabber(config, autogenerate_name=False, warmup_delay=0)
+                grabber = FrameGrabber.create_grabber(config, warmup_delay=0)
                 grabber_list.append(grabber)
             except ValueError as e:
                 name = config.get("name", "Unnamed Camera")
@@ -508,6 +445,9 @@ class FrameGrabber(ABC, BaseModel):
         """Read a frame from the camera and perform post processing operations such as zoom, crop and rotation if necessary.
         Returns a frame.
         """
+        if not self._camera_initalized:
+            self.initalize_camera()
+
         frame = self._grab_implementation()
 
         if frame is None:
@@ -596,7 +536,7 @@ class FrameGrabber(ABC, BaseModel):
         """Update generic options such as crop and zoom as well as
         camera-specific options.
         """
-        old_model_dict = self.dict()
+        old_model_dict = self.model_dump()
 
         # create a version of the configuration with the new options
         new_config_dict = self.to_dict()
@@ -643,9 +583,9 @@ class WithSerialNumberAndResolutionMixin(WithSerialNumberMixin, ABC):
 
     _capture: Optional[cv2.VideoCapture] = PrivateAttr(default=None)
 
-    @validator("resolution_height", always=True)
-    def validate_resolution(cls, v, values):
-        if values.get("resolution_width") is not None and v is None:
+    @field_validator("resolution_height", mode="before")
+    def validate_resolution(cls, v: int, info: dict):
+        if info.config.get("resolution_width") is not None and v is None:
             raise ValueError("resolution_height must be provided if resolution_width is provided")
         return v
 
@@ -955,8 +895,8 @@ class RTSPFrameGrabber(FrameGrabber):
 
         options = data.get("options", {})
         if options:
-            keep_connection_open = options.pop("keep_connection_open")
-            max_fps = options.pop("max_fps")
+            keep_connection_open = options.pop("keep_connection_open", True)
+            max_fps = options.pop("max_fps", 30)
             if keep_connection_open is not None:
                 data["keep_connection_open"] = keep_connection_open
             if max_fps:
@@ -1142,6 +1082,7 @@ class BaslerFrameGrabber(WithSerialNumberMixin):
     def to_dict(self) -> dict:
         dictionary_config = super().to_dict()
         dictionary_config["options"]["basler_options"] = self.basler_options
+        del dictionary_config["basler_options"]
         return dictionary_config
 
     @classmethod
@@ -1287,7 +1228,7 @@ class RaspberryPiCSI2FrameGrabber(WithSerialNumberMixin):
         return frame
 
     def release(self) -> None:
-        self.camera._close()
+        self._camera._close()
 
 
 class HttpLiveStreamingFrameGrabber(FrameGrabber):
@@ -1439,10 +1380,10 @@ class FileStreamFrameGrabber(FrameGrabber):
     @classmethod
     def from_config_dict_to_model_dict(cls, config_dict: dict) -> dict:
         data = copy.deepcopy(config_dict)
-        max_fps = data.get("options", {}).get("max_fps", 0)
-        if "options" in data and "max_fps" in data["options"]:
-            max_fps = data["options"].pop("max_fps")
-        new_data = {**data, "max_fps": max_fps}
+
+        options = data.get("options", {})
+        max_fps = options.pop("max_fps", None)
+        new_data = {**data, "max_fps": max_fps} if max_fps else data
         return super().from_config_dict_to_model_dict(new_data)
 
     def _autogenerate_name(self) -> None:
@@ -1488,10 +1429,10 @@ class MockFrameGrabber(WithSerialNumberAndResolutionMixin):
 
     # Represents the serial numbers of the mock cameras that are discoverable
     available_serial_numbers: ClassVar[tuple] = ("123", "456", "789")
+    warmup_delay: float = 0.0
 
     # Keeps track of the available serial numbers so that we don't try to connect to them twice
-    serial_numbers_in_use: ClassVar[set] = set()
-    warmup_delay: float = 0.0
+    _serial_numbers_in_use: ClassVar[set] = PrivateAttr(default=set())
 
     def model_post_init(self, context: Any):
         super().model_post_init(context)
@@ -1499,7 +1440,7 @@ class MockFrameGrabber(WithSerialNumberAndResolutionMixin):
 
         # Iterate through each detected camera and attempt to match it with the provided camera config
         for curr_serial_number in MockFrameGrabber.available_serial_numbers:
-            if curr_serial_number in MockFrameGrabber.serial_numbers_in_use:
+            if curr_serial_number in MockFrameGrabber._serial_numbers_in_use:
                 continue  # this camera is already in use, moving on to the next
             if provided_serial_number is None or curr_serial_number == provided_serial_number:
                 break  # succesfully connected, breaking out of loop
@@ -1508,7 +1449,7 @@ class MockFrameGrabber(WithSerialNumberAndResolutionMixin):
                 f"Unable to connect to MockFrameGrabber with serial_number: {provided_serial_number}. "
                 f"Is the serial number correct? Available serial numbers are {MockFrameGrabber.available_serial_numbers}"
             )
-        MockFrameGrabber.serial_numbers_in_use.add(curr_serial_number)
+        MockFrameGrabber._serial_numbers_in_use.add(curr_serial_number)
 
         # In case the serial_number wasn't provided by the user, add it to the config
         self.serial_number = curr_serial_number
@@ -1520,4 +1461,4 @@ class MockFrameGrabber(WithSerialNumberAndResolutionMixin):
         return np.zeros((height, width, 3), dtype=np.uint8)
 
     def release(self) -> None:
-        MockFrameGrabber.serial_numbers_in_use.remove(self.serial_number)
+        MockFrameGrabber._serial_numbers_in_use.remove(self.serial_number)

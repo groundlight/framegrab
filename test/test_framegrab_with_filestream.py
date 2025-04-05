@@ -5,7 +5,6 @@ import unittest
 
 import cv2
 import numpy as np
-import pdb
 from framegrab.grabber import FileStreamFrameGrabber
 
 
