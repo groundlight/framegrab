@@ -6,6 +6,7 @@ import os
 import unittest
 from unittest.mock import patch
 from framegrab.grabber import FrameGrabber, RTSPFrameGrabber
+from framegrab.config import FrameGrabberConfig, InputTypes
 
 class TestFrameGrabWithMockCamera(unittest.TestCase):
     def test_crop_pixels(self):
@@ -99,7 +100,7 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         grabber = FrameGrabber.create_grabber(config)
 
         # Check that some camera name was added
-        assert len(grabber.name) > 2
+        assert len(grabber.config.name) > 2
 
         grabber.release()
 
@@ -110,7 +111,7 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
 
         grabber = FrameGrabber.create_grabber(config)
 
-        assert grabber.name == user_provided_name
+        assert grabber.config.name == user_provided_name
 
         grabber.release()
 
@@ -123,7 +124,7 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
 
         grabbers = FrameGrabber.create_grabbers(configs)
 
-        grabber_names = set([grabber.name for grabber in grabbers.values()])
+        grabber_names = set([grabber.config.name for grabber in grabbers.values()])
 
         # Make sure all the grabbers have unique names
         assert len(configs) == len(grabber_names)
@@ -137,7 +138,7 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         config = {"name": user_provided_name, "input_type": "mock"}
 
         with FrameGrabber.create_grabber(config) as grabber:
-            assert grabber.name == user_provided_name
+            assert grabber.config.name == user_provided_name
 
     def test_attempt_create_more_grabbers_than_exist(self):
         """Try to provide a config with more cameras than are actually plugged in.
@@ -180,43 +181,38 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         """Test that the RTSP password is substituted correctly."""
         os.environ["RTSP_PASSWORD_1"] = "password1"
 
-        config = {
-            "input_type": "rtsp",
-            "id": {"rtsp_url": "rtsp://admin:{{RTSP_PASSWORD_1}}@10.0.0.1"},
-        }
+        config = FrameGrabberConfig.create(
+            input_type=InputTypes.RTSP,
+            rtsp_url="rtsp://admin:{{RTSP_PASSWORD_1}}@10.0.0.1",
+        )
         
-        with patch.object(RTSPFrameGrabber, '_open_connection', return_value=None), \
-             patch.object(RTSPFrameGrabber, '_init_drain_thread', return_value=None):
-            grabber = RTSPFrameGrabber.from_dict(config)
-            substituted_rtsp_url = grabber.rtsp_url
+        substituted_config = RTSPFrameGrabber._substitute_rtsp_password(config)
+        substituted_rtsp_url = substituted_config.rtsp_url
 
-            assert substituted_rtsp_url == "rtsp://admin:password1@10.0.0.1"
+        assert substituted_rtsp_url == "rtsp://admin:password1@10.0.0.1"
 
     def test_substitute_rtsp_url_password_not_set(self):
         """Test that an exception is raised if the user adds a placeholder but neglects to set the environment variable."""
-        config = {
-            "input_type": "rtsp",
-            "id": {
-                "rtsp_url": "rtsp://admin:{{SOME_NONEXISTENT_ENV_VARIABLE}}@10.0.0.1"
-            },
-        }
+        config = FrameGrabberConfig.create(
+            input_type=InputTypes.RTSP,
+            rtsp_url="rtsp://admin:{{SOME_NONEXISTENT_ENV_VARIABLE}}@10.0.0.1",
+        )
 
         with self.assertRaises(ValueError):
-            with patch.object(RTSPFrameGrabber, '_open_connection', return_value=None):
-                grabber = RTSPFrameGrabber.from_dict(config)
+            RTSPFrameGrabber._substitute_rtsp_password(config)
 
     def test_substitute_rtsp_url_without_placeholder(self):
         """Users should be able to use RTSP urls without a password placeholder. In this case, the config should be returned unchanged."""
-        config = {
-            "input_type": "rtsp",
-            "id": {"rtsp_url": "rtsp://admin:password@10.0.0.1"},
-        }
+        rtsp_url = "rtsp://admin:password@10.0.0.1"
+        config = FrameGrabberConfig.create(
+            input_type=InputTypes.RTSP,
+            rtsp_url=rtsp_url,
+        )
 
-        with patch.object(RTSPFrameGrabber, '_open_connection', return_value=None), \
-             patch.object(RTSPFrameGrabber, '_init_drain_thread', return_value=None):
-            grabber = RTSPFrameGrabber.from_dict(config)
-            assert grabber.rtsp_url == config["id"]["rtsp_url"]
-            grabber.release()
+        new_config = RTSPFrameGrabber._substitute_rtsp_password(config)
+
+        assert new_config == config
+
 
     def test_create_grabbers_with_one_invalid_config(self):
         """
