@@ -213,7 +213,7 @@ class FrameGrabberConfig(ABC, BaseModel):
     def from_framegrab_config_dict(cls, dictionary_config: dict) -> "FrameGrabber":
         """Create a FrameGrabberConfig instance from a dictionary."""
         dictionary_config = copy.deepcopy(dictionary_config)
-        input_type = dictionary_config["input_type"]
+        input_type = dictionary_config.pop("input_type")
         subclass = cls.get_class_for_input_type(input_type)
         kwargs = subclass.get_model_parameters(dictionary_config)
         instance = subclass(**kwargs)
