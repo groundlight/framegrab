@@ -1,15 +1,4 @@
-# get rid of pdb
-# deal with warnings
-# more apply_options tests
-# sort imports
-
-# having dict configs requires you to know ahead of time all the validation framegrab needs to do
-# i don't think rtsp password note is true
-# got rid of autogenerate_name
-# tim can you specifically check the naming logic
-
 import logging
-import pdb
 import platform
 import re
 import subprocess

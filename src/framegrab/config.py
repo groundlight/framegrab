@@ -5,7 +5,6 @@ These configurations are used to initialize and manage different frame grabber o
 
 import copy
 import os
-import pdb
 import re
 from abc import ABC
 from enum import Enum
@@ -203,7 +202,7 @@ class FrameGrabberConfig(ABC, BaseModel):
         dictionary_config = copy.deepcopy(dictionary_config)
         input_type = cls.get_input_type()
         id_field_name = cls.get_input_type_to_id_dict()[input_type]
-        id_field_required = cls.__fields__.get(id_field_name).is_required()
+        id_field_required = cls.model_fields.get(id_field_name).is_required()
 
         if id_field_required and "id" not in dictionary_config:
             raise ValueError("The 'id' field is missing in the configuration dictionary.")

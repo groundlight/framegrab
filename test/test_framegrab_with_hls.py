@@ -84,7 +84,7 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
         mock_capture.isOpened.return_value = True
         mock_cv2.return_value = mock_capture
 
-        config = self.base_config.copy()
+        config = self.base_config.model_copy()
 
         grabber = HttpLiveStreamingFrameGrabber(config)
         config_as_dict = config.to_framegrab_config_dict()
