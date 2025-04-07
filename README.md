@@ -606,10 +606,11 @@ FileStreamFrameGrabberConfig:
       title: Filename
       type: string
     max_fps:
-      default: 0
-      minimum: 0
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: null
       title: Max Fps
-      type: number
     name:
       anyOf:
       - type: string
