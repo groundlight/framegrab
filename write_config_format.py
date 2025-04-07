@@ -10,12 +10,15 @@ from framegrab.config import (
     InputTypes,
     FrameGrabberConfig
 )
+
+
 def write_schema_to_readme(models, readme_file):
     with open(readme_file, "r") as f:
         lines = f.readlines()
 
     with open(readme_file, "w") as f:
         in_config_schema_section = False
+        yaml_block_started = False
         for line in lines:
             if "##### Config Schema" in line:
                 in_config_schema_section = True
@@ -26,7 +29,10 @@ def write_schema_to_readme(models, readme_file):
                     yaml.dump({f"{model.__name__}": schema}, f, default_flow_style=False)
                     f.write("\n")
                 f.write("```\n")
+                yaml_block_started = True
+            elif in_config_schema_section and line.strip() == "```" and yaml_block_started:
                 in_config_schema_section = False
+                yaml_block_started = False
             elif not in_config_schema_section:
                 f.write(line)
 

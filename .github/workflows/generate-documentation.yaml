@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/framegrab/config.py'
       - '.github/workflows/generate-documentation.yaml'
+      - 'write_config_format.py'
 jobs:
   generate-docs:
     runs-on: ubuntu-latest
