@@ -450,11 +450,10 @@ class YouTubeLiveFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMi
         return base_dict
 
 
-class FileStreamFrameGrabberConfig(FrameGrabberConfig):
+class FileStreamFrameGrabberConfig(FrameGrabberConfig, WithMaxFPSMixin):
     """Configuration class for File Stream Frame Grabber."""
 
     filename: str = Field(..., pattern=r"^[\w\-/]+\.mp4|mov|mjpeg$")
-    max_fps: float = Field(default=0, ge=0)
 
 
 class MockFrameGrabberConfig(WithResolutionMixin):
