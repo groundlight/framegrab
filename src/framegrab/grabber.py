@@ -1,9 +1,7 @@
 # go over unnamed logic
 # get rid of pdb
 # check config params
-# documentation
 # deal with warnings
-# uncomment the options test stuff (its in multiple files)
 # double check which config you can put resolution
 # more apply_options tests
 # sort imports
