@@ -539,7 +539,6 @@ class FrameGrabber(ABC):
         new_config = FrameGrabberConfig.from_framegrab_config_dict(framegrab_config_dict)
         self.config = new_config
 
-
     @abstractmethod
     def release() -> None:
         """A cleanup method. Releases/closes the video capture, terminates any related threads, etc."""
@@ -1060,7 +1059,7 @@ class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
         self.pipeline.stop()
 
     def apply_options(self, options: dict) -> None:
-        """ Some special handling for changing the resolution of Intel RealSense cameras"""
+        """Some special handling for changing the resolution of Intel RealSense cameras"""
         old_width = self.config.resolution_width
         old_height = self.config.resolution_height
 
@@ -1074,7 +1073,7 @@ class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
             self.rs_config.enable_stream(rs.stream.color, new_width, new_height)
             self.rs_config.enable_stream(rs.stream.depth, new_width, new_height)
             self.pipeline.start(self.rs_config)  # Restart the pipeline with the new configuration
-        
+
 
 class RaspberryPiCSI2FrameGrabber(FrameGrabberWithSerialNumber):
     "For CSI2 cameras connected to Raspberry Pis through their dedicated camera port"
@@ -1142,7 +1141,7 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
 
     def _default_name(self) -> str:
         return self.config.hls_url
-    
+
     def _open_connection(self):
         self.capture = cv2.VideoCapture(self.config.hls_url)
         if not self.capture.isOpened():
@@ -1292,7 +1291,6 @@ class FileStreamFrameGrabber(FrameGrabber):
 
         self.remainder = round(drop_frames - frames_to_drop, 2)
         logger.debug(f"Dropped {frames_to_drop} frames to meet {self.config.max_fps} FPS target")
-
 
     def release(self) -> None:
         """Release the video capture resources."""
