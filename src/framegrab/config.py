@@ -123,7 +123,7 @@ class FrameGrabberConfig(ABC, BaseModel):
         if input_type not in cls.get_input_type_to_class_dict():
             raise ValueError(f"Invalid input type: {input_type}")
         return cls.get_input_type_to_class_dict()[input_type]
-    
+
     def get_input_type(self):
         """Determine the input type of the current class."""
         input_type_to_class = self.get_input_type_to_class_dict()
