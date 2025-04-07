@@ -92,7 +92,9 @@ class FrameGrabber(ABC):
     def __init__(self, config: FrameGrabberConfig):
         """To create a FrameGrabber object with the generic FrameGrabber class or with a config dict, use create_grabber()"""
         if not isinstance(config, self.config_class):
-            raise TypeError(f"Expected config to be of type {self.config_class.__name__}, but got {type(config).__name__}")
+            raise TypeError(
+                f"Expected config to be of type {self.config_class.__name__}, but got {type(config).__name__}"
+            )
 
         self.config = config
 
@@ -410,7 +412,6 @@ class FrameGrabber(ABC):
         frame = self._crop(frame)
         frame = self._digital_zoom(frame)
         return frame
-
 
     @abstractmethod
     def _default_name(self) -> str:
@@ -758,6 +759,7 @@ class RTSPFrameGrabber(FrameGrabber):
         1. If `true`, keeps the connection open for low-latency frame grabbing, but consumes more CPU.  (default)
         2. If `false`, opens the connection only when needed, which is slower but conserves resources.
     """
+
     config_class = RTSPFrameGrabberConfig
 
     def __init__(self, config: RTSPFrameGrabberConfig):
@@ -827,6 +829,7 @@ class RTSPFrameGrabber(FrameGrabber):
 
 class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
     """Basler USB and Basler GigE Cameras"""
+
     config_class = BaslerFrameGrabberConfig
 
     serial_numbers_in_use = set()
@@ -918,6 +921,7 @@ class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
 
 class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
     """Intel RealSense Depth Camera"""
+
     config_class = RealSenseFrameGrabberConfig
 
     def __init__(self, config: RealSenseFrameGrabberConfig):
@@ -1017,6 +1021,7 @@ class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
 
 class RaspberryPiCSI2FrameGrabber(FrameGrabberWithSerialNumber):
     "For CSI2 cameras connected to Raspberry Pis through their dedicated camera port"
+
     config_class = RaspberryPiCSI2FrameGrabberConfig
 
     def __init__(self, config: RaspberryPiCSI2FrameGrabberConfig):
@@ -1061,7 +1066,9 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
     2. Open connection on every frame: Opens and closes the connection on every captured frame, which conserves
         both CPU and network bandwidth but has higher latency. In practice, roughly 1FPS is achievable with this strategy.
     """
+
     config_class = HttpLiveStreamingFrameGrabberConfig
+
     def __init__(self, config: HttpLiveStreamingFrameGrabberConfig):
         super().__init__(config)
 
