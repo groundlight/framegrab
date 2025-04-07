@@ -175,7 +175,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         raspberry_pi_framegrabber = RaspberryPiCSI2FrameGrabber(raspberry_pi_framegrabber_config)
         self._test_grabber_helper(raspberry_pi_framegrabber)
 
-    @patch('framegrab.grabber.YouTubeLiveFrameGrabber._extract_hls_url', return_value="https://fakeurl.com")
+    @patch('framegrab.config.YouTubeLiveFrameGrabberConfig.hls_url', return_value="https://fakeurl.com")
     @patch('cv2.VideoCapture')
     def test_http_grabber(self, mock_video_capture, mock_extract_hls_url):
         mock_capture_instance = MagicMock()
@@ -187,7 +187,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         http_framegrabber = HttpLiveStreamingFrameGrabber(http_framegrabber_config)
         self._test_grabber_helper(http_framegrabber)
 
-    @patch('framegrab.grabber.YouTubeLiveFrameGrabber._extract_hls_url', return_value="https://fakeurl.com")
+    @patch('framegrab.config.YouTubeLiveFrameGrabberConfig.hls_url', return_value="https://fakeurl.com")
     @patch('cv2.VideoCapture')
     def test_youtube_grabber(self, mock_video_capture, mock_extract_hls_url):
         mock_capture_instance = MagicMock()
