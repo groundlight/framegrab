@@ -794,7 +794,6 @@ class RTSPFrameGrabber(FrameGrabber):
     def _default_name(self) -> str:
         return self.config.rtsp_url
 
-
     def _open_connection(self):
         self.capture = cv2.VideoCapture(self.config.rtsp_url)
         if not self.capture.isOpened():
