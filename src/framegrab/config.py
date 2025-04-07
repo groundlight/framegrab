@@ -31,6 +31,7 @@ except ImportError as e:
 
 class InputTypes(Enum):
     """Defines the available input types for FrameGrabber objects."""
+
     GENERIC_USB = "generic_usb"
     RTSP = "rtsp"
     REALSENSE = "realsense"
@@ -56,6 +57,7 @@ DIGITAL_ZOOM_MAX = 4
 
 class FrameGrabberConfig(ABC, BaseModel):
     """Base configuration class for all frame grabbers."""
+
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
     crop: Optional[Dict[str, Dict[str, float]]] = None
@@ -226,6 +228,7 @@ class FrameGrabberConfig(ABC, BaseModel):
 
 class WithResolutionMixin(FrameGrabberConfig, ABC):
     """Mixin class to add resolution configuration to FrameGrabberConfig."""
+
     resolution_width: Optional[int] = None
     resolution_height: Optional[int] = None
 
@@ -263,6 +266,7 @@ class WithResolutionMixin(FrameGrabberConfig, ABC):
 
 class WithKeepConnectionOpenMixin(ABC, BaseModel):
     """Mixin class to add keep_connection_open configuration to FrameGrabberConfig."""
+
     keep_connection_open: bool = Field(default=True)
 
     def update_framegrab_config_dict(self, dictionary_config: dict) -> dict:
@@ -284,6 +288,7 @@ class WithKeepConnectionOpenMixin(ABC, BaseModel):
 
 class WithMaxFPSMixin(ABC, BaseModel):
     """Mixin class to add max_fps configuration to FrameGrabberConfig."""
+
     max_fps: Optional[int] = None
 
     def update_framegrab_config_dict(self, dictionary_config: dict) -> dict:
@@ -305,12 +310,14 @@ class WithMaxFPSMixin(ABC, BaseModel):
 
 class GenericUSBFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for Generic USB Frame Grabber."""
+
     serial_number: Optional[str] = None
     _id_field_optional: ClassVar[bool] = True
 
 
 class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, WithMaxFPSMixin):
     """Configuration class for RTSP Frame Grabber."""
+
     rtsp_url: str = Field(..., pattern=r"^rtsp://")
 
     @field_validator("rtsp_url", mode="before")
@@ -363,6 +370,7 @@ class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, Wi
 
 class BaslerFrameGrabberConfig(FrameGrabberConfig):
     """Configuration class for Basler Frame Grabber."""
+
     serial_number: Optional[str] = None
     basler_options: Optional[dict] = None
     _id_field_optional: ClassVar[bool] = True
@@ -386,6 +394,7 @@ class BaslerFrameGrabberConfig(FrameGrabberConfig):
 
 class RealSenseFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for RealSense Frame Grabber."""
+
     serial_number: Optional[str] = None
     side_by_side_depth: Optional[bool] = False
     _id_field_optional: ClassVar[bool] = True
@@ -409,16 +418,19 @@ class RealSenseFrameGrabberConfig(WithResolutionMixin):
 
 class HttpLiveStreamingFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin):
     """Configuration class for HTTP Live Streaming Frame Grabber."""
+
     hls_url: str = Field(..., pattern=r"^https?://")
 
 
 class RaspberryPiCSI2FrameGrabberConfig(FrameGrabberConfig):
     """Configuration class for Raspberry Pi CSI-2 Frame Grabber."""
+
     serial_number: Optional[str] = None
 
 
 class YouTubeLiveFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin):
     """Configuration class for YouTube Live Frame Grabber."""
+
     youtube_url: str = Field(..., pattern=r"^https?://")
 
     @computed_field
@@ -440,11 +452,13 @@ class YouTubeLiveFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMi
 
 class FileStreamFrameGrabberConfig(FrameGrabberConfig):
     """Configuration class for File Stream Frame Grabber."""
+
     filename: str = Field(..., pattern=r"^[\w\-/]+\.mp4|mov|mjpeg$")
     max_fps: float = Field(default=0, ge=0)
 
 
 class MockFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for Mock Frame Grabber."""
+
     serial_number: Optional[str] = None
     _id_field_optional: ClassVar[bool] = True

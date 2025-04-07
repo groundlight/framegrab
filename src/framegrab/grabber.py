@@ -92,7 +92,7 @@ class FrameGrabber(ABC):
 
     @abstractmethod
     def __init__(self, config: FrameGrabberConfig):
-        """ To create a FrameGrabber object with the generic FrameGrabber class or with a config dict, use create_grabber()"""
+        """To create a FrameGrabber object with the generic FrameGrabber class or with a config dict, use create_grabber()"""
         if not isinstance(config, FrameGrabberConfig):
             raise TypeError(f"Expected config to be of type FrameGrabberConfig, but got {type(config).__name__}")
 
