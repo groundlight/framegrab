@@ -11,8 +11,10 @@
 # uncomment the options test stuff (its in multiple files)
 # double check which config you can put resolution
 # more apply_options tests
+# sort imports
 
 # having dict configs requires you to know ahead of time all the validation framegrab needs to do
+# i don't think rtsp password note is true
 
 import logging
 import os
@@ -164,7 +166,7 @@ class FrameGrabber(ABC):
             except ValueError as e:
                 camera_name = config.name
                 logger.error(
-                    f"Failed to connect to {camera_name}. Please check its connection and provided configuration: {config}",
+                    f"Failed to connect to {camera_name}. Please check its connection and provided configuration: {config}. Error: {e}",
                     exc_info=True,
                 )
 
@@ -789,8 +791,6 @@ class RTSPFrameGrabber(FrameGrabber):
                 f"No RTSP URL provided for {camera_name}. Please add an rtsp_url attribute to the config under id."
             )
 
-        self.config = RTSPFrameGrabber._substitute_rtsp_password(config)
-
         self.lock = Lock()
         self.run = True
         self.keep_connection_open = self.config.keep_connection_open
@@ -802,37 +802,6 @@ class RTSPFrameGrabber(FrameGrabber):
     def _default_name(self) -> str:
         return self.config.rtsp_url
 
-    @staticmethod
-    def _substitute_rtsp_password(config: RTSPFrameGrabberConfig) -> RTSPFrameGrabberConfig:
-        """
-        Substitutes the password placeholder in the rtsp_url with the actual password
-        from an environment variable.
-        The URL should take this format
-            Ex: rtsp://admin:{{MY_PASSWORD}}@10.0.0.0/cam/realmonitor?channel=1&subtype=0
-        This function looks for an all-uppercase name between {{ and }} to find an environment
-        variable with that name. If the environment variable is found, its value will be
-        substituted in the rtsp_url.
-        NOTE: This can also work for multiple RTSP URLs in the same config file as long
-            as each one has a unique password placeholder.
-        """
-        pattern = r"\{\{([A-Z_][A-Z0-9_]*?)\}\}"
-        rtsp_url = config.rtsp_url
-        matches = re.findall(pattern, rtsp_url)
-
-        if len(matches) == 0:
-            return config  # make no change to config if no password placeholder is found
-        elif len(matches) > 1:
-            raise ValueError("RTSP URL should contain no more than one placeholder for the password.")
-
-        match = matches[0]
-        password_env_var = os.environ.get(match)
-        if not password_env_var:
-            raise ValueError(f"RTSP URL {rtsp_url} references environment variable {match} which is not set")
-
-        placeholder = "{{" + match + "}}"
-        config.rtsp_url = rtsp_url.replace(placeholder, password_env_var)
-
-        return config
 
     def _open_connection(self):
         self.capture = cv2.VideoCapture(self.config.rtsp_url)

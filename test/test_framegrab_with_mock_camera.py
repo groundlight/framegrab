@@ -181,25 +181,21 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         """Test that the RTSP password is substituted correctly."""
         os.environ["RTSP_PASSWORD_1"] = "password1"
 
+        # rtsp_url will be subsitituted here with the pydantic validator
         config = FrameGrabberConfig.create(
             input_type=InputTypes.RTSP,
             rtsp_url="rtsp://admin:{{RTSP_PASSWORD_1}}@10.0.0.1",
         )
         
-        substituted_config = RTSPFrameGrabber._substitute_rtsp_password(config)
-        substituted_rtsp_url = substituted_config.rtsp_url
-
-        assert substituted_rtsp_url == "rtsp://admin:password1@10.0.0.1"
+        assert config.rtsp_url == "rtsp://admin:password1@10.0.0.1"
 
     def test_substitute_rtsp_url_password_not_set(self):
         """Test that an exception is raised if the user adds a placeholder but neglects to set the environment variable."""
-        config = FrameGrabberConfig.create(
-            input_type=InputTypes.RTSP,
-            rtsp_url="rtsp://admin:{{SOME_NONEXISTENT_ENV_VARIABLE}}@10.0.0.1",
-        )
-
         with self.assertRaises(ValueError):
-            RTSPFrameGrabber._substitute_rtsp_password(config)
+            FrameGrabberConfig.create(
+                input_type=InputTypes.RTSP,
+                rtsp_url="rtsp://admin:{{SOME_NONEXISTENT_ENV_VARIABLE}}@10.0.0.1",
+            )
 
     def test_substitute_rtsp_url_without_placeholder(self):
         """Users should be able to use RTSP urls without a password placeholder. In this case, the config should be returned unchanged."""
@@ -209,10 +205,7 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
             rtsp_url=rtsp_url,
         )
 
-        new_config = RTSPFrameGrabber._substitute_rtsp_password(config)
-
-        assert new_config == config
-
+        assert config.rtsp_url == rtsp_url
 
     def test_create_grabbers_with_one_invalid_config(self):
         """

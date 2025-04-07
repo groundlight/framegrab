@@ -3,7 +3,9 @@ import copy
 import pdb
 from abc import ABC
 from enum import Enum
-from typing import ClassVar, Dict, Optional, Tuple
+from typing import ClassVar, Dict, Optional
+import re
+import os
 
 from pydantic import (
     BaseModel,
@@ -288,6 +290,35 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
 class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, WithMaxFPSMixin):
     input_type: InputTypes = InputTypes.RTSP
     rtsp_url: str = Field(..., pattern=r"^rtsp://")
+
+    @field_validator('rtsp_url', mode='before')
+    def substitute_rtsp_password(cls, rtsp_url: str) -> str:
+        """
+        Substitutes the password placeholder in the rtsp_url with the actual password
+        from an environment variable.
+        The URL should take this format
+            Ex: rtsp://admin:{{MY_PASSWORD}}@10.0.0.0/cam/realmonitor?channel=1&subtype=0
+        This function looks for an all-uppercase name between {{ and }} to find an environment
+        variable with that name. If the environment variable is found, its value will be
+        substituted in the rtsp_url.
+        NOTE: This can also work for multiple RTSP URLs in the same config file as long
+            as each one has a unique password placeholder.
+        """
+        pattern = r"\{\{([A-Z_][A-Z0-9_]*?)\}\}"
+        matches = re.findall(pattern, rtsp_url)
+
+        if len(matches) == 0:
+            return rtsp_url  # make no change to rtsp_url if no password placeholder is found
+        elif len(matches) > 1:
+            raise ValueError("RTSP URL should contain no more than one placeholder for the password.")
+
+        match = matches[0]
+        password_env_var = os.environ.get(match)
+        if not password_env_var:
+            raise ValueError(f"RTSP URL {rtsp_url} references environment variable {match} which is not set")
+
+        placeholder = "{{" + match + "}}"
+        return rtsp_url.replace(placeholder, password_env_var)
 
     def to_framegrab_config_dict(self) -> dict:
         base_dict = super().to_framegrab_config_dict()
