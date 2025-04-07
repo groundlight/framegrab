@@ -38,7 +38,7 @@ def write_schema_to_readme(models, readme_file):
 
 
 if __name__ == "__main__":
-    models = [FrameGrabberConfig.get_class_for_input_type(input_type.value) for input_type in InputTypes]
+    models = [FrameGrabberConfig.get_class_for_input_type(input_type) for input_type in InputTypes]
     output_file = "README.md"
     write_schema_to_readme(models, output_file)
     print(f"Schema written to {output_file}")

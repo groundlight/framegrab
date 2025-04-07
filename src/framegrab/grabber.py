@@ -1,8 +1,6 @@
 # go over unnamed logic
 # get rid of pdb
-# check config params
 # deal with warnings
-# double check which config you can put resolution
 # more apply_options tests
 # sort imports
 
@@ -93,16 +91,10 @@ class FrameGrabber(ABC):
     @abstractmethod
     def __init__(self, config: FrameGrabberConfig):
         """To create a FrameGrabber object with the generic FrameGrabber class or with a config dict, use create_grabber()"""
-        if not isinstance(config, FrameGrabberConfig):
-            raise TypeError(f"Expected config to be of type FrameGrabberConfig, but got {type(config).__name__}")
-
-        config_class = FrameGrabberConfig.get_input_type_to_class_dict()[config.input_type.value]
-        if not isinstance(config, config_class):
-            raise TypeError(f"Expected config to be of type {config_class.__name__}, but got {type(config).__name__}")
+        if not isinstance(config, self.config_class):
+            raise TypeError(f"Expected config to be of type {self.config_class.__name__}, but got {type(config).__name__}")
 
         self.config = config
-        if not config.name:
-            self._autogenerate_name()
 
     @staticmethod
     def _validate_dict_config(config: dict) -> FrameGrabberConfig:
@@ -170,7 +162,7 @@ class FrameGrabber(ABC):
         grabbers = FrameGrabber.grabbers_to_dict(grabber_list)
 
         # Do the warmup delay if necessary
-        grabber_types = set([grabber.config.input_type for grabber in grabbers.values()])
+        grabber_types = set([grabber.config.get_input_type() for grabber in grabbers.values()])
         if InputTypes.GENERIC_USB in grabber_types and warmup_delay > 0:
             logger.info(
                 f"Waiting {warmup_delay} seconds for camera(s) to warm up. "
@@ -237,15 +229,11 @@ class FrameGrabber(ABC):
         return grabbers
 
     @staticmethod
-    def create_grabber_yaml(yaml_config: str, autogenerate_name: bool = True, warmup_delay: float = 1.0):
+    def create_grabber_yaml(yaml_config: str, warmup_delay: float = 1.0):
         """Create a FrameGrabber object based on the provided configuration.
 
         Parameters:
             config (str): A yaml string containing configuration settings for the FrameGrabber.
-
-            autogenerate_name (bool, optional): A flag to indicate whether to automatically
-                generate a name for the FrameGrabber object if not explicitly provided. Defaults
-                to True.
 
             warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
                 cameras often need a moment to warm up before they can be used; grabbing frames too early
@@ -258,7 +246,7 @@ class FrameGrabber(ABC):
                 configuration dictionary.
         """
         config = yaml.safe_load(yaml_config)
-        grabber = FrameGrabber.create_grabber(config, autogenerate_name, warmup_delay)
+        grabber = FrameGrabber.create_grabber(config, warmup_delay)
         return grabber
 
     @staticmethod
@@ -284,7 +272,6 @@ class FrameGrabber(ABC):
         else:
             model_config = config
 
-        # At a minimum, input_type must be provided
         input_type = model_config.get_input_type()
 
         # Based on input_type, create correct type of FrameGrabber
@@ -371,7 +358,6 @@ class FrameGrabber(ABC):
                                     "id": {"rtsp_url": rtsp_url},
                                     "name": f"RTSP Camera - {device.ip} - {index}",
                                 },
-                                autogenerate_name=False,
                                 warmup_delay=0,
                             )
                             grabber_list.append(grabber)
@@ -382,7 +368,7 @@ class FrameGrabber(ABC):
             ):  # an arbitrarily high value so that we look for enough cameras, but this never becomes an infinite loop
                 try:
                     config = {"input_type": input_type}
-                    grabber = FrameGrabber.create_grabber(config, autogenerate_name=False, warmup_delay=0)
+                    grabber = FrameGrabber.create_grabber(config, warmup_delay=0)
                     grabber_list.append(grabber)
                 except (ValueError, ImportError):
                     # ValueError is taken to mean that we have reached the end of enumeration for the current input_type.
@@ -393,7 +379,7 @@ class FrameGrabber(ABC):
         grabbers = FrameGrabber.grabbers_to_dict(grabber_list)
 
         # Do the warmup delay if necessary
-        grabber_types = set([grabber.config.input_type for grabber in grabbers.values()])
+        grabber_types = set([grabber.config.get_input_type() for grabber in grabbers.values()])
         if InputTypes.GENERIC_USB in grabber_types and warmup_delay > 0:
             logger.info(
                 f"Waiting {warmup_delay} seconds for camera(s) to warm up. "
@@ -425,13 +411,6 @@ class FrameGrabber(ABC):
         frame = self._digital_zoom(frame)
         return frame
 
-    def _autogenerate_name(self) -> None:
-        """For generating and assigning unique names for unnamed FrameGrabber objects.
-
-        Attempts to incorporate a unique identifier (serial number, url, etc.) into each
-        camera name. If no unique identifier is available, a counter is used instead.
-        """
-        self.config.name = self._default_name()
 
     @abstractmethod
     def _default_name(self) -> str:
@@ -570,6 +549,8 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
 
     # keep track of the cameras that are already in use so that we don't try to connect to them twice
     indices_in_use = set()
+
+    config_class = GenericUSBFrameGrabberConfig
 
     def __init__(self, config: GenericUSBFrameGrabberConfig):
         super().__init__(config)
@@ -777,6 +758,7 @@ class RTSPFrameGrabber(FrameGrabber):
         1. If `true`, keeps the connection open for low-latency frame grabbing, but consumes more CPU.  (default)
         2. If `false`, opens the connection only when needed, which is slower but conserves resources.
     """
+    config_class = RTSPFrameGrabberConfig
 
     def __init__(self, config: RTSPFrameGrabberConfig):
         super().__init__(config)
@@ -845,6 +827,7 @@ class RTSPFrameGrabber(FrameGrabber):
 
 class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
     """Basler USB and Basler GigE Cameras"""
+    config_class = BaslerFrameGrabberConfig
 
     serial_numbers_in_use = set()
 
@@ -935,6 +918,7 @@ class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
 
 class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
     """Intel RealSense Depth Camera"""
+    config_class = RealSenseFrameGrabberConfig
 
     def __init__(self, config: RealSenseFrameGrabberConfig):
         super().__init__(config)
@@ -1033,6 +1017,7 @@ class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
 
 class RaspberryPiCSI2FrameGrabber(FrameGrabberWithSerialNumber):
     "For CSI2 cameras connected to Raspberry Pis through their dedicated camera port"
+    config_class = RaspberryPiCSI2FrameGrabberConfig
 
     def __init__(self, config: RaspberryPiCSI2FrameGrabberConfig):
         super().__init__(config)
@@ -1076,7 +1061,7 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
     2. Open connection on every frame: Opens and closes the connection on every captured frame, which conserves
         both CPU and network bandwidth but has higher latency. In practice, roughly 1FPS is achievable with this strategy.
     """
-
+    config_class = HttpLiveStreamingFrameGrabberConfig
     def __init__(self, config: HttpLiveStreamingFrameGrabberConfig):
         super().__init__(config)
 
@@ -1133,6 +1118,8 @@ class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
         both CPU and network bandwidth but has higher latency. In practice, roughly 1FPS is achievable with this strategy.
     """
 
+    config_class = YouTubeLiveFrameGrabberConfig
+
     def __init__(self, config: YouTubeLiveFrameGrabberConfig):
         super().__init__(config)
         youtube_url = config.youtube_url
@@ -1175,6 +1162,8 @@ class FileStreamFrameGrabber(FrameGrabber):
         grabber = FileStreamFrameGrabber(config)
     """
 
+    config_class = FileStreamFrameGrabberConfig
+
     def __init__(self, config: FileStreamFrameGrabberConfig):
         super().__init__(config)
         filename = config.filename
@@ -1194,6 +1183,7 @@ class FileStreamFrameGrabber(FrameGrabber):
         self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
         if self.fps_source <= 0.1:
             logger.warning(f"Captured framerate is very low or zero: {self.fps_source} FPS")
+
         self.should_drop_frames = self.config.max_fps > 0 and self.config.max_fps < self.fps_source
         logger.debug(
             f"Source FPS: {self.fps_source}, Target FPS: {self.config.max_fps}, Drop Frames: {self.should_drop_frames}"
@@ -1245,6 +1235,8 @@ class MockFrameGrabber(FrameGrabberWithSerialNumber):
 
     # Keeps track of the available serial numbers so that we don't try to connect to them twice
     serial_numbers_in_use = set()
+
+    config_class = MockFrameGrabberConfig
 
     def __init__(self, config: MockFrameGrabberConfig):
         super().__init__(config)

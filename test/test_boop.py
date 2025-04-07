@@ -231,7 +231,7 @@ class TestAllGrabberTypes(unittest.TestCase):
     def test_create_config(self):
         """ Test the create method of FrameGrabberConfig. We want to make sure that all possible parameters are supported """
         for input_type in list(InputTypes):
-            model = FrameGrabberConfig.get_class_for_input_type(input_type.value)
+            model = FrameGrabberConfig.get_class_for_input_type(input_type)
 
             # we want to populate every possible parameter for testing
             constructor_params = model.model_fields

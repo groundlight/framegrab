@@ -8,8 +8,8 @@ import os
 import re
 from abc import ABC
 from enum import Enum
-from typing import ClassVar, Dict, Optional
-
+from typing import Any, ClassVar, Dict, Optional
+import pdb
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -18,6 +18,7 @@ from pydantic import (
     computed_field,
     confloat,
     field_validator,
+    model_validator,
 )
 
 from .unavailable_module import UnavailableModule
@@ -65,7 +66,22 @@ class FrameGrabberConfig(ABC, BaseModel):
     num_90_deg_rotations: Optional[int] = 0
     name: Optional[str] = None
 
-    _id_field_optional: ClassVar[bool] = PrivateAttr(default=False)
+    _unnamed_grabber_count: ClassVar[int] = PrivateAttr(default=0)
+
+    @model_validator(mode='before')
+    def autogenerate_name_if_needed(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if not values.get("name"):
+            input_type = cls.get_input_type()
+
+            id_field_name = cls.get_input_type_to_id_dict()[input_type]
+            id_field_value = values.get(id_field_name)
+            unnamed_grabber_id = id_field_value if id_field_value else "unnamed"
+
+            unnamed_grabber_count = cls._unnamed_grabber_count
+            values["name"] = f"{input_type.value}_{unnamed_grabber_id}_{unnamed_grabber_count}"
+
+            cls._unnamed_grabber_count += 1
+        return values
 
     @field_validator("crop", mode="before")
     def validate_crop(cls, v):
@@ -104,48 +120,48 @@ class FrameGrabberConfig(ABC, BaseModel):
                     )
 
     @classmethod
-    def get_input_type_to_class_dict(cls):
+    def get_input_type_to_class_dict(cls) -> dict[InputTypes, "FrameGrabberConfig"]:
         """Map input types to their corresponding configuration classes."""
         input_type_to_class = {
-            InputTypes.GENERIC_USB.value: GenericUSBFrameGrabberConfig,
-            InputTypes.RTSP.value: RTSPFrameGrabberConfig,
-            InputTypes.BASLER.value: BaslerFrameGrabberConfig,
-            InputTypes.REALSENSE.value: RealSenseFrameGrabberConfig,
-            InputTypes.RPI_CSI2.value: RaspberryPiCSI2FrameGrabberConfig,
-            InputTypes.HLS.value: HttpLiveStreamingFrameGrabberConfig,
-            InputTypes.YOUTUBE_LIVE.value: YouTubeLiveFrameGrabberConfig,
-            InputTypes.FILE_STREAM.value: FileStreamFrameGrabberConfig,
-            InputTypes.MOCK.value: MockFrameGrabberConfig,
+            InputTypes.GENERIC_USB: GenericUSBFrameGrabberConfig,
+            InputTypes.RTSP: RTSPFrameGrabberConfig,
+            InputTypes.BASLER: BaslerFrameGrabberConfig,
+            InputTypes.REALSENSE: RealSenseFrameGrabberConfig,
+            InputTypes.RPI_CSI2: RaspberryPiCSI2FrameGrabberConfig,
+            InputTypes.HLS: HttpLiveStreamingFrameGrabberConfig,
+            InputTypes.YOUTUBE_LIVE: YouTubeLiveFrameGrabberConfig,
+            InputTypes.FILE_STREAM: FileStreamFrameGrabberConfig,
+            InputTypes.MOCK: MockFrameGrabberConfig,
         }
         return input_type_to_class
 
     @classmethod
-    def get_class_for_input_type(cls, input_type: str):
+    def get_class_for_input_type(cls, input_type: InputTypes):
         """Get the configuration class for a given input type."""
         if input_type not in cls.get_input_type_to_class_dict():
             raise ValueError(f"Invalid input type: {input_type}")
         return cls.get_input_type_to_class_dict()[input_type]
 
-    def get_input_type(self):
+    @classmethod
+    def get_input_type(cls) -> InputTypes:
         """Determine the input type of the current class."""
-        input_type_to_class = self.get_input_type_to_class_dict()
-        current_class = type(self)
-        input_type = next(key for key, value in input_type_to_class.items() if value == current_class)
+        input_type_to_class = cls.get_input_type_to_class_dict()
+        input_type = next(key for key, value in input_type_to_class.items() if value == cls)
         return input_type
 
     @classmethod
-    def get_input_type_to_id_dict(cls):
+    def get_input_type_to_id_dict(cls) -> dict[InputTypes, str]:
         """Map input types to their corresponding ID fields."""
         input_type_to_id = {
-            InputTypes.GENERIC_USB.value: "serial_number",
-            InputTypes.RTSP.value: "rtsp_url",
-            InputTypes.BASLER.value: "serial_number",
-            InputTypes.REALSENSE.value: "serial_number",
-            InputTypes.RPI_CSI2.value: "serial_number",
-            InputTypes.HLS.value: "hls_url",
-            InputTypes.YOUTUBE_LIVE.value: "youtube_url",
-            InputTypes.FILE_STREAM.value: "filename",
-            InputTypes.MOCK.value: "serial_number",
+            InputTypes.GENERIC_USB: "serial_number",
+            InputTypes.RTSP: "rtsp_url",
+            InputTypes.BASLER: "serial_number",
+            InputTypes.REALSENSE: "serial_number",
+            InputTypes.RPI_CSI2: "serial_number",
+            InputTypes.HLS: "hls_url",
+            InputTypes.YOUTUBE_LIVE: "youtube_url",
+            InputTypes.FILE_STREAM: "filename",
+            InputTypes.MOCK: "serial_number",
         }
         return input_type_to_id
 
@@ -184,16 +200,16 @@ class FrameGrabberConfig(ABC, BaseModel):
         framegrab standard format dictionary config and return them as a dictionary.
         """
         dictionary_config = copy.deepcopy(dictionary_config)
+        input_type = cls.get_input_type()
+        id_field_name = cls.get_input_type_to_id_dict()[input_type]
+        id_field_required = cls.__fields__.get(id_field_name).is_required()
 
-        id_field_name = None
-        id_field_value = None
-        if "id" in dictionary_config or not cls._id_field_optional:
-            if "id" not in dictionary_config:
-                raise ValueError("The 'id' field is missing in the configuration dictionary.")
-
-            id = dictionary_config.pop("id")
-            id_field_name = list(id.keys())[0]
-            id_field_value = id[id_field_name]
+        if id_field_required and "id" not in dictionary_config:
+            raise ValueError("The 'id' field is missing in the configuration dictionary.")
+        else:
+            id = dictionary_config.pop("id", {})
+            id_field_name = list(id.keys())[0] if id else None
+            id_field_value = id[id_field_name] if id_field_name else None
 
         options = dictionary_config.pop("options", {})
         crop = options.pop("crop", None)
@@ -213,7 +229,7 @@ class FrameGrabberConfig(ABC, BaseModel):
     def from_framegrab_config_dict(cls, dictionary_config: dict) -> "FrameGrabber":
         """Create a FrameGrabberConfig instance from a dictionary."""
         dictionary_config = copy.deepcopy(dictionary_config)
-        input_type = dictionary_config.pop("input_type")
+        input_type = InputTypes(dictionary_config.pop("input_type"))
         subclass = cls.get_class_for_input_type(input_type)
         kwargs = subclass.get_model_parameters(dictionary_config)
         instance = subclass(**kwargs)
@@ -222,11 +238,11 @@ class FrameGrabberConfig(ABC, BaseModel):
     @classmethod
     def create(cls, input_type: InputTypes, **kwargs) -> "FrameGrabberConfig":
         """Factory method to create an instance of the appropriate subclass based on input_type."""
-        subclass = cls.get_class_for_input_type(input_type.value)
+        subclass = cls.get_class_for_input_type(input_type)
         return subclass(**kwargs)
 
-
 class WithResolutionMixin(FrameGrabberConfig, ABC):
+
     """Mixin class to add resolution configuration to FrameGrabberConfig."""
 
     resolution_width: Optional[int] = None
@@ -263,7 +279,6 @@ class WithResolutionMixin(FrameGrabberConfig, ABC):
 
         return super().get_model_parameters(data)
 
-
 class WithKeepConnectionOpenMixin(ABC, BaseModel):
     """Mixin class to add keep_connection_open configuration to FrameGrabberConfig."""
 
@@ -289,7 +304,7 @@ class WithKeepConnectionOpenMixin(ABC, BaseModel):
 class WithMaxFPSMixin(ABC, BaseModel):
     """Mixin class to add max_fps configuration to FrameGrabberConfig."""
 
-    max_fps: Optional[int] = None
+    max_fps: Optional[int] = 30
 
     def update_framegrab_config_dict(self, dictionary_config: dict) -> dict:
         """Update the framegrab config dictionary with max_fps option."""
@@ -312,8 +327,6 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for Generic USB Frame Grabber."""
 
     serial_number: Optional[str] = None
-    _id_field_optional: ClassVar[bool] = True
-
 
 class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, WithMaxFPSMixin):
     """Configuration class for RTSP Frame Grabber."""
@@ -365,15 +378,14 @@ class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, Wi
         model_parameters_with_max_fps = WithMaxFPSMixin.update_model_parameters(
             model_parameters_with_keep_connection_open
         )
-        return FrameGrabberConfig.get_model_parameters(model_parameters_with_max_fps)
-
-
+        return super().get_model_parameters(model_parameters_with_max_fps)
+    
 class BaslerFrameGrabberConfig(FrameGrabberConfig):
     """Configuration class for Basler Frame Grabber."""
 
     serial_number: Optional[str] = None
     basler_options: Optional[dict] = None
-    _id_field_optional: ClassVar[bool] = True
+
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
@@ -390,6 +402,7 @@ class BaslerFrameGrabberConfig(FrameGrabberConfig):
         basler_options = options.pop("basler_options", {})
         new_data = {**data, "basler_options": basler_options}
         return super().get_model_parameters(new_data)
+    
 
 
 class RealSenseFrameGrabberConfig(WithResolutionMixin):
@@ -397,7 +410,7 @@ class RealSenseFrameGrabberConfig(WithResolutionMixin):
 
     serial_number: Optional[str] = None
     side_by_side_depth: Optional[bool] = False
-    _id_field_optional: ClassVar[bool] = True
+    
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
@@ -421,12 +434,10 @@ class HttpLiveStreamingFrameGrabberConfig(FrameGrabberConfig, WithKeepConnection
 
     hls_url: str = Field(..., pattern=r"^https?://")
 
-
 class RaspberryPiCSI2FrameGrabberConfig(FrameGrabberConfig):
     """Configuration class for Raspberry Pi CSI-2 Frame Grabber."""
 
     serial_number: Optional[str] = None
-
 
 class YouTubeLiveFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin):
     """Configuration class for YouTube Live Frame Grabber."""
@@ -460,4 +471,3 @@ class MockFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for Mock Frame Grabber."""
 
     serial_number: Optional[str] = None
-    _id_field_optional: ClassVar[bool] = True
