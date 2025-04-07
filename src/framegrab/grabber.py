@@ -1,6 +1,3 @@
-# test for create_grabber with config obj
-# config: dict ->
-# get rid of validation in this file
 # go over unnamed logic
 # get rid of pdb
 # check config params
@@ -13,9 +10,10 @@
 
 # having dict configs requires you to know ahead of time all the validation framegrab needs to do
 # i don't think rtsp password note is true
+# got rid of autogenerate_name
+# tim can you specifically check the naming logic
 
 import logging
-import os
 import pdb
 import platform
 import re
@@ -34,6 +32,7 @@ from .config import (
     BaslerFrameGrabberConfig,
     FileStreamFrameGrabberConfig,
     FrameGrabberConfig,
+    GenericUSBFrameGrabberConfig,
     HttpLiveStreamingFrameGrabberConfig,
     InputTypes,
     MockFrameGrabberConfig,
@@ -93,7 +92,9 @@ class FrameGrabber(ABC):
 
     config: FrameGrabberConfig
 
+    @abstractmethod
     def __init__(self, config: FrameGrabberConfig):
+        """ To create a FrameGrabber object with the generic FrameGrabber class or with a config dict, use create_grabber()"""
         if not isinstance(config, FrameGrabberConfig):
             raise TypeError(f"Expected config to be of type FrameGrabberConfig, but got {type(config).__name__}")
 
@@ -263,11 +264,11 @@ class FrameGrabber(ABC):
         return grabber
 
     @staticmethod
-    def create_grabber(config: Union[dict, FrameGrabberConfig], warmup_delay: float = 1.0):
+    def create_grabber(config: Union[dict, FrameGrabberConfig], warmup_delay: float = 1.0) -> "FrameGrabber":
         """Create a FrameGrabber object based on the provided configuration.
 
         Parameters:
-            config (dict): A dictionary containing configuration settings for the FrameGrabber.
+            config (dict or FrameGrabberConfig): A dictionary or FrameGrabberConfig object containing configuration settings for the FrameGrabber.
 
             warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
                 cameras often need a moment to warm up before they can be used; grabbing frames too early
@@ -572,7 +573,7 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
     # keep track of the cameras that are already in use so that we don't try to connect to them twice
     indices_in_use = set()
 
-    def __init__(self, config: dict):
+    def __init__(self, config: GenericUSBFrameGrabberConfig):
         super().__init__(config)
 
         serial_number = self.config.serial_number
@@ -937,7 +938,7 @@ class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
 class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
     """Intel RealSense Depth Camera"""
 
-    def __init__(self, config: dict):
+    def __init__(self, config: RealSenseFrameGrabberConfig):
         super().__init__(config)
 
         ctx = rs.context()
@@ -1035,7 +1036,7 @@ class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
 class RaspberryPiCSI2FrameGrabber(FrameGrabberWithSerialNumber):
     "For CSI2 cameras connected to Raspberry Pis through their dedicated camera port"
 
-    def __init__(self, config: dict):
+    def __init__(self, config: RaspberryPiCSI2FrameGrabberConfig):
         super().__init__(config)
 
         # This will also detect USB cameras, but according to the documentation CSI2
@@ -1176,7 +1177,7 @@ class FileStreamFrameGrabber(FrameGrabber):
         grabber = FileStreamFrameGrabber(config)
     """
 
-    def __init__(self, config: dict):
+    def __init__(self, config: FileStreamFrameGrabberConfig):
         super().__init__(config)
         filename = config.filename
         self.remainder = 0.0
@@ -1247,7 +1248,7 @@ class MockFrameGrabber(FrameGrabberWithSerialNumber):
     # Keeps track of the available serial numbers so that we don't try to connect to them twice
     serial_numbers_in_use = set()
 
-    def __init__(self, config: dict):
+    def __init__(self, config: MockFrameGrabberConfig):
         super().__init__(config)
 
         provided_serial_number = self.config.serial_number

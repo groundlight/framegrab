@@ -1,0 +1,41 @@
+name: Generate Documentation
+
+on:
+  push:
+    paths:
+      - 'src/framegrab/config.py'
+  pull_request:
+    paths:
+      - 'src/framegrab/config.py'
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-20.04
+    strategy:
+    steps:
+      - name: get code
+        uses: actions/checkout@v3
+      - name: install python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: install poetry and build poetry environment
+        run: |
+          pip install -U pip
+          pip install poetry
+          poetry install
+    
+      - name: Run documentation generation script
+        run: poetry run python write_config_format.py
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add README.md
+          git commit -m 'Update documentation'
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
