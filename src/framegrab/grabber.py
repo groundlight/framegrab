@@ -1,4 +1,3 @@
-# go over unnamed logic
 # get rid of pdb
 # deal with warnings
 # more apply_options tests

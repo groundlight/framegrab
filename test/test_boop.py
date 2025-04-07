@@ -96,6 +96,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         usb_framegrabber = GenericUSBFrameGrabber(config)
         self._test_grabber_helper(usb_framegrabber, resolution_width, resolution_height)
 
+
     @patch('cv2.VideoCapture')
     def test_rtsp_grabber(self, mock_video_capture):
         mock_capture_instance = MagicMock()
@@ -133,6 +134,9 @@ class TestAllGrabberTypes(unittest.TestCase):
         basler_framegrabber_config = BaslerFrameGrabberConfig(name="basler_framegrabber", serial_number="1234567890", basler_options={"ExposureTime": 10000})
         basler_framegrabber = BaslerFrameGrabber(basler_framegrabber_config)
         self._test_grabber_helper(basler_framegrabber)
+
+        basler_framegrabber.apply_options({"basler_options": {"ExposureTime": 10000}})
+        self.assertEqual(basler_framegrabber.config.basler_options["ExposureTime"], 10000)
    
     @unittest.skip("This test needs to be run on a realsesne compatible device")
     @patch('pyrealsense2.pyrealsense2.context')
@@ -162,6 +166,9 @@ class TestAllGrabberTypes(unittest.TestCase):
         realsense_framegrabber_config = RealSenseFrameGrabberConfig(name="realsense_framegrabber", resolution_width=640, resolution_height=480, side_by_side_depth=True)
         realsense_framegrabber = RealSenseFrameGrabber(realsense_framegrabber_config)
         self._test_grabber_helper(realsense_framegrabber)
+
+        realsense_framegrabber.apply_options({"side_by_side_depth": True})
+        self.assertEqual(realsense_framegrabber.config.side_by_side_depth, True)
     
 
     @unittest.skip("This test needs to be run on a Raspberry Pi due to imports")
