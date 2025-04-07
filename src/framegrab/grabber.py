@@ -783,13 +783,6 @@ class RTSPFrameGrabber(FrameGrabber):
 
     def __init__(self, config: RTSPFrameGrabberConfig):
         super().__init__(config)
-        rtsp_url = self.config.rtsp_url
-        if not rtsp_url:
-            camera_name = self.config.name
-            raise ValueError(
-                f"No RTSP URL provided for {camera_name}. Please add an rtsp_url attribute to the config under id."
-            )
-
         self.lock = Lock()
         self.run = True
         self.keep_connection_open = self.config.keep_connection_open
@@ -861,7 +854,6 @@ class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
 
     def __init__(self, config: BaslerFrameGrabberConfig):
         super().__init__(config)
-        self.config = config
 
         # Basler cameras grab frames in different pixel formats, most of which cannot be displayed directly
         # by OpenCV. self.convert will convert them to BGR which can be used by OpenCV
@@ -950,7 +942,6 @@ class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        self.config = config
 
         ctx = rs.context()
         if len(ctx.devices) == 0:
@@ -1049,7 +1040,6 @@ class RaspberryPiCSI2FrameGrabber(FrameGrabberWithSerialNumber):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        self.config = config
 
         # This will also detect USB cameras, but according to the documentation CSI2
         # cameras attached to the dedicated camera port will always come before USB
@@ -1093,15 +1083,8 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
 
     def __init__(self, config: HttpLiveStreamingFrameGrabberConfig):
         super().__init__(config)
-        hls_url = config.hls_url
-        if not hls_url:
-            camera_name = config.name
-            raise ValueError(
-                f"No HLS URL provided for {camera_name}. Please add an hls_url attribute to the config under id."
-            )
 
         self.type = "HLS"
-        self.config = config
         self.lock = Lock()
         self.keep_connection_open = config.keep_connection_open
 
@@ -1164,7 +1147,6 @@ class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
             )
 
         self.type = "YouTube Live"
-        self.config = config
 
         self.lock = Lock()
         self.keep_connection_open = config.keep_connection_open
@@ -1174,13 +1156,6 @@ class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
 
     def _default_name(self) -> str:
         return self.config.youtube_url
-
-    def _extract_hls_url(self, youtube_url: str) -> str:
-        """Extracts the HLS URL from a YouTube Live URL."""
-        available_streams = streamlink.streams(youtube_url)
-        if "best" not in available_streams:
-            raise ValueError(f"No available HLS stream for {youtube_url=}\n{available_streams=}")
-        return available_streams["best"].url
 
 
 class FileStreamFrameGrabber(FrameGrabber):
@@ -1206,7 +1181,6 @@ class FileStreamFrameGrabber(FrameGrabber):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        self.config = config
         filename = config.filename
         self.remainder = 0.0
 
@@ -1278,7 +1252,6 @@ class MockFrameGrabber(FrameGrabberWithSerialNumber):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        self.config = config
 
         provided_serial_number = self.config.serial_number
 
