@@ -1,6 +1,5 @@
 import unittest
 from unittest.mock import MagicMock, patch
-
 import numpy as np
 
 from framegrab.config import (
@@ -9,6 +8,7 @@ from framegrab.config import (
     FileStreamFrameGrabberConfig,
     GenericUSBFrameGrabberConfig,
     HttpLiveStreamingFrameGrabberConfig,
+    InputTypes,
     MockFrameGrabberConfig,
     RaspberryPiCSI2FrameGrabberConfig,
     RealSenseFrameGrabberConfig,
@@ -226,3 +226,63 @@ class TestAllGrabberTypes(unittest.TestCase):
         mock_grabber_config = MockFrameGrabberConfig(serial_number="123")
         mock_grabber = MockFrameGrabber(mock_grabber_config)
         self._test_grabber_helper(mock_grabber)
+    
+
+    def test_create_config(self):
+        """ Test the create method of FrameGrabberConfig. We want to make sure that all possible parameters are supported """
+        for input_type in list(InputTypes):
+            model = FrameGrabberConfig.get_class_for_input_type(input_type.value)
+
+            # we want to populate every possible parameter for testing
+            constructor_params = model.model_fields
+            # Create a dictionary to hold parameter names and mock values
+            params = {}
+            for param in constructor_params:
+                if param == 'self':
+                    continue
+                # Assign mock values based on parameter name or type
+                if param == 'name':
+                    params[param] = f"{input_type}_framegrabber"
+                elif param == 'serial_number':
+                    params[param] = "1234567890"
+                elif param == 'resolution_width' or param == 'resolution_height':
+                    params[param] = 640 if 'width' in param else 480
+                elif param == "num_90_deg_rotations":
+                    params[param] = 1
+                elif "keep_connection_open" in param:
+                    params[param] = False
+                elif param == "rtsp_url":
+                    params[param] = "rtsp://example.com"
+                elif param == "hls_url":
+                    params[param] = "http://example.com"
+                elif param == "youtube_url":
+                    params[param] = "https://www.youtube.com/watch?v=7_srED6k0bE"
+                elif param == "side_by_side_depth":
+                    params[param] = True
+                elif param == "filename":
+                    params[param] = "test.mp4"
+                elif param == "fps":
+                    params[param] = 30
+                elif param == "digital_zoom":
+                    params[param] = 2
+                elif param == "crop":
+                    params[param] = {
+                        "relative": {
+                            "top": 0.05,
+                            "bottom": 0.95,
+                            "left": 0.03,
+                            "right": 0.97
+                        }
+                    }
+                elif param == "basler_options":
+                    params[param] = {"ExposureTime": 10000}
+                elif param == "max_fps":
+                    params[param] = 30
+                else:
+                    raise ValueError(f"Unknown parameter: {param}")
+
+            config_with_create = FrameGrabberConfig.create(input_type=input_type, **params)
+            config_with_init = model(**params)
+
+            self.assertEqual(config_with_create.to_framegrab_config_dict(), config_with_init.to_framegrab_config_dict())
+        

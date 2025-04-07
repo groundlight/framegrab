@@ -56,7 +56,6 @@ class FrameGrabberConfig(ABC, BaseModel):
     # the allowed extra fields are for the fields specific to each input type
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    input_type: InputTypes
     crop: Optional[Dict[str, Dict[str, float]]] = None
     digital_zoom: Optional[confloat(ge=1, le=DIGITAL_ZOOM_MAX)] = None
     num_90_deg_rotations: Optional[int] = 0
@@ -120,6 +119,16 @@ class FrameGrabberConfig(ABC, BaseModel):
         if input_type not in cls.get_input_type_to_class_dict():
             raise ValueError(f"Invalid input type: {input_type}")
         return cls.get_input_type_to_class_dict()[input_type]
+    
+    def get_input_type(self):
+        """ Determine the input type of the current class"""
+        # determine the input type
+        input_type_to_class = self.get_input_type_to_class_dict()
+        current_class = type(self)
+        input_type = next(key for key, value in input_type_to_class.items() if value == current_class)
+        
+        return input_type
+
 
     @classmethod
     def get_input_type_to_id_dict(cls):
@@ -141,10 +150,12 @@ class FrameGrabberConfig(ABC, BaseModel):
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format that we've defined"""
         dictionary_config = super().model_dump()
-        dictionary_config["input_type"] = self.input_type.value
+
+        input_type = self.get_input_type()
+        dictionary_config["input_type"] = input_type
 
         # structure the id field like this: {"input_type": {"id_field": "id_value"}}
-        id_field = self.get_input_type_to_id_dict()[self.input_type.value]
+        id_field = self.get_input_type_to_id_dict()[input_type]
         dictionary_config["id"] = {id_field: getattr(self, id_field)}
         del dictionary_config[id_field]
 
@@ -282,13 +293,11 @@ class WithMaxFPSMixin(ABC, BaseModel):
 
 
 class GenericUSBFrameGrabberConfig(WithResolutionMixin):
-    input_type: InputTypes = InputTypes.GENERIC_USB
     serial_number: Optional[str] = None
     _id_field_optional: ClassVar[bool] = True
 
 
 class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, WithMaxFPSMixin):
-    input_type: InputTypes = InputTypes.RTSP
     rtsp_url: str = Field(..., pattern=r"^rtsp://")
 
     @field_validator("rtsp_url", mode="before")
@@ -338,7 +347,6 @@ class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, Wi
 
 
 class BaslerFrameGrabberConfig(FrameGrabberConfig):
-    input_type: InputTypes = InputTypes.BASLER
     serial_number: Optional[str] = None
     basler_options: Optional[dict] = None
     _id_field_optional: ClassVar[bool] = True
@@ -359,7 +367,6 @@ class BaslerFrameGrabberConfig(FrameGrabberConfig):
 
 
 class RealSenseFrameGrabberConfig(WithResolutionMixin):
-    input_type: InputTypes = InputTypes.REALSENSE
     serial_number: Optional[str] = None
     side_by_side_depth: Optional[bool] = False
     _id_field_optional: ClassVar[bool] = True
@@ -380,17 +387,14 @@ class RealSenseFrameGrabberConfig(WithResolutionMixin):
 
 
 class HttpLiveStreamingFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin):
-    input_type: InputTypes = InputTypes.HLS
     hls_url: str = Field(..., pattern=r"^https?://")
 
 
 class RaspberryPiCSI2FrameGrabberConfig(FrameGrabberConfig):
-    input_type: InputTypes = InputTypes.RPI_CSI2
     serial_number: Optional[str] = None
 
 
 class YouTubeLiveFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin):
-    input_type: InputTypes = InputTypes.YOUTUBE_LIVE
     youtube_url: str = Field(..., pattern=r"^https?://")
 
     @computed_field
@@ -410,12 +414,10 @@ class YouTubeLiveFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMi
 
 
 class FileStreamFrameGrabberConfig(FrameGrabberConfig):
-    input_type: InputTypes = InputTypes.FILE_STREAM
     filename: str = Field(..., pattern=r"^[\w\-/]+\.mp4|mov|mjpeg$")
     max_fps: float = Field(default=0, ge=0)
 
 
 class MockFrameGrabberConfig(WithResolutionMixin):
-    input_type: InputTypes = InputTypes.MOCK
     serial_number: Optional[str] = None
     _id_field_optional: ClassVar[bool] = True

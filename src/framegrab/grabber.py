@@ -1,5 +1,3 @@
-# look at the value errors
-# figure out apply again
 # test for create_grabber with config obj
 # config: dict ->
 # get rid of validation in this file
@@ -288,7 +286,7 @@ class FrameGrabber(ABC):
             model_config = config
 
         # At a minimum, input_type must be provided
-        input_type = model_config.input_type
+        input_type = model_config.get_input_type()
 
         # Based on input_type, create correct type of FrameGrabber
         if input_type == InputTypes.GENERIC_USB:
