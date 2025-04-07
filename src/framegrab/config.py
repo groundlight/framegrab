@@ -1,11 +1,11 @@
 # TODO: figure out name thing
 import copy
+import os
 import pdb
+import re
 from abc import ABC
 from enum import Enum
 from typing import ClassVar, Dict, Optional
-import re
-import os
 
 from pydantic import (
     BaseModel,
@@ -291,7 +291,7 @@ class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, Wi
     input_type: InputTypes = InputTypes.RTSP
     rtsp_url: str = Field(..., pattern=r"^rtsp://")
 
-    @field_validator('rtsp_url', mode='before')
+    @field_validator("rtsp_url", mode="before")
     def substitute_rtsp_password(cls, rtsp_url: str) -> str:
         """
         Substitutes the password placeholder in the rtsp_url with the actual password
