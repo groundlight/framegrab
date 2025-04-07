@@ -5,11 +5,12 @@ These configurations are used to initialize and manage different frame grabber o
 
 import copy
 import os
+import pdb
 import re
 from abc import ABC
 from enum import Enum
 from typing import Any, ClassVar, Dict, Optional
-import pdb
+
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -68,7 +69,7 @@ class FrameGrabberConfig(ABC, BaseModel):
 
     _unnamed_grabber_count: ClassVar[int] = PrivateAttr(default=0)
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     def autogenerate_name_if_needed(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if not values.get("name"):
             input_type = cls.get_input_type()
@@ -241,8 +242,8 @@ class FrameGrabberConfig(ABC, BaseModel):
         subclass = cls.get_class_for_input_type(input_type)
         return subclass(**kwargs)
 
-class WithResolutionMixin(FrameGrabberConfig, ABC):
 
+class WithResolutionMixin(FrameGrabberConfig, ABC):
     """Mixin class to add resolution configuration to FrameGrabberConfig."""
 
     resolution_width: Optional[int] = None
@@ -278,6 +279,7 @@ class WithResolutionMixin(FrameGrabberConfig, ABC):
             data["resolution_height"] = resolution.get("height")
 
         return super().get_model_parameters(data)
+
 
 class WithKeepConnectionOpenMixin(ABC, BaseModel):
     """Mixin class to add keep_connection_open configuration to FrameGrabberConfig."""
@@ -327,6 +329,7 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for Generic USB Frame Grabber."""
 
     serial_number: Optional[str] = None
+
 
 class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, WithMaxFPSMixin):
     """Configuration class for RTSP Frame Grabber."""
@@ -379,13 +382,13 @@ class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, Wi
             model_parameters_with_keep_connection_open
         )
         return super().get_model_parameters(model_parameters_with_max_fps)
-    
+
+
 class BaslerFrameGrabberConfig(FrameGrabberConfig):
     """Configuration class for Basler Frame Grabber."""
 
     serial_number: Optional[str] = None
     basler_options: Optional[dict] = None
-
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
@@ -402,7 +405,6 @@ class BaslerFrameGrabberConfig(FrameGrabberConfig):
         basler_options = options.pop("basler_options", {})
         new_data = {**data, "basler_options": basler_options}
         return super().get_model_parameters(new_data)
-    
 
 
 class RealSenseFrameGrabberConfig(WithResolutionMixin):
@@ -410,7 +412,6 @@ class RealSenseFrameGrabberConfig(WithResolutionMixin):
 
     serial_number: Optional[str] = None
     side_by_side_depth: Optional[bool] = False
-    
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
@@ -434,10 +435,12 @@ class HttpLiveStreamingFrameGrabberConfig(FrameGrabberConfig, WithKeepConnection
 
     hls_url: str = Field(..., pattern=r"^https?://")
 
+
 class RaspberryPiCSI2FrameGrabberConfig(FrameGrabberConfig):
     """Configuration class for Raspberry Pi CSI-2 Frame Grabber."""
 
     serial_number: Optional[str] = None
+
 
 class YouTubeLiveFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin):
     """Configuration class for YouTube Live Frame Grabber."""
