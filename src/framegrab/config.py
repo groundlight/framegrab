@@ -353,6 +353,7 @@ class YouTubeLiveFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMi
         base_dict = super().to_framegrab_config_dict()
         del base_dict["hls_url"]
         return base_dict
+    
 
 class FileStreamFrameGrabberConfig(FrameGrabberConfig):
     input_type: InputTypes = InputTypes.FILE_STREAM

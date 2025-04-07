@@ -59,9 +59,9 @@ class TestAllGrabberTypes(unittest.TestCase):
         expected_frame = new_grabber._digital_zoom(expected_frame)
         np.testing.assert_array_equal(frame, expected_frame)
 
-        # new_options = {"zoom": {"digital": 4}}
-        # new_grabber.apply_options(new_options)
-        # self.assertEqual(new_grabber.digital_zoom, 4)
+        new_options = {"zoom": {"digital": 4}}
+        new_grabber.apply_options(new_options)
+        self.assertEqual(new_grabber.config.digital_zoom, 4)
         new_grabber.release()
 
     @patch('framegrab.grabber.GenericUSBFrameGrabber._find_cameras')

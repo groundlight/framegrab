@@ -87,7 +87,8 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
         config = self.base_config.copy()
 
         grabber = HttpLiveStreamingFrameGrabber(config)
-        # config["options"] = {"resolution": {"width": 1920, "height": 1080}}
+        config_as_dict = config.to_framegrab_config_dict()
+        config_as_dict["options"] = {"resolution": {"width": 1920, "height": 1080}}
 
-        # with self.assertRaises(ValueError):
-        #     grabber.apply_options(config["options"])
+        with self.assertRaises(ValueError):
+            grabber.apply_options(config_as_dict["options"])

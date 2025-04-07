@@ -10,6 +10,7 @@
 # deal with warnings 
 # uncomment the options test stuff (its in multiple files)
 # double check which config you can put resolution
+# more apply_options tests
 
 # having dict configs requires you to know ahead of time all the validation framegrab needs to do
 
@@ -516,46 +517,13 @@ class FrameGrabber(ABC):
         """Update generic options such as crop and zoom as well as
         camera-specific options.
         """
+        framegrab_config_dict = type(self.config).to_framegrab_config_dict(self.config)
+        framegrab_config_dict["options"] = options
 
-        # Ensure that the user hasn't provided pixel cropping parameters and relative cropping parameters
-        pixel_crop_params = options.get("crop", {}).get("pixels", {})
-        relative_crop_params = options.get("crop", {}).get("relative", {})
-        if pixel_crop_params and relative_crop_params:
-            camera_name = self.config.name
-            raise ValueError(
-                f"Pixel cropping parameters and relative cropping parameters were set for "
-                f"{camera_name}. Pixel cropping and relative cropping cannot be "
-                f"used together. Please adjust your configurations to use one or the other."
-            )
+        # this will validate the new options
+        new_config = FrameGrabberConfig.from_framegrab_config_dict(framegrab_config_dict)
+        self.config = new_config
 
-        # Ensure valid relative cropping parameters (between 0 and 1)
-        for param_name, param_value in relative_crop_params.items():
-            if param_value < 0 or param_value > 1:
-                camera_name = self.config.name
-                raise ValueError(
-                    f"Relative cropping parameter ({param_name}) on {camera_name} is {param_value}, which is invalid. "
-                    f"Relative cropping parameters must be between 0 and 1, where 1 represents the full "
-                    f"width or length of the image. "
-                )
-
-        # Validate digital zoom level
-        digital_zoom = options.get("zoom", {}).get("digital")
-        if digital_zoom and (digital_zoom < 1 or digital_zoom > DIGITAL_ZOOM_MAX):
-            raise ValueError(
-                f"Invalid value for digital_zoom ({digital_zoom}). "
-                f"Digital zoom must >= 1 and <= {DIGITAL_ZOOM_MAX}."
-            )
-
-        # Apply camera specific options
-        self._apply_camera_specific_options(options)
-
-        # Save the options to the config
-        self.config["options"] = options
-
-    @abstractmethod
-    def _apply_camera_specific_options(options: dict) -> None:
-        """Update any camera-specific options, such as resolution, exposure_us, pixel_format, etc."""
-        pass
 
     @abstractmethod
     def release() -> None:
@@ -720,7 +688,8 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
         GenericUSBFrameGrabber.indices_in_use.remove(self.idx)
         self.capture.release()
 
-    def _apply_camera_specific_options(self, options: dict) -> None:
+    def apply_options(self, options: dict) -> None:
+        super().apply_options(options)
         self._set_cv2_resolution()
 
         # set the buffer size to 1 to always get the most recent frame
@@ -847,11 +816,6 @@ class RTSPFrameGrabber(FrameGrabber):
         config.rtsp_url = rtsp_url.replace(placeholder, password_env_var)
 
         return config
-
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        if options.get("resolution"):
-            camera_name = self.config.name
-            raise ValueError(f"Resolution was set for {camera_name}, but resolution cannot be set for RTSP streams.")
 
     def _open_connection(self):
         self.capture = cv2.VideoCapture(self.config.rtsp_url)
@@ -987,11 +951,9 @@ class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
         BaslerFrameGrabber.serial_numbers_in_use.remove(self.config.serial_number)
         self.camera.Close()
 
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        if options.get("resolution"):
-            raise ValueError("FrameGrab does not support setting resolution on Basler cameras.")
-
-        basler_options = options.get("basler", {})
+    def apply_options(self, options: dict) -> None:
+        super().apply_options(options)
+        basler_options = self.config.basler_options
         node_map = self.camera.GetNodeMap()
         for property_name, value in basler_options.items():
             node = node_map.GetNode(property_name)
@@ -1080,24 +1042,22 @@ class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
     def release(self) -> None:
         self.pipeline.stop()
 
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        # Some special handling for changing the resolution of Intel RealSense cameras
-        new_width = options.get("resolution", {}).get("width")
-        new_height = options.get("resolution", {}).get("height")
-        if (new_width and not new_height) or (not new_width and new_height):
-            camera_name = self.config.name
-            raise ValueError(
-                f"Invalid resolution settings for {camera_name}. Please provide both a width and a height."
-            )
-        elif new_width and new_height:
+    def apply_options(self, options: dict) -> None:
+        """ Some special handling for changing the resolution of Intel RealSense cameras"""
+        old_width = self.config.resolution_width
+        old_height = self.config.resolution_height
+
+        super().apply_options(options)
+
+        new_width = self.config.resolution_width
+        new_height = self.config.resolution_height
+
+        if new_width != old_width or new_height != old_height:
             self.pipeline.stop()  # pipeline needs to be temporarily stopped in order to change the resolution
             self.rs_config.enable_stream(rs.stream.color, new_width, new_height)
             self.rs_config.enable_stream(rs.stream.depth, new_width, new_height)
             self.pipeline.start(self.rs_config)  # Restart the pipeline with the new configuration
-        else:
-            # If the user didn't provide a resolution, do nothing
-            pass
-
+        
 
 class RaspberryPiCSI2FrameGrabber(FrameGrabberWithSerialNumber):
     "For CSI2 cameras connected to Raspberry Pis through their dedicated camera port"
@@ -1133,10 +1093,6 @@ class RaspberryPiCSI2FrameGrabber(FrameGrabberWithSerialNumber):
 
         return frame
 
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        if options.get("resolution"):
-            raise ValueError("FrameGrab does not support setting resolution on Raspberry Pi CSI2 cameras.")
-
     def release(self) -> None:
         self.camera.close()
 
@@ -1170,12 +1126,6 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
     def _default_name(self) -> str:
         return self.config.hls_url
     
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        if options.get("resolution"):
-            camera_name = self.config.name
-            raise ValueError(
-                f"Resolution was set for {camera_name}, but resolution cannot be set for {self.type} streams."
-            )
 
     def _open_connection(self):
         self.capture = cv2.VideoCapture(self.config.hls_url)
@@ -1327,17 +1277,6 @@ class FileStreamFrameGrabber(FrameGrabber):
         self.remainder = round(drop_frames - frames_to_drop, 2)
         logger.debug(f"Dropped {frames_to_drop} frames to meet {self.config.max_fps} FPS target")
 
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        """Handle camera-specific options for file streams.
-
-        For video files, most camera options like resolution cannot be modified since the video
-        is pre-recorded. This method validates that unsupported options aren't being set.
-        """
-        if options.get("resolution"):
-            camera_name = self.config.name
-            raise ValueError(
-                f"Resolution was set for {camera_name}, but resolution cannot be modified for video files."
-            )
 
     def release(self) -> None:
         """Release the video capture resources."""
@@ -1385,6 +1324,3 @@ class MockFrameGrabber(FrameGrabberWithSerialNumber):
 
     def release(self) -> None:
         MockFrameGrabber.serial_numbers_in_use.remove(self.config.serial_number)
-
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        pass  # no action necessary for mock cameras
