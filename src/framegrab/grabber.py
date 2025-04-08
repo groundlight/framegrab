@@ -1097,6 +1097,7 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
         if self.config.keep_connection_open:
             self._close_connection()
 
+
 class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
     """Grabs the most recent frame from a YouTube Live stream (which are HLS streams under the hood)
 
