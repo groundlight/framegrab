@@ -164,6 +164,20 @@ class FrameGrabberConfig(ABC, BaseModel):
             InputTypes.MOCK: "serial_number",
         }
         return input_type_to_id
+    
+    @classmethod
+    def get_input_type_from_id_field(cls, id_field: str) -> InputTypes:
+        """Try to get the input type from an id field. Raise an error if there is ambiguity."""
+        input_type_to_id = cls.get_input_type_to_id_dict()
+        matching_input_types = [key for key, value in input_type_to_id.items() if value == id_field]
+        
+        if len(matching_input_types) > 1:
+            raise ValueError(f"The id_field '{id_field}' could be mapped to multiple input types: {matching_input_types}")
+        
+        if len(matching_input_types) == 0:
+            raise KeyError(f"The id_field '{id_field}' could not be mapped to any input types")
+        
+        return matching_input_types[0]
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
@@ -236,10 +250,25 @@ class FrameGrabberConfig(ABC, BaseModel):
         return instance
 
     @classmethod
-    def create(cls, input_type: InputTypes, **kwargs) -> "FrameGrabberConfig":
+    def create(cls, input_type: Optional[InputTypes] = None, **kwargs) -> "FrameGrabberConfig":
         """Factory method to create an instance of the appropriate subclass based on input_type."""
-        subclass = cls.get_class_for_input_type(input_type)
-        return subclass(**kwargs)
+        if input_type:
+            subclass = cls.get_class_for_input_type(input_type)
+            return subclass(**kwargs)
+        else: # try and determine the input type
+            for arg_name, _ in kwargs.items():
+                try:
+                    input_type = cls.get_input_type_from_id_field(arg_name)
+                    subclass = cls.get_class_for_input_type(input_type)
+                    return subclass(**kwargs)
+                except ValueError:
+                    raise ValueError(
+                        f"There are multiple input types that could be mapped to the id field '{arg_name}'. "
+                        "You must specifically provide the input_type"
+                    )
+                except KeyError:
+                    continue
+            raise ValueError("Could not determine input type from provided arguments")
 
 
 class WithResolutionMixin(FrameGrabberConfig, ABC):

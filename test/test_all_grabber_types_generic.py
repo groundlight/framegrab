@@ -29,6 +29,7 @@ from framegrab.grabber import (
 )
 import cv2
 class TestAllGrabberTypes(unittest.TestCase):
+    """ Basic tests that show we can instantiate each grabber type's config and create a grabber from it """
 
     def _get_mock_image(self):
         return np.zeros((480, 640, 3), dtype=np.uint8)
@@ -290,4 +291,11 @@ class TestAllGrabberTypes(unittest.TestCase):
             config_with_init = model(**params)
 
             self.assertEqual(config_with_create.to_framegrab_config_dict(), config_with_init.to_framegrab_config_dict())
-        
+    
+    def test_determine_input_type_in_create(self):
+        config = FrameGrabberConfig.create(rtsp_url="rtsp://example.com", digital_zoom=2)
+        self.assertEqual(type(config), RTSPFrameGrabberConfig)
+
+        # this won't work because there are multiple input types that could be mapped to the serial_number field
+        with self.assertRaises(ValueError):
+            FrameGrabberConfig.create(serial_number="1234567890", resolution_width=640, resolution_height=480, digital_zoom=2)
