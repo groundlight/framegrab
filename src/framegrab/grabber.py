@@ -86,6 +86,11 @@ class FrameGrabber(ABC):
 
         self.config = config
 
+        # Apply the options so that resolution, exposure, etc. are correct
+        # a little hacky to convert back to a dictionary temporarily but it works
+        options = config.to_framegrab_config_dict()["options"]
+        self.apply_options(options)
+
     @staticmethod
     def _validate_dict_config(config: dict) -> FrameGrabberConfig:
         """Check the config to ensure it conforms to the required format and data types
@@ -287,12 +292,7 @@ class FrameGrabber(ABC):
             raise ValueError(
                 f"The provided input_type ({input_type}) is not valid. Valid types are {InputTypes.get_options()}"
             )
-
-        # Apply the options so that resolution, exposure, etc. are correct
-        # a little hacky to convert back to a dictionary temporarily but it works
-        options = model_config.to_framegrab_config_dict()["options"]
-        grabber.apply_options(options)
-
+        
         # Do the warmup delay if necessary
         if input_type == InputTypes.GENERIC_USB and warmup_delay > 0:
             logger.info(
