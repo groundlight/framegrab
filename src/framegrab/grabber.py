@@ -76,7 +76,6 @@ class FrameGrabber(ABC):
 
     config: FrameGrabberConfig
 
-    @abstractmethod
     def __init__(self, config: FrameGrabberConfig):
         """To create a FrameGrabber object with the generic FrameGrabber class or with a config dict, use create_grabber()"""
         if not isinstance(config, self.config_class):
@@ -85,11 +84,16 @@ class FrameGrabber(ABC):
             )
 
         self.config = config
-
+        self._initialize_grabber_implementation()
         # Apply the options so that resolution, exposure, etc. are correct
         # a little hacky to convert back to a dictionary temporarily but it works
         options = config.to_framegrab_config_dict()["options"]
         self.apply_options(options)
+
+    @abstractmethod
+    def _initialize_grabber_implementation(self):
+        """Each FrameGrabber must implement its own method of initializing the grabber"""
+        pass
 
     @staticmethod
     def _validate_dict_config(config: dict) -> FrameGrabberConfig:
@@ -543,9 +547,7 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
 
     config_class = GenericUSBFrameGrabberConfig
 
-    def __init__(self, config: GenericUSBFrameGrabberConfig):
-        super().__init__(config)
-
+    def _initialize_grabber_implementation(self):
         serial_number = self.config.serial_number
 
         if serial_number and OPERATING_SYSTEM != "Linux":
@@ -752,13 +754,12 @@ class RTSPFrameGrabber(FrameGrabber):
 
     config_class = RTSPFrameGrabberConfig
 
-    def __init__(self, config: RTSPFrameGrabberConfig):
-        super().__init__(config)
+    def _initialize_grabber_implementation(self):
         self.lock = Lock()
         self.run = True
-        self.keep_connection_open = self.config.keep_connection_open
+        self.config.keep_connection_open = self.config.keep_connection_open
 
-        if self.keep_connection_open:
+        if self.config.keep_connection_open:
             self._open_connection()
             self._init_drain_thread()
 
@@ -779,7 +780,7 @@ class RTSPFrameGrabber(FrameGrabber):
                 self.capture.release()
 
     def _grab_implementation(self) -> np.ndarray:
-        if not self.keep_connection_open:
+        if not self.config.keep_connection_open:
             self._open_connection()
             try:
                 return self._grab_open()
@@ -790,18 +791,18 @@ class RTSPFrameGrabber(FrameGrabber):
 
     def _grab_open(self) -> np.ndarray:
         with self.lock:
-            ret, frame = self.capture.retrieve() if self.keep_connection_open else self.capture.read()
+            ret, frame = self.capture.retrieve() if self.config.keep_connection_open else self.capture.read()
         if not ret:
             logger.error(f"Could not read frame from {self.capture}")
         return frame
 
     def release(self) -> None:
-        if self.keep_connection_open:
+        if self.config.keep_connection_open:
             self.run = False  # to stop the buffer drain thread
             self._close_connection()
 
     def _init_drain_thread(self):
-        if not self.keep_connection_open:
+        if not self.config.keep_connection_open:
             return  # No need to drain if we're not keeping the connection open
 
         max_fps = self.config.max_fps
@@ -824,9 +825,7 @@ class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
 
     serial_numbers_in_use = set()
 
-    def __init__(self, config: BaslerFrameGrabberConfig):
-        super().__init__(config)
-
+    def _initialize_grabber_implementation(self):
         # Basler cameras grab frames in different pixel formats, most of which cannot be displayed directly
         # by OpenCV. self.convert will convert them to BGR which can be used by OpenCV
         self.converter = pylon.ImageFormatConverter()
@@ -914,9 +913,7 @@ class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
 
     config_class = RealSenseFrameGrabberConfig
 
-    def __init__(self, config: RealSenseFrameGrabberConfig):
-        super().__init__(config)
-
+    def _initialize_grabber_implementation(self):
         ctx = rs.context()
         if len(ctx.devices) == 0:
             raise ValueError("No Intel RealSense cameras detected. Is your camera plugged in?")
@@ -1014,9 +1011,7 @@ class RaspberryPiCSI2FrameGrabber(FrameGrabberWithSerialNumber):
 
     config_class = RaspberryPiCSI2FrameGrabberConfig
 
-    def __init__(self, config: RaspberryPiCSI2FrameGrabberConfig):
-        super().__init__(config)
-
+    def _initialize_grabber_implementation(self):
         # This will also detect USB cameras, but according to the documentation CSI2
         # cameras attached to the dedicated camera port will always come before USB
         # cameras in the resulting list of camera dictionaries
@@ -1059,14 +1054,11 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
 
     config_class = HttpLiveStreamingFrameGrabberConfig
 
-    def __init__(self, config: HttpLiveStreamingFrameGrabberConfig):
-        super().__init__(config)
-
+    def _initialize_grabber_implementation(self):
         self.type = "HLS"
         self.lock = Lock()
-        self.keep_connection_open = config.keep_connection_open
 
-        if self.keep_connection_open:
+        if self.config.keep_connection_open:
             self._open_connection()
 
     def _default_name(self) -> str:
@@ -1085,7 +1077,7 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
                 self.capture.release()
 
     def _grab_implementation(self) -> np.ndarray:
-        if not self.keep_connection_open:
+        if not self.config.keep_connection_open:
             self._open_connection()
             try:
                 return self._grab_open()
@@ -1102,9 +1094,8 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
         return frame
 
     def release(self) -> None:
-        if self.keep_connection_open:
+        if self.config.keep_connection_open:
             self._close_connection()
-
 
 class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
     """Grabs the most recent frame from a YouTube Live stream (which are HLS streams under the hood)
@@ -1117,21 +1108,12 @@ class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
 
     config_class = YouTubeLiveFrameGrabberConfig
 
-    def __init__(self, config: YouTubeLiveFrameGrabberConfig):
-        super().__init__(config)
-        youtube_url = config.youtube_url
-        if not youtube_url:
-            camera_name = config.name
-            raise ValueError(
-                f"No YouTube Live URL provided for {camera_name}. Please add an youtube_url attribute to the config under id."
-            )
-
+    def _initialize_grabber_implementation(self):
         self.type = "YouTube Live"
 
         self.lock = Lock()
-        self.keep_connection_open = config.keep_connection_open
 
-        if self.keep_connection_open:
+        if self.config.keep_connection_open:
             self._open_connection()
 
     def _default_name(self) -> str:
@@ -1161,21 +1143,19 @@ class FileStreamFrameGrabber(FrameGrabber):
 
     config_class = FileStreamFrameGrabberConfig
 
-    def __init__(self, config: FileStreamFrameGrabberConfig):
-        super().__init__(config)
-        filename = config.filename
+    def _initialize_grabber_implementation(self):
         self.remainder = 0.0
 
-        self.capture = cv2.VideoCapture(filename)
+        self.capture = cv2.VideoCapture(self.config.filename)
         if not self.capture.isOpened():
-            raise ValueError(f"Could not open file {filename}. Is it a valid video file?")
+            raise ValueError(f"Could not open file {self.config.filename}. Is it a valid video file?")
         backend = self.capture.getBackendName()
         logger.debug(f"Initialized video capture with {backend=}")
 
         ret, _ = self.capture.read()
         if not ret:
             self.capture.release()
-            raise ValueError(f"Could not read first frame of file {filename}. Is it a valid video file?")
+            raise ValueError(f"Could not read first frame of file {self.config.filename}. Is it a valid video file?")
 
         self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
         if self.fps_source <= 0.1:
@@ -1235,9 +1215,7 @@ class MockFrameGrabber(FrameGrabberWithSerialNumber):
 
     config_class = MockFrameGrabberConfig
 
-    def __init__(self, config: MockFrameGrabberConfig):
-        super().__init__(config)
-
+    def _initialize_grabber_implementation(self):
         provided_serial_number = self.config.serial_number
 
         # Iterate through each detected camera and attempt to match it with the provided camera config
