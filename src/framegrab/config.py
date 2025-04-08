@@ -180,7 +180,7 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
             raise KeyError(f"The id_field '{id_field}' could not be mapped to any input types")
 
         return matching_input_types[0]
-    
+
     def get_id_field_and_value(self) -> Tuple[str, str]:
         """Get the id field and value for the current class."""
         input_type = self.get_input_type()
