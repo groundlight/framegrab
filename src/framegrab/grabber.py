@@ -289,7 +289,9 @@ class FrameGrabber(ABC):
             )
 
         # Apply the options so that resolution, exposure, etc. are correct
-        # grabber.apply_options(config["options"])
+        # a little hacky to convert back to a dictionary temporarily but it works
+        options = model_config.to_framegrab_config_dict()["options"]
+        grabber.apply_options(config["options"])
 
         # Do the warmup delay if necessary
         if input_type == InputTypes.GENERIC_USB and warmup_delay > 0:
