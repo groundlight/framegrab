@@ -8,7 +8,7 @@ import os
 import re
 from abc import ABC
 from enum import Enum
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional, Tuple
 
 from pydantic import (
     BaseModel,
@@ -56,7 +56,7 @@ class InputTypes(Enum):
 DIGITAL_ZOOM_MAX = 4
 
 
-class FrameGrabberConfig(ABC, BaseModel):
+class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
     """Base configuration class for all frame grabbers."""
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
@@ -178,6 +178,12 @@ class FrameGrabberConfig(ABC, BaseModel):
             raise KeyError(f"The id_field '{id_field}' could not be mapped to any input types")
         
         return matching_input_types[0]
+    
+    def get_id_field_and_value(self) -> Tuple[str, str]:
+        """Get the id field and value for the current class."""
+        input_type = self.get_input_type()
+        id_field = self.get_input_type_to_id_dict()[input_type]
+        return id_field, getattr(self, id_field)
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
@@ -186,9 +192,10 @@ class FrameGrabberConfig(ABC, BaseModel):
         input_type = self.get_input_type()
         dictionary_config["input_type"] = input_type
 
-        # Structure the id field like this: {"input_type": {"id_field": "id_value"}}
-        id_field = self.get_input_type_to_id_dict()[input_type]
-        dictionary_config["id"] = {id_field: getattr(self, id_field)}
+        # Structure the id field like this: {"id": {"id_field": "id_value"}}
+        # where id_field is rtsp_url, serial_number, etc.
+        id_field, id_value = self.get_id_field_and_value()
+        dictionary_config["id"] = {id_field: id_value}
         del dictionary_config[id_field]
 
         # These go in the options field
