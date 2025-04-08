@@ -296,7 +296,7 @@ class FrameGrabber(ABC):
             raise ValueError(
                 f"The provided input_type ({input_type}) is not valid. Valid types are {InputTypes.get_options()}"
             )
-        
+
         # Do the warmup delay if necessary
         if input_type == InputTypes.GENERIC_USB and warmup_delay > 0:
             logger.info(
