@@ -136,8 +136,10 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
         return input_type_to_class
 
     @classmethod
-    def get_class_for_input_type(cls, input_type: InputTypes):
+    def get_class_for_input_type(cls, input_type: InputTypes) -> "FrameGrabberConfig":
         """Get the configuration class for a given input type."""
+        if type(input_type) != InputTypes:
+            raise ValueError(f"Input type must be an instance of InputTypes, not {type(input_type)}")
         if input_type not in cls.get_input_type_to_class_dict():
             raise ValueError(f"Invalid input type: {input_type}")
         return cls.get_input_type_to_class_dict()[input_type]
