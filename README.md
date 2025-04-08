@@ -315,7 +315,7 @@ RTSPFrameGrabberConfig:
       anyOf:
       - type: integer
       - type: 'null'
-      default: null
+      default: 30
       title: Max Fps
     name:
       anyOf:
@@ -616,7 +616,7 @@ FileStreamFrameGrabberConfig:
       anyOf:
       - type: integer
       - type: 'null'
-      default: null
+      default: 30
       title: Max Fps
     name:
       anyOf:
