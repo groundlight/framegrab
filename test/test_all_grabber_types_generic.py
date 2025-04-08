@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
-
 from framegrab.config import (
     BaslerFrameGrabberConfig,
     FrameGrabberConfig,
@@ -31,8 +30,44 @@ import cv2
 class TestAllGrabberTypes(unittest.TestCase):
     """ Basic tests that show we can instantiate each grabber type's config and create a grabber from it """
 
+    
     def _get_mock_image(self):
         return np.zeros((480, 640, 3), dtype=np.uint8)
+    
+    def setup_mock_generic_usb_grabber(self, mock_video_capture, initial_width=640, initial_height=480):
+        mock_capture_instance = MagicMock()
+        mock_video_capture.return_value = mock_capture_instance
+
+        # Initialize resolution storage
+        resolution = {'width': initial_width, 'height': initial_height}
+        
+        # Mock the get method to return the current resolution
+        def mock_get(prop_id):
+            if prop_id == cv2.CAP_PROP_FRAME_WIDTH:
+                return resolution['width']
+            elif prop_id == cv2.CAP_PROP_FRAME_HEIGHT:
+                return resolution['height']
+            return 0
+
+        mock_capture_instance.get.side_effect = mock_get
+
+        # Mock the set method to update the resolution
+        def mock_set(prop_id, value):
+            if prop_id == cv2.CAP_PROP_FRAME_WIDTH:
+                resolution['width'] = value
+            elif prop_id == cv2.CAP_PROP_FRAME_HEIGHT:
+                resolution['height'] = value
+
+        mock_capture_instance.set.side_effect = mock_set
+
+        # Mock the read method to return a frame with the current resolution
+        def mock_read():
+            frame = np.zeros((int(resolution['height']), int(resolution['width']), 3), dtype=np.uint8)
+            return True, frame
+
+        mock_capture_instance.read.side_effect = mock_read
+
+        return mock_capture_instance
     
     def _test_grabber_helper(self, grabber, resolution_width = None, resolution_height = None):
         original_grabber_config_as_dict = grabber.config.to_framegrab_config_dict()
@@ -67,12 +102,7 @@ class TestAllGrabberTypes(unittest.TestCase):
     @patch('framegrab.grabber.GenericUSBFrameGrabber._find_cameras')
     @patch('cv2.VideoCapture')
     def test_generic_usb_grabber(self, mock_video_capture, mock_find_cameras):
-        mock_capture_instance = MagicMock()
-        mock_video_capture.return_value = mock_capture_instance
-        mock_capture_instance.isOpened.return_value = True
-        mock_capture_instance.read.return_value = (True, np.zeros((480, 640, 3), dtype=np.uint8))
-        mock_video_capture.return_value.isOpened.return_value = True
-
+        self.setup_mock_generic_usb_grabber(mock_video_capture)
         serial_number = "1234567890"
 
         # Mock the _find_cameras method to return a specific camera configuration
@@ -83,8 +113,8 @@ class TestAllGrabberTypes(unittest.TestCase):
             'camera_name': 'lalala'
         }]
 
-        resolution_width = 640
-        resolution_height = 480
+        resolution_width = 1920
+        resolution_height = 1080
         digital_zoom = 2
         config = GenericUSBFrameGrabberConfig(
             name="usb_framegrabber",
