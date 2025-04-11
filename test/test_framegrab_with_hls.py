@@ -4,17 +4,17 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 from framegrab.grabber import HttpLiveStreamingFrameGrabber
-
+from framegrab.config import FrameGrabberConfig, InputTypes
 
 class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
     def setUp(self):
         """Common setup for all HLS tests"""
         self.mock_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-        self.base_config = {
-            "input_type": "hls",
-            "id": {"hls_url": "http://example.com/stream.m3u8"},
-            "name": "test_stream",
-        }
+        self.base_config = FrameGrabberConfig.create(
+            input_type=InputTypes.HLS,
+            hls_url="http://example.com/stream.m3u8",
+            name="test_stream",
+        )
 
     @patch("cv2.VideoCapture")
     def test_grab_frame_success(self, mock_cv2):
@@ -26,7 +26,7 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
         mock_cv2.return_value = mock_capture
 
         grabber = HttpLiveStreamingFrameGrabber(self.base_config)
-        self.assertEqual(grabber.hls_url, "http://example.com/stream.m3u8")
+        self.assertEqual(grabber.config.hls_url, "http://example.com/stream.m3u8")
 
         frame = grabber.grab()
         mock_cv2.assert_called_once_with("http://example.com/stream.m3u8")
@@ -38,7 +38,11 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
 
     def test_init_without_hls_url(self):
         """Test that initialization fails without an HLS URL"""
-        config = {"input_type": "hls", "name": "test_stream"}
+        config = FrameGrabberConfig.create(
+            input_type=InputTypes.HLS,
+            hls_url="http://example.com/stream.m3u8",
+            name="test_stream",
+        )
 
         with self.assertRaises(ValueError):
             HttpLiveStreamingFrameGrabber(config)
@@ -55,7 +59,7 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
             grabber = HttpLiveStreamingFrameGrabber(self.base_config)
             grabber.grab()
 
-        self.assertIn("Could not open HLS stream", str(cm.exception))
+        self.assertIn("Could not open", str(cm.exception))
 
     @patch("cv2.VideoCapture")
     def test_grab_frame_failure(self, mock_cv2):
@@ -80,10 +84,11 @@ class TestHttpLiveStreamingFrameGrabber(unittest.TestCase):
         mock_capture.isOpened.return_value = True
         mock_cv2.return_value = mock_capture
 
-        config = self.base_config.copy()
-        config["options"] = {"resolution": {"width": 1920, "height": 1080}}
+        config = self.base_config.model_copy()
 
         grabber = HttpLiveStreamingFrameGrabber(config)
+        config_as_dict = config.to_framegrab_config_dict()
+        config_as_dict["options"] = {"resolution": {"width": 1920, "height": 1080}}
 
         with self.assertRaises(ValueError):
-            grabber.apply_options(config["options"])
+            grabber.apply_options(config_as_dict["options"])

@@ -40,7 +40,7 @@ def autodiscover(preview: str, rtsp_discover_mode: str = "off"):
         try:
             frame = grabber.grab()
 
-            yaml_config["image_sources"].append(grabber.config)
+            yaml_config["image_sources"].append(grabber.config.to_framegrab_config_dict())
             if frame is None:
                 click.echo(f"Failed to grab sample frame from {camera_name}.", err=True)
                 continue
@@ -49,7 +49,7 @@ def autodiscover(preview: str, rtsp_discover_mode: str = "off"):
                 f"Grabbed sample frame from {camera_name} with shape {frame.shape}",
                 err=True,
             )
-            click.echo(grabber.config, err=True)
+            click.echo(grabber.config.to_framegrab_config_dict(), err=True)
             preview_image(frame, camera_name, preview)
 
             grabber.release()
