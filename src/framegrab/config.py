@@ -194,7 +194,7 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
         dictionary_config = super().model_dump()
 
         input_type = self.get_input_type()
-        dictionary_config["input_type"] = input_type
+        dictionary_config["input_type"] = input_type.value
 
         # Structure the id field like this: {"id": {"id_field": "id_value"}}
         # where id_field is rtsp_url, serial_number, etc.
