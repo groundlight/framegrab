@@ -225,8 +225,11 @@ class TestAllGrabberTypes(unittest.TestCase):
         http_framegrabber = HttpLiveStreamingFrameGrabber(http_framegrabber_config)
         self._test_grabber_helper(http_framegrabber)
 
+    @patch('framegrab.config.YouTubeLiveFrameGrabberConfig.hls_url', new_callable=unittest.mock.PropertyMock)
     @patch('cv2.VideoCapture')
-    def test_youtube_grabber(self, mock_video_capture):
+    def test_youtube_grabber(self, mock_video_capture, mock_hls_url):
+        mock_hls_url.return_value = "https://fakeurl.com/stream.m3u8"
+
         mock_capture_instance = MagicMock()
         mock_capture_instance.isOpened.return_value = True
         mock_capture_instance.read.return_value = (True, self._get_mock_image())
