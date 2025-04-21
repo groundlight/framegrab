@@ -3,7 +3,7 @@ name: test integ
 on: [push]
 jobs:
   run-tests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       # It's totally debatable which is better here: fail-fast or not.
       # Failing fast will use fewer cloud resources, in theory.
