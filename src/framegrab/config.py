@@ -2,7 +2,6 @@
 This module defines the configuration classes for various types of frame grabbers.
 These configurations are used to initialize and manage different frame grabber objects.
 """
-
 import copy
 import os
 import re

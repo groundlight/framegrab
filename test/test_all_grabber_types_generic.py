@@ -225,12 +225,9 @@ class TestAllGrabberTypes(unittest.TestCase):
         http_framegrabber = HttpLiveStreamingFrameGrabber(http_framegrabber_config)
         self._test_grabber_helper(http_framegrabber)
 
-    @patch('streamlink.streams')
+    @patch('streamlink.streams', return_value={"best": MagicMock(url="https://fakeurl.com/stream.m3u8")})
     @patch('cv2.VideoCapture')
     def test_youtube_grabber(self, mock_video_capture, mock_streams):
-        mock_streams.return_value = {
-            "best": MagicMock(url="https://fakeurl.com/stream.m3u8")
-        }
         mock_capture_instance = MagicMock()
         mock_capture_instance.isOpened.return_value = True
         mock_capture_instance.read.return_value = (True, self._get_mock_image())
@@ -269,7 +266,8 @@ class TestAllGrabberTypes(unittest.TestCase):
         self._test_grabber_helper(mock_grabber)
     
 
-    def test_create_config(self):
+    @patch('streamlink.streams', return_value={"best": MagicMock(url="https://fakeurl.com/stream.m3u8")})
+    def test_create_config(self, mock_streams):
         """ Test the create method of FrameGrabberConfig. We want to make sure that all possible parameters are supported """
         for input_type in list(InputTypes):
             model = FrameGrabberConfig.get_class_for_input_type(input_type)
