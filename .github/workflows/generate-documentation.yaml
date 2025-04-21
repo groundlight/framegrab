@@ -32,7 +32,6 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add README.md
-          git commit -m 'Update documentation'
           if git status --porcelain | grep -q 'README.md'; then
             git commit -m 'Update documentation'
             git push
