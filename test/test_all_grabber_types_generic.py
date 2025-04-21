@@ -72,7 +72,7 @@ class TestAllGrabberTypes(unittest.TestCase):
     def _test_grabber_helper(self, grabber, resolution_width = None, resolution_height = None):
         original_grabber_config_as_dict = grabber.config.to_framegrab_config_dict()
         expected_input_type = next(key for key, value in FrameGrabberConfig.get_input_type_to_class_dict().items() if value == type(grabber.config))
-        self.assertEqual(original_grabber_config_as_dict["input_type"], expected_input_type)
+        self.assertEqual(original_grabber_config_as_dict["input_type"], expected_input_type.value)
 
         expected_id_key = FrameGrabberConfig.get_input_type_to_id_dict()[expected_input_type]
         # make sure the id field moves from a direct attribute to nested under the id key
@@ -140,6 +140,7 @@ class TestAllGrabberTypes(unittest.TestCase):
         rtsp_framegrabber = RTSPFrameGrabber(config)
         self._test_grabber_helper(rtsp_framegrabber)
 
+    @unittest.skip("This test needs to be run on a basler compatible device")
     @patch('pypylon.pylon.TlFactory')
     @patch('pypylon.pylon.InstantCamera')
     @patch('pypylon.pylon.ImageFormatConverter')
