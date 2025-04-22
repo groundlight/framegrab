@@ -78,8 +78,8 @@ Frame Grabbers are defined by a configuration parameter. This parameter can take
 
 Here's an example of a single USB camera configured with several options:
 ```python
-from framegrab.config import FrameGrabberConfig
-config = FrameGrabberConfig.create(input_type="rpi_csi2", serial_number="1234567890", resolution_width=1280,resolution_height=720, digital_zoom=1.5)
+from framegrab.config import FrameGrabberConfig, InputTypes
+config = FrameGrabberConfig.create(input_type=InputTypes.RPI_CSI2, serial_number="1234567890", resolution_width=1280,resolution_height=720, digital_zoom=1.5)
 grabber = FrameGrabber.create_grabber(config)
 ```
 
