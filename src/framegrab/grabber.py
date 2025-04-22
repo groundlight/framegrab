@@ -66,7 +66,6 @@ except ImportError as e:
 
 
 OPERATING_SYSTEM = platform.system()
-DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
 
 

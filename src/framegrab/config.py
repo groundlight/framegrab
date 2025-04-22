@@ -23,6 +23,8 @@ from pydantic import (
 
 from .unavailable_module import UnavailableModule
 
+DIGITAL_ZOOM_MAX = 4
+
 # Only used for YouTube Live streams, not required otherwise
 try:
     import streamlink
@@ -51,10 +53,6 @@ class InputTypes(Enum):
             if "__" not in attr_name and isinstance(attr_value, str):
                 output.append(attr_value)
         return output
-
-
-DIGITAL_ZOOM_MAX = 4
-
 
 class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
     """Base configuration class for all frame grabbers."""
