@@ -54,6 +54,7 @@ class InputTypes(Enum):
                 output.append(attr_value)
         return output
 
+
 class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
     """Base configuration class for all frame grabbers."""
 
