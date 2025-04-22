@@ -3,7 +3,7 @@
 
 FrameGrab is an open-source Python library designed to make it easy to grab frames (images) from cameras or streams. The library supports generic USB cameras (such as webcams), RTSP streams, Basler USB cameras, Basler GigE cameras, Intel RealSense depth cameras, and video file streams (mp4, mov, mjpeg, avi, etc.).
 
-FrameGrab also provides basic motion detection functionality. FrameGrab requires Python 3.7 or higher.
+FrameGrab also provides basic motion detection functionality. FrameGrab requires Python 3.9 or higher.
 
 ## Table of Contents
 
