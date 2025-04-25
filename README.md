@@ -484,12 +484,6 @@ RaspberryPiCSI2FrameGrabberConfig:
       - type: 'null'
       default: 0
       title: Num 90 Deg Rotations
-    serial_number:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Serial Number
   title: RaspberryPiCSI2FrameGrabberConfig
   type: object
 
