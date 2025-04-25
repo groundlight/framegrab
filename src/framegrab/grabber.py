@@ -900,7 +900,7 @@ class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
 
     def apply_options(self, options: dict) -> None:
         super().apply_options(options)
-        basler_options = self.config.basler_options
+        basler_options = self.config.basler_options or {}
         node_map = self.camera.GetNodeMap()
         for property_name, value in basler_options.items():
             node = node_map.GetNode(property_name)
