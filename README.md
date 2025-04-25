@@ -85,16 +85,17 @@ grabber = FrameGrabber.create_grabber(config)
 
 or you can directly create the specific grabber config:
 ```python
-from framegrab.config import FrameGrabberConfig
-config = RaspberryPiCSI2FrameGrabberConfig(serial_number="1234567890", resolution_width=1280,resolution_height=720, digital_zoom=1.5)
+from framegrab import FrameGrabber
+from framegrab.config import RealSenseFrameGrabberConfig
+config = RealSenseFrameGrabberConfig(serial_number="1234567890", resolution_width=1280, resolution_height=720, digital_zoom=1.5)
 grabber = FrameGrabber.create_grabber(config)
 ```
 
 If you'd prefer to store your config as a yaml you can use the framegrab serialized format (we use the same format creating with dictionaries as well)
 ```python
 config = """
-name: Raspberry Pi Ribbon Cable Camera
-input_type: rpi_csi2
+name: RealSense Camera
+input_type: realsense
 options:
     resolution:
         height: 720
