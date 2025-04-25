@@ -158,7 +158,7 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
             InputTypes.RTSP: "rtsp_url",
             InputTypes.BASLER: "serial_number",
             InputTypes.REALSENSE: "serial_number",
-            InputTypes.RPI_CSI2: "serial_number",
+            InputTypes.RPI_CSI2: None,
             InputTypes.HLS: "hls_url",
             InputTypes.YOUTUBE_LIVE: "youtube_url",
             InputTypes.FILE_STREAM: "filename",
@@ -186,7 +186,8 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
         """Get the id field and value for the current class."""
         input_type = self.get_input_type()
         id_field = self.get_input_type_to_id_dict()[input_type]
-        return id_field, getattr(self, id_field)
+        id_value = getattr(self, id_field) if id_field else None
+        return id_field, id_value
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
@@ -198,8 +199,9 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
         # Structure the id field like this: {"id": {"id_field": "id_value"}}
         # where id_field is rtsp_url, serial_number, etc.
         id_field, id_value = self.get_id_field_and_value()
-        dictionary_config["id"] = {id_field: id_value}
-        del dictionary_config[id_field]
+        if id_field and id_value:
+            dictionary_config["id"] = {id_field: id_value}
+            del dictionary_config[id_field]
 
         # These go in the options field
         del dictionary_config["crop"]
@@ -226,7 +228,9 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
         dictionary_config = copy.deepcopy(dictionary_config)
         input_type = cls.get_input_type()
         id_field_name = cls.get_input_type_to_id_dict()[input_type]
-        id_field_required = cls.model_fields.get(id_field_name).is_required()
+        id_field_required = False
+        if id_field_name:
+            id_field_required = cls.model_fields.get(id_field_name).is_required()
 
         if id_field_required and "id" not in dictionary_config:
             raise ValueError("The 'id' field is missing in the configuration dictionary.")
@@ -476,8 +480,6 @@ class HttpLiveStreamingFrameGrabberConfig(FrameGrabberConfig, WithKeepConnection
 
 class RaspberryPiCSI2FrameGrabberConfig(FrameGrabberConfig):
     """Configuration class for Raspberry Pi CSI-2 Frame Grabber."""
-
-    serial_number: Optional[str] = None
 
 
 class YouTubeLiveFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin):
