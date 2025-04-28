@@ -1,7 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
+from sensor_msgs.msg import CompressedImage
 import numpy as np
 from datetime import datetime
 import cv2
@@ -36,17 +35,28 @@ def generate_image(width: int = 640, height: int = 480) -> np.ndarray:
 class SampleCameraPublisher(Node):
     def __init__(self):
         super().__init__('sample_camera_publisher', namespace='groundlight')
-        self.publisher_ = self.create_publisher(Image, 'sample_image', 10)
-        self.bridge = CvBridge()
+        self.publisher_ = self.create_publisher(CompressedImage, 'sample_image/compressed', 10)
         timer_period = 1 / 15
         self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.get_logger().info("Static image publisher started")
+        self.get_logger().info("Static compressed image publisher started")
 
     def timer_callback(self):
         image = generate_image()
-        msg = self.bridge.cv2_to_imgmsg(image, encoding='bgr8')
+
+        # Encode the image as JPEG
+        success, encoded_image = cv2.imencode('.jpg', image)
+        if not success:
+            self.get_logger().error("Failed to encode image")
+            return
+
+        # Create a CompressedImage message
+        msg = CompressedImage()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.format = 'jpeg'
+        msg.data = encoded_image.tobytes()
+
         self.publisher_.publish(msg)
-        self.get_logger().info("Published an image")
+        self.get_logger().info("Published a compressed image")
 
 def main(args=None):
     rclpy.init(args=args)
