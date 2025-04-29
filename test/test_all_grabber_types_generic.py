@@ -322,6 +322,8 @@ class TestAllGrabberTypes(unittest.TestCase):
                     params[param] = {"ExposureTime": 10000}
                 elif param == "max_fps":
                     params[param] = 30
+                elif param == "topic":
+                    params[param] = '/groundlight/sample_image'
                 else:
                     raise ValueError(f"Unknown parameter: {param}")
 
