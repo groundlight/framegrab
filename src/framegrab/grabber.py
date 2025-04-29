@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from threading import Lock, Thread
 from typing import Dict, List, Optional, Union
 from urllib.parse import urlparse
+
 import cv2
 import numpy as np
 import yaml
