@@ -453,12 +453,14 @@ class RealSenseFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for RealSense Frame Grabber."""
 
     serial_number: Optional[str] = None
-    side_by_side_depth: Optional[bool] = False
+    side_by_side_depth: Optional[bool] = None
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
         base_dict = super().to_framegrab_config_dict()
-        base_dict["options"]["depth"] = {"side_by_side": self.side_by_side_depth}
+        if self.side_by_side_depth is not None:
+            base_dict["options"]["depth"] = {"side_by_side": self.side_by_side_depth}
+        del base_dict["side_by_side_depth"]
         return base_dict
 
     @classmethod

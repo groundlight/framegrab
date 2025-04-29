@@ -7,7 +7,6 @@ from abc import ABC, abstractmethod
 from threading import Lock, Thread
 from typing import Dict, List, Optional, Union
 from urllib.parse import urlparse
-
 import cv2
 import numpy as np
 import yaml
@@ -506,7 +505,6 @@ class FrameGrabber(ABC):
         """
         framegrab_config_dict = type(self.config).to_framegrab_config_dict(self.config)
         framegrab_config_dict["options"] = options
-
         # this will validate the new options
         new_config = FrameGrabberConfig.from_framegrab_config_dict(framegrab_config_dict)
         self.config = new_config
@@ -998,7 +996,7 @@ class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
         new_width = self.config.resolution_width
         new_height = self.config.resolution_height
 
-        if new_width != old_width or new_height != old_height:
+        if (new_width and new_height) and (new_width != old_width or new_height != old_height):
             self.pipeline.stop()  # pipeline needs to be temporarily stopped in order to change the resolution
             self.rs_config.enable_stream(rs.stream.color, new_width, new_height)
             self.rs_config.enable_stream(rs.stream.depth, new_width, new_height)

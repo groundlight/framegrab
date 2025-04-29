@@ -188,13 +188,18 @@ class TestAllGrabberTypes(unittest.TestCase):
         mock_frames = MagicMock()
         mock_color_frame = MagicMock()
         mock_color_frame.get_data.return_value = self._get_mock_image()
+
+        mock_depth_frame = MagicMock()
+        mock_depth_frame.get_data.return_value = np.zeros((480, 640), dtype=np.uint16)
+        mock_frames.get_depth_frame.return_value = mock_depth_frame
+
         mock_frames.get_color_frame.return_value = mock_color_frame
         mock_pipeline_instance.wait_for_frames.return_value = mock_frames
 
         mock_rs_config_instance = MagicMock()
         mock_rs_config.return_value = mock_rs_config_instance
 
-        realsense_framegrabber_config = RealSenseFrameGrabberConfig(name="realsense_framegrabber", resolution_width=640, resolution_height=480, side_by_side_depth=True)
+        realsense_framegrabber_config = RealSenseFrameGrabberConfig(name="realsense_framegrabber", resolution_width=640, resolution_height=480, side_by_side_depth=False)
         realsense_framegrabber = RealSenseFrameGrabber(realsense_framegrabber_config)
         self._test_grabber_helper(realsense_framegrabber)
 
