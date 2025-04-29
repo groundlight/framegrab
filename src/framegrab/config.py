@@ -44,6 +44,7 @@ class InputTypes(Enum):
     YOUTUBE_LIVE = "youtube_live"
     FILE_STREAM = "file"
     MOCK = "mock"
+    ROS2 = "ros2"
 
     def get_options() -> list:
         """Get a list of the available InputType options."""

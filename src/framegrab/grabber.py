@@ -27,7 +27,7 @@ from .config import (
 )
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
-from .unavailable_module import UnavailableModule
+from .unavailable_module import UnavailableModuleOrObject
 
 # The wsdiscovery packages calls logging.basicConfig, which will wipe out any logging config
 # that framegrab users have set, which is not good. To clear the config that wsdiscovery sets, we
@@ -62,41 +62,13 @@ except ImportError as e:
 try:
     import streamlink
 except ImportError as e:
-    streamlink = UnavailableModule(e)
+    streamlink = UnavailableModuleOrObject(e)
 
 logger = logging.getLogger(__name__)
 
 OPERATING_SYSTEM = platform.system()
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
 
-
-class InputTypes:
-    """Defines the available input types from FrameGrabber objects"""
-
-    GENERIC_USB = "generic_usb"
-    RTSP = "rtsp"
-    REALSENSE = "realsense"
-    BASLER = "basler"
-    RPI_CSI2 = "rpi_csi2"
-    HLS = "hls"
-    YOUTUBE_LIVE = "youtube_live"
-    FILE_STREAM = "file_stream"
-    MOCK = "mock"
-    ROS2 = "ros2"
-
-    def get_options() -> list:
-        """Get a list of the available InputType options"""
-        output = []
-        for attr_name in vars(InputTypes):
-            attr_value = getattr(InputTypes, attr_name)
-            if "__" not in attr_name and isinstance(attr_value, str):
-                output.append(attr_value)
-        return output
-
-
-class FrameGrabber(ABC):
-    # for naming FrameGrabber objects that have no user-defined name
-    unnamed_grabber_count = 0
 class FrameGrabber(ABC):
     # for naming FrameGrabber objects that have no user-defined name
     unnamed_grabber_count = 0
