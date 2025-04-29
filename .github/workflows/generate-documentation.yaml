@@ -1,0 +1,60 @@
+name: Generate Documentation
+
+on:
+  push:
+    paths:
+      - 'src/framegrab/config.py'
+      - '.github/workflows/generate-documentation.yaml'
+      - 'write_config_format.py'
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: get code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: install python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: install poetry and build poetry environment
+        run: |
+          pip install -U pip
+          pip install poetry
+          poetry install
+    
+      - name: Run documentation generation script
+        run: poetry run python write_config_format.py
+
+      - name: Commit and *rebase* + push changes
+        run: |
+          # Identify branch we're on
+          BRANCH="${GITHUB_REF#refs/heads/}"
+
+          # Git identity for the commit
+          git config --global user.name  'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # Stage potential change
+          git add README.md
+
+          # Nothing new? bail out
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m 'Update documentation'
+
+          # Make sure we have the up-to-date remote branch
+          git fetch origin $BRANCH
+          # Replay our commit on top of it
+          git rebase origin/$BRANCH
+
+          # Finally push (fast-forward) ‑- remote already contains parent
+          git push origin HEAD:$BRANCH
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

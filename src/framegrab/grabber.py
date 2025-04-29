@@ -1,5 +1,4 @@
 import logging
-import os
 import platform
 import re
 import subprocess
@@ -13,6 +12,19 @@ import cv2
 import numpy as np
 import yaml
 
+from .config import (
+    BaslerFrameGrabberConfig,
+    FileStreamFrameGrabberConfig,
+    FrameGrabberConfig,
+    GenericUSBFrameGrabberConfig,
+    HttpLiveStreamingFrameGrabberConfig,
+    InputTypes,
+    MockFrameGrabberConfig,
+    RaspberryPiCSI2FrameGrabberConfig,
+    RealSenseFrameGrabberConfig,
+    RTSPFrameGrabberConfig,
+    YouTubeLiveFrameGrabberConfig,
+)
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
 from .unavailable_module import UnavailableModule
@@ -54,58 +66,47 @@ except ImportError as e:
 
 
 OPERATING_SYSTEM = platform.system()
-DIGITAL_ZOOM_MAX = 4
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
-
-
-class InputTypes:
-    """Defines the available input types from FrameGrabber objects"""
-
-    GENERIC_USB = "generic_usb"
-    RTSP = "rtsp"
-    REALSENSE = "realsense"
-    BASLER = "basler"
-    RPI_CSI2 = "rpi_csi2"
-    HLS = "hls"
-    YOUTUBE_LIVE = "youtube_live"
-    FILE_STREAM = "file_stream"
-    MOCK = "mock"
-
-    def get_options() -> list:
-        """Get a list of the available InputType options"""
-        output = []
-        for attr_name in vars(InputTypes):
-            attr_value = getattr(InputTypes, attr_name)
-            if "__" not in attr_name and isinstance(attr_value, str):
-                output.append(attr_value)
-        return output
 
 
 class FrameGrabber(ABC):
     # for naming FrameGrabber objects that have no user-defined name
     unnamed_grabber_count = 0
 
+    config: FrameGrabberConfig
+
+    def __init__(self, config: FrameGrabberConfig):
+        """To create a FrameGrabber object with the generic FrameGrabber class or with a config dict, use create_grabber()"""
+        if not isinstance(config, self.config_class):
+            raise TypeError(
+                f"Expected config to be of type {self.config_class.__name__}, but got {type(config).__name__}"
+            )
+
+        self.config = config
+        self._initialize_grabber_implementation()
+        # Apply the options so that resolution, exposure, etc. are correct
+        # a little hacky to convert back to a dictionary temporarily but it works
+        options = config.to_framegrab_config_dict()["options"]
+        self.apply_options(options)
+
+    @abstractmethod
+    def _initialize_grabber_implementation(self):
+        """Each FrameGrabber must implement its own method of initializing the grabber"""
+        pass
+
     @staticmethod
-    def _validate_config(config: dict) -> dict:
+    def _validate_dict_config(config: dict) -> FrameGrabberConfig:
         """Check the config to ensure it conforms to the required format and data types
         Returns a corrected version of the config.
         """
         output_config = config.copy()
-
-        # Ensure that serial numbers are strings
-        try:
-            output_config["id"]["serial_number"] = str(output_config["id"]["serial_number"])
-        except KeyError:
-            pass
-
-        # Ensure that there are some options, even if they are empty
-        if not output_config.get("options"):
-            output_config["options"] = {}
-
-        return output_config
+        model_config = FrameGrabberConfig.from_framegrab_config_dict(output_config)
+        return model_config
 
     @staticmethod
-    def create_grabbers(configs: List[dict], warmup_delay: float = 1.0) -> Dict[str, "FrameGrabber"]:
+    def create_grabbers(
+        configs: List[Union[dict, FrameGrabberConfig]], warmup_delay: float = 1.0
+    ) -> Dict[str, "FrameGrabber"]:
         """
         Creates multiple FrameGrab objects based on user-provided configurations
 
@@ -123,13 +124,20 @@ class FrameGrabber(ABC):
         objects.
         """
 
+        configs_as_model_config = [
+            FrameGrabberConfig.from_framegrab_config_dict(config) if isinstance(config, dict) else config
+            for config in configs
+        ]
+
         # Sort the configs such that configs with serial numbers appear first
         # This will ensure that they are able to connect to the camera with the specified
         # serial number, and that no other FrameGrabbers claim that camera first.
-        configs.sort(key=lambda config: "serial_number" not in config.get("id", {}))
+        configs_as_model_config.sort(
+            key=lambda config: not hasattr(config, "serial_number") or config.serial_number is None
+        )
 
         # Do not allow duplicate camera names
-        names = [config.get("name", None) for config in configs if config.get("name", None) is not None]
+        names = [config.name for config in configs_as_model_config if config.name is not None]
         if len(names) != len(set(names)):
             raise ValueError(
                 f"Duplicate camera names were provided in configurations. Please ensure that each camera name is unique. "
@@ -138,21 +146,21 @@ class FrameGrabber(ABC):
 
         # Create the grabbers
         grabber_list = []
-        for config in configs:
+        for config in configs_as_model_config:
             try:
-                grabber = FrameGrabber.create_grabber(config, autogenerate_name=False, warmup_delay=0)
+                grabber = FrameGrabber.create_grabber(config, warmup_delay=0)
                 grabber_list.append(grabber)
             except ValueError as e:
-                camera_name = config.get("name", "Unnamed Camera")
+                camera_name = config.name
                 logger.error(
-                    f"Failed to connect to {camera_name}. Please check its connection and provided configuration: {config}",
+                    f"Failed to connect to {camera_name}. Please check its connection and provided configuration: {config}. Error: {e}",
                     exc_info=True,
                 )
 
         grabbers = FrameGrabber.grabbers_to_dict(grabber_list)
 
         # Do the warmup delay if necessary
-        grabber_types = set([grabber.config["input_type"] for grabber in grabbers.values()])
+        grabber_types = set([grabber.config.get_input_type() for grabber in grabbers.values()])
         if InputTypes.GENERIC_USB in grabber_types and warmup_delay > 0:
             logger.info(
                 f"Waiting {warmup_delay} seconds for camera(s) to warm up. "
@@ -205,32 +213,25 @@ class FrameGrabber(ABC):
         # Sort the grabbers by serial_number to make sure they always come up in the same order
         grabber_list = sorted(
             grabber_list,
-            key=lambda grabber: grabber.config.get("id", {}).get("serial_number", ""),
+            key=lambda grabber: grabber.config.serial_number if hasattr(grabber.config, "serial_number") else "",
         )
 
         # Create the grabbers dictionary, autogenerating names for any unnamed grabbers
         grabbers = {}
         for grabber in grabber_list:
-            # If a name wasn't provided, autogenerate one
-            if not grabber.config.get("name"):
-                grabber._autogenerate_name()
 
             # Add the grabber to the dictionary
-            grabber_name = grabber.config["name"]
+            grabber_name = grabber.config.name
             grabbers[grabber_name] = grabber
 
         return grabbers
 
     @staticmethod
-    def create_grabber_yaml(yaml_config: str, autogenerate_name: bool = True, warmup_delay: float = 1.0):
+    def create_grabber_yaml(yaml_config: str, warmup_delay: float = 1.0):
         """Create a FrameGrabber object based on the provided configuration.
 
         Parameters:
             config (str): A yaml string containing configuration settings for the FrameGrabber.
-
-            autogenerate_name (bool, optional): A flag to indicate whether to automatically
-                generate a name for the FrameGrabber object if not explicitly provided. Defaults
-                to True.
 
             warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
                 cameras often need a moment to warm up before they can be used; grabbing frames too early
@@ -243,19 +244,15 @@ class FrameGrabber(ABC):
                 configuration dictionary.
         """
         config = yaml.safe_load(yaml_config)
-        grabber = FrameGrabber.create_grabber(config, autogenerate_name, warmup_delay)
+        grabber = FrameGrabber.create_grabber(config, warmup_delay)
         return grabber
 
     @staticmethod
-    def create_grabber(config: dict, autogenerate_name: bool = True, warmup_delay: float = 1.0):
+    def create_grabber(config: Union[dict, FrameGrabberConfig], warmup_delay: float = 1.0) -> "FrameGrabber":
         """Create a FrameGrabber object based on the provided configuration.
 
         Parameters:
-            config (dict): A dictionary containing configuration settings for the FrameGrabber.
-
-            autogenerate_name (bool, optional): A flag to indicate whether to automatically
-                generate a name for the FrameGrabber object if not explicitly provided. Defaults
-                to True.
+            config (dict or FrameGrabberConfig): A dictionary or FrameGrabberConfig object containing configuration settings for the FrameGrabber.
 
             warmup_delay (float, optional): The number of seconds to wait after creating the grabbers. USB
                 cameras often need a moment to warm up before they can be used; grabbing frames too early
@@ -268,48 +265,39 @@ class FrameGrabber(ABC):
                 configuration dictionary.
 
         """
+        if isinstance(config, dict):
+            model_config = FrameGrabber._validate_dict_config(config)
+        else:
+            model_config = config
 
-        # Ensure the config is properly constructed and typed
-        config = FrameGrabber._validate_config(config)
-
-        # At a minimum, input_type must be provided
-        input_type = config.get("input_type", None)
-        if input_type is None:
-            raise ValueError(f"No input_type provided. Valid types are {InputTypes.get_options()}")
+        input_type = model_config.get_input_type()
 
         # Based on input_type, create correct type of FrameGrabber
         if input_type == InputTypes.GENERIC_USB:
-            grabber = GenericUSBFrameGrabber(config)
+            grabber = GenericUSBFrameGrabber(model_config)
         elif input_type == InputTypes.RTSP:
-            grabber = RTSPFrameGrabber(config)
+            grabber = RTSPFrameGrabber(model_config)
         elif input_type == InputTypes.BASLER:
-            grabber = BaslerFrameGrabber(config)
+            grabber = BaslerFrameGrabber(model_config)
         elif input_type == InputTypes.REALSENSE:
-            grabber = RealSenseFrameGrabber(config)
+            grabber = RealSenseFrameGrabber(model_config)
         elif input_type == InputTypes.RPI_CSI2:
-            grabber = RaspberryPiCSI2FrameGrabber(config)
+            grabber = RaspberryPiCSI2FrameGrabber(model_config)
         elif input_type == InputTypes.HLS:
-            grabber = HttpLiveStreamingFrameGrabber(config)
+            grabber = HttpLiveStreamingFrameGrabber(model_config)
         elif input_type == InputTypes.YOUTUBE_LIVE:
             grabber = YouTubeLiveFrameGrabber(config)
         elif input_type == InputTypes.FILE_STREAM:
-            grabber = FileStreamFrameGrabber(config)
+            grabber = FileStreamFrameGrabber(model_config)
         elif input_type == InputTypes.MOCK:
-            grabber = MockFrameGrabber(config)
+            grabber = MockFrameGrabber(model_config)
         else:
             raise ValueError(
                 f"The provided input_type ({input_type}) is not valid. Valid types are {InputTypes.get_options()}"
             )
 
-        # If a name wasn't supplied and autogenerate_name is True, autogenerate a name
-        if not config.get("name", False) and autogenerate_name:
-            grabber._autogenerate_name()
-
-        # Apply the options so that resolution, exposure, etc. are correct
-        grabber.apply_options(config["options"])
-
         # Do the warmup delay if necessary
-        if config["input_type"] == InputTypes.GENERIC_USB and warmup_delay > 0:
+        if input_type == InputTypes.GENERIC_USB and warmup_delay > 0:
             logger.info(
                 f"Waiting {warmup_delay} seconds for camera to warm up. "
                 "Pass in warmup_delay = 0 to suppress this behavior."
@@ -365,7 +353,6 @@ class FrameGrabber(ABC):
                                     "id": {"rtsp_url": rtsp_url},
                                     "name": f"RTSP Camera - {device.ip} - {index}",
                                 },
-                                autogenerate_name=False,
                                 warmup_delay=0,
                             )
                             grabber_list.append(grabber)
@@ -376,7 +363,7 @@ class FrameGrabber(ABC):
             ):  # an arbitrarily high value so that we look for enough cameras, but this never becomes an infinite loop
                 try:
                     config = {"input_type": input_type}
-                    grabber = FrameGrabber.create_grabber(config, autogenerate_name=False, warmup_delay=0)
+                    grabber = FrameGrabber.create_grabber(config, warmup_delay=0)
                     grabber_list.append(grabber)
                 except (ValueError, ImportError):
                     # ValueError is taken to mean that we have reached the end of enumeration for the current input_type.
@@ -387,7 +374,7 @@ class FrameGrabber(ABC):
         grabbers = FrameGrabber.grabbers_to_dict(grabber_list)
 
         # Do the warmup delay if necessary
-        grabber_types = set([grabber.config["input_type"] for grabber in grabbers.values()])
+        grabber_types = set([grabber.config.get_input_type() for grabber in grabbers.values()])
         if InputTypes.GENERIC_USB in grabber_types and warmup_delay > 0:
             logger.info(
                 f"Waiting {warmup_delay} seconds for camera(s) to warm up. "
@@ -409,7 +396,7 @@ class FrameGrabber(ABC):
         frame = self._grab_implementation()
 
         if frame is None:
-            name = self.config["name"]  # all grabbers should have a name, either user-provided or generated
+            name = self.config.name  # all grabbers should have a name, either user-provided or generated
             error_msg = f"Failed to grab frame from {name}"
             raise GrabError(error_msg)
 
@@ -419,29 +406,9 @@ class FrameGrabber(ABC):
         frame = self._digital_zoom(frame)
         return frame
 
-    def _autogenerate_name(self) -> None:
-        """For generating and assigning unique names for unnamed FrameGrabber objects.
-
-        Attempts to incorporate a unique identifier (serial number, url, etc.) into each
-        camera name. If no unique identifier is available, a counter is used instead.
-        """
-
-        if self.config.get("id", {}).get("serial_number", None):
-            unnamed_grabber_id = self.config["id"]["serial_number"]
-        elif self.config.get("id", {}).get("rtsp_url", None):
-            rtsp_url = self.config["id"]["rtsp_url"]
-            parsed_url = urlparse(rtsp_url)
-            if parsed_url.scheme == "rtsp" and parsed_url.hostname:
-                unnamed_grabber_id = parsed_url.hostname
-            else:
-                raise ValueError("Invalid RTSP URL format")
-        else:
-            FrameGrabber.unnamed_grabber_count += 1
-            unnamed_grabber_id = FrameGrabber.unnamed_grabber_count
-
-        input_type = self.config["input_type"]
-        autogenerated_name = f"{input_type.upper()} Camera - {unnamed_grabber_id}"
-        self.config["name"] = autogenerated_name
+    @abstractmethod
+    def _default_name(self) -> str:
+        raise NotImplementedError
 
     def _crop(self, frame: np.ndarray) -> np.ndarray:
         """Looks at FrameGrabber's options and decides to either crop by pixels or
@@ -449,15 +416,14 @@ class FrameGrabber(ABC):
 
         Returns a cropped frame.
         """
-        options = self.config.get("options", {})
+        if self.config.crop:
+            relative_crop_params = self.config.crop.get("relative")
+            if relative_crop_params:
+                return self._crop_relative(frame, relative_crop_params)
 
-        relative_crop_params = options.get("crop", {}).get("relative")
-        if relative_crop_params:
-            return self._crop_relative(frame, relative_crop_params)
-
-        pixel_crop_params = options.get("crop", {}).get("pixels")
-        if pixel_crop_params:
-            return self._crop_pixels(frame, pixel_crop_params)
+            pixel_crop_params = self.config.crop.get("pixels")
+            if pixel_crop_params:
+                return self._crop_pixels(frame, pixel_crop_params)
 
         return frame
 
@@ -465,10 +431,10 @@ class FrameGrabber(ABC):
         """Crops the provided frame according to the FrameGrabbers cropping configuration.
         Crops according to pixels positions.
         """
-        top = crop_params.get("top", 0)
-        bottom = crop_params.get("bottom", frame.shape[0])
-        left = crop_params.get("left", 0)
-        right = crop_params.get("right", frame.shape[1])
+        top = int(crop_params.get("top", 0))
+        bottom = int(crop_params.get("bottom", frame.shape[0]))
+        left = int(crop_params.get("left", 0))
+        right = int(crop_params.get("right", frame.shape[1]))
         frame = frame[top:bottom, left:right]
 
         return frame
@@ -486,7 +452,7 @@ class FrameGrabber(ABC):
         return frame
 
     def _digital_zoom(self, frame: np.ndarray) -> np.ndarray:
-        digital_zoom = self.config.get("options", {}).get("zoom", {}).get("digital")
+        digital_zoom = self.config.digital_zoom
 
         if digital_zoom is None:
             pass
@@ -502,7 +468,7 @@ class FrameGrabber(ABC):
     def _rotate(self, frame: np.ndarray) -> np.ndarray:
         """Rotates the provided frame a specified number of 90 degree rotations clockwise"""
 
-        num_90_deg_rotations = self.config.get("options", {}).get("num_90_deg_rotations", 0)
+        num_90_deg_rotations = self.config.num_90_deg_rotations
 
         for n in range(num_90_deg_rotations):
             frame = np.rot90(frame)
@@ -518,12 +484,12 @@ class FrameGrabber(ABC):
         do nothing. This is because setting the resolution of a cv2.VideoCapture object is non-trivial and
         can take multiple seconds, so we should only do it when something has changed.
         """
-        resolution = self.config.get("options", {}).get("resolution")
-        if resolution is None:
-            return
 
-        new_height = resolution.get("height")
-        new_width = resolution.get("width")
+        new_height = self.config.resolution_height
+        new_width = self.config.resolution_width
+
+        if new_width is None or new_height is None:
+            return
 
         if new_width:
             current_width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -538,46 +504,11 @@ class FrameGrabber(ABC):
         """Update generic options such as crop and zoom as well as
         camera-specific options.
         """
-
-        # Ensure that the user hasn't provided pixel cropping parameters and relative cropping parameters
-        pixel_crop_params = options.get("crop", {}).get("pixels", {})
-        relative_crop_params = options.get("crop", {}).get("relative", {})
-        if pixel_crop_params and relative_crop_params:
-            camera_name = self.config.get("name", "Unnamed Camera")
-            raise ValueError(
-                f"Pixel cropping parameters and relative cropping parameters were set for "
-                f"{camera_name}. Pixel cropping and relative cropping cannot be "
-                f"used together. Please adjust your configurations to use one or the other."
-            )
-
-        # Ensure valid relative cropping parameters (between 0 and 1)
-        for param_name, param_value in relative_crop_params.items():
-            if param_value < 0 or param_value > 1:
-                camera_name = self.config.get("name", "Unnamed Camera")
-                raise ValueError(
-                    f"Relative cropping parameter ({param_name}) on {camera_name} is {param_value}, which is invalid. "
-                    f"Relative cropping parameters must be between 0 and 1, where 1 represents the full "
-                    f"width or length of the image. "
-                )
-
-        # Validate digital zoom level
-        digital_zoom = options.get("zoom", {}).get("digital")
-        if digital_zoom and (digital_zoom < 1 or digital_zoom > DIGITAL_ZOOM_MAX):
-            raise ValueError(
-                f"Invalid value for digital_zoom ({digital_zoom}). "
-                f"Digital zoom must >= 1 and <= {DIGITAL_ZOOM_MAX}."
-            )
-
-        # Apply camera specific options
-        self._apply_camera_specific_options(options)
-
-        # Save the options to the config
-        self.config["options"] = options
-
-    @abstractmethod
-    def _apply_camera_specific_options(options: dict) -> None:
-        """Update any camera-specific options, such as resolution, exposure_us, pixel_format, etc."""
-        pass
+        framegrab_config_dict = type(self.config).to_framegrab_config_dict(self.config)
+        framegrab_config_dict["options"] = options
+        # this will validate the new options
+        new_config = FrameGrabberConfig.from_framegrab_config_dict(framegrab_config_dict)
+        self.config = new_config
 
     @abstractmethod
     def release() -> None:
@@ -594,16 +525,28 @@ class FrameGrabber(ABC):
         return False  # re-raise any exceptions that occurred
 
 
-class GenericUSBFrameGrabber(FrameGrabber):
+class FrameGrabberWithSerialNumber(FrameGrabber, ABC):
+    def _default_name(self) -> str:
+        if self.config.serial_number:
+            unnamed_grabber_id = self.config.serial_number
+        else:
+            FrameGrabber.unnamed_grabber_count += 1
+            unnamed_grabber_id = FrameGrabber.unnamed_grabber_count
+
+        autogenerated_name = f"{unnamed_grabber_id} Camera - {unnamed_grabber_id}"
+        return autogenerated_name
+
+
+class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
     """For any generic USB camera, such as a webcam"""
 
     # keep track of the cameras that are already in use so that we don't try to connect to them twice
     indices_in_use = set()
 
-    def __init__(self, config: dict):
-        self.config = config
+    config_class = GenericUSBFrameGrabberConfig
 
-        serial_number = self.config.get("id", {}).get("serial_number")
+    def _initialize_grabber_implementation(self):
+        serial_number = self.config.serial_number
 
         if serial_number and OPERATING_SYSTEM != "Linux":
             logger.warning(
@@ -656,7 +599,7 @@ class GenericUSBFrameGrabber(FrameGrabber):
         if not serial_number:
             for found_cam in found_cams:
                 if idx == found_cam["idx"]:
-                    self.config["id"] = {"serial_number": found_cam["serial_number"]}
+                    self.config.serial_number = found_cam["serial_number"]
                     break
 
         # A valid capture has been found, saving it for later
@@ -732,7 +675,8 @@ class GenericUSBFrameGrabber(FrameGrabber):
         GenericUSBFrameGrabber.indices_in_use.remove(self.idx)
         self.capture.release()
 
-    def _apply_camera_specific_options(self, options: dict) -> None:
+    def apply_options(self, options: dict) -> None:
+        super().apply_options(options)
         self._set_cv2_resolution()
 
         # set the buffer size to 1 to always get the most recent frame
@@ -806,68 +750,25 @@ class RTSPFrameGrabber(FrameGrabber):
         2. If `false`, opens the connection only when needed, which is slower but conserves resources.
     """
 
-    def __init__(self, config: dict):
-        rtsp_url = config.get("id", {}).get("rtsp_url")
-        if not rtsp_url:
-            camera_name = config.get("name", "Unnamed RTSP Stream")
-            raise ValueError(
-                f"No RTSP URL provided for {camera_name}. Please add an rtsp_url attribute to the config under id."
-            )
+    config_class = RTSPFrameGrabberConfig
 
-        self.config = RTSPFrameGrabber._substitute_rtsp_password(config)
-        self.rtsp_url = self.config["id"]["rtsp_url"]
-
+    def _initialize_grabber_implementation(self):
         self.lock = Lock()
         self.run = True
-        self.keep_connection_open = config.get("options", {}).get("keep_connection_open", True)
+        self.config.keep_connection_open = self.config.keep_connection_open
 
-        if self.keep_connection_open:
+        if self.config.keep_connection_open:
             self._open_connection()
             self._init_drain_thread()
 
-    @staticmethod
-    def _substitute_rtsp_password(config: dict) -> dict:
-        """
-        Substitutes the password placeholder in the rtsp_url with the actual password
-        from an environment variable.
-        The URL should take this format
-            Ex: rtsp://admin:{{MY_PASSWORD}}@10.0.0.0/cam/realmonitor?channel=1&subtype=0
-        This function looks for an all-uppercase name between {{ and }} to find an environment
-        variable with that name. If the environment variable is found, its value will be
-        substituted in the rtsp_url.
-        NOTE: This can also work for multiple RTSP URLs in the same config file as long
-            as each one has a unique password placeholder.
-        """
-        pattern = r"\{\{([A-Z_][A-Z0-9_]*?)\}\}"
-        rtsp_url = config.get("id", {}).get("rtsp_url", "")
-        matches = re.findall(pattern, rtsp_url)
-
-        if len(matches) == 0:
-            return config  # make no change to config if no password placeholder is found
-        elif len(matches) > 1:
-            raise ValueError("RTSP URL should contain no more than one placeholder for the password.")
-
-        match = matches[0]
-        password_env_var = os.environ.get(match)
-        if not password_env_var:
-            raise ValueError(f"RTSP URL {rtsp_url} references environment variable {match} which is not set")
-
-        placeholder = "{{" + match + "}}"
-        rtsp_url = rtsp_url.replace(placeholder, password_env_var)
-        config["id"]["rtsp_url"] = rtsp_url
-
-        return config
-
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        if options.get("resolution"):
-            camera_name = self.config.get("name", "Unnamed RTSP Stream")
-            raise ValueError(f"Resolution was set for {camera_name}, but resolution cannot be set for RTSP streams.")
+    def _default_name(self) -> str:
+        return self.config.rtsp_url
 
     def _open_connection(self):
-        self.capture = cv2.VideoCapture(self.rtsp_url)
+        self.capture = cv2.VideoCapture(self.config.rtsp_url)
         if not self.capture.isOpened():
             raise ValueError(
-                f"Could not open RTSP stream: {self.rtsp_url}. Is the RTSP URL correct? Is the camera connected to the network?"
+                f"Could not open RTSP stream: {self.config.rtsp_url}. Is the RTSP URL correct? Is the camera connected to the network?"
             )
         logger.debug(f"Initialized video capture with backend={self.capture.getBackendName()}")
 
@@ -877,7 +778,7 @@ class RTSPFrameGrabber(FrameGrabber):
                 self.capture.release()
 
     def _grab_implementation(self) -> np.ndarray:
-        if not self.keep_connection_open:
+        if not self.config.keep_connection_open:
             self._open_connection()
             try:
                 return self._grab_open()
@@ -888,21 +789,21 @@ class RTSPFrameGrabber(FrameGrabber):
 
     def _grab_open(self) -> np.ndarray:
         with self.lock:
-            ret, frame = self.capture.retrieve() if self.keep_connection_open else self.capture.read()
+            ret, frame = self.capture.retrieve() if self.config.keep_connection_open else self.capture.read()
         if not ret:
             logger.error(f"Could not read frame from {self.capture}")
         return frame
 
     def release(self) -> None:
-        if self.keep_connection_open:
+        if self.config.keep_connection_open:
             self.run = False  # to stop the buffer drain thread
             self._close_connection()
 
     def _init_drain_thread(self):
-        if not self.keep_connection_open:
+        if not self.config.keep_connection_open:
             return  # No need to drain if we're not keeping the connection open
 
-        max_fps = self.config.get("options", {}).get("max_fps", 30)
+        max_fps = self.config.max_fps
         self.drain_rate = 1 / max_fps
         thread = Thread(target=self._drain)
         thread.daemon = True
@@ -915,14 +816,14 @@ class RTSPFrameGrabber(FrameGrabber):
             time.sleep(self.drain_rate)
 
 
-class BaslerFrameGrabber(FrameGrabber):
+class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
     """Basler USB and Basler GigE Cameras"""
+
+    config_class = BaslerFrameGrabberConfig
 
     serial_numbers_in_use = set()
 
-    def __init__(self, config: dict):
-        self.config = config
-
+    def _initialize_grabber_implementation(self):
         # Basler cameras grab frames in different pixel formats, most of which cannot be displayed directly
         # by OpenCV. self.convert will convert them to BGR which can be used by OpenCV
         self.converter = pylon.ImageFormatConverter()
@@ -937,7 +838,7 @@ class BaslerFrameGrabber(FrameGrabber):
 
         # Attempt to match the provided serial number with a plugged in device. If no serial number was provided, just
         # pick the first found device that is not currently in use.
-        serial_number = config.get("id", {}).get("serial_number")
+        serial_number = self.config.serial_number
         for device in devices:
             curr_serial_number = device.GetSerialNumber()
             if curr_serial_number in BaslerFrameGrabber.serial_numbers_in_use:
@@ -954,12 +855,12 @@ class BaslerFrameGrabber(FrameGrabber):
             )
 
         # In case the serial_number wasn't provided by the user, add it to the config
-        self.config["id"] = {"serial_number": curr_serial_number}
+        self.config.serial_number = curr_serial_number
 
         # A valid camera has been found, remember the serial_number to prevent
         # other FrameGrabbers from using it
         self.camera = camera
-        BaslerFrameGrabber.serial_numbers_in_use.add(self.config["id"]["serial_number"])
+        BaslerFrameGrabber.serial_numbers_in_use.add(self.config.serial_number)
 
     def _grab_implementation(self) -> np.ndarray:
         with self.camera.GrabOne(2000) as result:
@@ -981,7 +882,7 @@ class BaslerFrameGrabber(FrameGrabber):
 
                 error_message = "\n".join(f"{k}: {v}" for k, v in error_info.items())
 
-                camera_name = self.config.get("name", "Unnamed Basler Camera")
+                camera_name = self.config.name
                 logger.warning(
                     f"Could not grab a frame from {camera_name}\n"
                     f"{error_message}\n"
@@ -993,31 +894,29 @@ class BaslerFrameGrabber(FrameGrabber):
         return frame
 
     def release(self) -> None:
-        BaslerFrameGrabber.serial_numbers_in_use.remove(self.config["id"]["serial_number"])
+        BaslerFrameGrabber.serial_numbers_in_use.remove(self.config.serial_number)
         self.camera.Close()
 
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        if options.get("resolution"):
-            raise ValueError("FrameGrab does not support setting resolution on Basler cameras.")
-
-        basler_options = options.get("basler", {})
+    def apply_options(self, options: dict) -> None:
+        super().apply_options(options)
+        basler_options = self.config.basler_options or {}
         node_map = self.camera.GetNodeMap()
         for property_name, value in basler_options.items():
             node = node_map.GetNode(property_name)
             node.SetValue(value)
 
 
-class RealSenseFrameGrabber(FrameGrabber):
+class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
     """Intel RealSense Depth Camera"""
 
-    def __init__(self, config: dict):
-        self.config = config
+    config_class = RealSenseFrameGrabberConfig
 
+    def _initialize_grabber_implementation(self):
         ctx = rs.context()
         if len(ctx.devices) == 0:
             raise ValueError("No Intel RealSense cameras detected. Is your camera plugged in?")
 
-        provided_serial_number = self.config.get("id", {}).get("serial_number")
+        provided_serial_number = self.config.serial_number
 
         # Iterate through each detected camera and attempt to match it with the provided camera config
         for device in ctx.devices:
@@ -1047,7 +946,7 @@ class RealSenseFrameGrabber(FrameGrabber):
         self.rs_config = rs_config
 
         # In case the serial_number wasn't provided by the user, add it to the config
-        self.config["id"] = {"serial_number": curr_serial_number}
+        self.config.serial_number = curr_serial_number
 
     def _grab_implementation(self) -> np.ndarray:
         frames = self.pipeline.wait_for_frames()
@@ -1057,7 +956,7 @@ class RealSenseFrameGrabber(FrameGrabber):
         color_image = cv2.cvtColor(np.asanyarray(color_frame.get_data()), cv2.COLOR_BGR2RGB)
 
         # If side_by_side is enabled, get a depth frame and horizontally stack it with color frame
-        display_side_by_side = self.config.get("options", {}).get("depth", {}).get("side_by_side")
+        display_side_by_side = self.config.side_by_side_depth
         if display_side_by_side:
             depth_frame = frames.get_depth_frame()
             depth_image = np.asanyarray(depth_frame.get_data())
@@ -1088,31 +987,29 @@ class RealSenseFrameGrabber(FrameGrabber):
     def release(self) -> None:
         self.pipeline.stop()
 
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        # Some special handling for changing the resolution of Intel RealSense cameras
-        new_width = options.get("resolution", {}).get("width")
-        new_height = options.get("resolution", {}).get("height")
-        if (new_width and not new_height) or (not new_width and new_height):
-            camera_name = self.config.get("name", "Unnamed RealSense Camera")
-            raise ValueError(
-                f"Invalid resolution settings for {camera_name}. Please provide both a width and a height."
-            )
-        elif new_width and new_height:
+    def apply_options(self, options: dict) -> None:
+        """Some special handling for changing the resolution of Intel RealSense cameras"""
+        old_width = self.config.resolution_width
+        old_height = self.config.resolution_height
+
+        super().apply_options(options)
+
+        new_width = self.config.resolution_width
+        new_height = self.config.resolution_height
+
+        if (new_width and new_height) and (new_width != old_width or new_height != old_height):
             self.pipeline.stop()  # pipeline needs to be temporarily stopped in order to change the resolution
             self.rs_config.enable_stream(rs.stream.color, new_width, new_height)
             self.rs_config.enable_stream(rs.stream.depth, new_width, new_height)
             self.pipeline.start(self.rs_config)  # Restart the pipeline with the new configuration
-        else:
-            # If the user didn't provide a resolution, do nothing
-            pass
 
 
-class RaspberryPiCSI2FrameGrabber(FrameGrabber):
+class RaspberryPiCSI2FrameGrabber(FrameGrabberWithSerialNumber):
     "For CSI2 cameras connected to Raspberry Pis through their dedicated camera port"
 
-    def __init__(self, config: dict):
-        self.config = config
+    config_class = RaspberryPiCSI2FrameGrabberConfig
 
+    def _initialize_grabber_implementation(self):
         # This will also detect USB cameras, but according to the documentation CSI2
         # cameras attached to the dedicated camera port will always come before USB
         # cameras in the resulting list of camera dictionaries
@@ -1140,10 +1037,6 @@ class RaspberryPiCSI2FrameGrabber(FrameGrabber):
 
         return frame
 
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        if options.get("resolution"):
-            raise ValueError("FrameGrab does not support setting resolution on Raspberry Pi CSI2 cameras.")
-
     def release(self) -> None:
         self.camera.close()
 
@@ -1157,35 +1050,22 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
         both CPU and network bandwidth but has higher latency. In practice, roughly 1FPS is achievable with this strategy.
     """
 
-    def __init__(self, config: dict):
-        hls_url = config.get("id", {}).get("hls_url")
-        if not hls_url:
-            camera_name = config.get("name", "Unnamed HLS Stream")
-            raise ValueError(
-                f"No HLS URL provided for {camera_name}. Please add an hls_url attribute to the config under id."
-            )
+    config_class = HttpLiveStreamingFrameGrabberConfig
 
+    def _initialize_grabber_implementation(self):
         self.type = "HLS"
-        self.config = config
-        self.hls_url = self.config["id"]["hls_url"]
-
         self.lock = Lock()
-        self.keep_connection_open = config.get("options", {}).get("keep_connection_open", True)
 
-        if self.keep_connection_open:
+        if self.config.keep_connection_open:
             self._open_connection()
 
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        if options.get("resolution"):
-            camera_name = self.config.get("name", f"Unnamed {self.type} Stream")
-            raise ValueError(
-                f"Resolution was set for {camera_name}, but resolution cannot be set for {self.type} streams."
-            )
+    def _default_name(self) -> str:
+        return self.config.hls_url
 
     def _open_connection(self):
-        self.capture = cv2.VideoCapture(self.hls_url)
+        self.capture = cv2.VideoCapture(self.config.hls_url)
         if not self.capture.isOpened():
-            raise ValueError(f"Could not open {self.type} stream: {self.hls_url}. Is the HLS URL correct?")
+            raise ValueError(f"Could not open {self.type} stream: {self.config.hls_url}. Is the HLS URL correct?")
         logger.warning(f"Initialized video capture with backend={self.capture.getBackendName()}")
 
     def _close_connection(self):
@@ -1195,7 +1075,7 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
                 self.capture.release()
 
     def _grab_implementation(self) -> np.ndarray:
-        if not self.keep_connection_open:
+        if not self.config.keep_connection_open:
             self._open_connection()
             try:
                 return self._grab_open()
@@ -1212,7 +1092,7 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
         return frame
 
     def release(self) -> None:
-        if self.keep_connection_open:
+        if self.config.keep_connection_open:
             self._close_connection()
 
 
@@ -1225,30 +1105,18 @@ class YouTubeLiveFrameGrabber(HttpLiveStreamingFrameGrabber):
         both CPU and network bandwidth but has higher latency. In practice, roughly 1FPS is achievable with this strategy.
     """
 
-    def __init__(self, config: dict):
-        youtube_url = config.get("id", {}).get("youtube_url")
-        if not youtube_url:
-            camera_name = config.get("name", "Unnamed YouTube Live Stream")
-            raise ValueError(
-                f"No YouTube Live URL provided for {camera_name}. Please add an youtube_url attribute to the config under id."
-            )
+    config_class = YouTubeLiveFrameGrabberConfig
 
+    def _initialize_grabber_implementation(self):
         self.type = "YouTube Live"
-        self.hls_url = self._extract_hls_url(youtube_url)
-        self.config = config
 
         self.lock = Lock()
-        self.keep_connection_open = config.get("options", {}).get("keep_connection_open", True)
 
-        if self.keep_connection_open:
+        if self.config.keep_connection_open:
             self._open_connection()
 
-    def _extract_hls_url(self, youtube_url: str) -> str:
-        """Extracts the HLS URL from a YouTube Live URL."""
-        available_streams = streamlink.streams(youtube_url)
-        if "best" not in available_streams:
-            raise ValueError(f"No available HLS stream for {youtube_url=}\n{available_streams=}")
-        return available_streams["best"].url
+    def _default_name(self) -> str:
+        return self.config.youtube_url
 
 
 class FileStreamFrameGrabber(FrameGrabber):
@@ -1272,38 +1140,33 @@ class FileStreamFrameGrabber(FrameGrabber):
         grabber = FileStreamFrameGrabber(config)
     """
 
-    def __init__(self, config: dict):
-        self.config = config
-        filename = config.get("id", {}).get("filename")
-        if not filename:
-            raise ValueError("No filename provided in config under id.filename")
+    config_class = FileStreamFrameGrabberConfig
 
-        self.fps_target = config.get("options", {}).get(
-            "max_fps",
-            0,  # 0 means no dropping of frames
-        )
-        if self.fps_target < 0:
-            raise ValueError(f"Target FPS cannot be negative: {self.fps_target}")
+    def _initialize_grabber_implementation(self):
         self.remainder = 0.0
 
-        self.capture = cv2.VideoCapture(filename)
+        self.capture = cv2.VideoCapture(self.config.filename)
         if not self.capture.isOpened():
-            raise ValueError(f"Could not open file {filename}. Is it a valid video file?")
+            raise ValueError(f"Could not open file {self.config.filename}. Is it a valid video file?")
         backend = self.capture.getBackendName()
         logger.debug(f"Initialized video capture with {backend=}")
 
         ret, _ = self.capture.read()
         if not ret:
             self.capture.release()
-            raise ValueError(f"Could not read first frame of file {filename}. Is it a valid video file?")
+            raise ValueError(f"Could not read first frame of file {self.config.filename}. Is it a valid video file?")
 
         self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
         if self.fps_source <= 0.1:
             logger.warning(f"Captured framerate is very low or zero: {self.fps_source} FPS")
-        self.should_drop_frames = self.fps_target > 0 and self.fps_target < self.fps_source
+
+        self.should_drop_frames = self.config.max_fps > 0 and self.config.max_fps < self.fps_source
         logger.debug(
-            f"Source FPS: {self.fps_source}, Target FPS: {self.fps_target}, Drop Frames: {self.should_drop_frames}"
+            f"Source FPS: {self.fps_source}, Target FPS: {self.config.max_fps}, Drop Frames: {self.should_drop_frames}"
         )
+
+    def _default_name(self) -> str:
+        return self.config.filename
 
     def _grab_implementation(self) -> np.ndarray:
         """Grab a frame from the video file, decimating if needed to match target FPS.
@@ -1324,7 +1187,7 @@ class FileStreamFrameGrabber(FrameGrabber):
 
     def _drop_frames(self) -> None:
         """Drop frames to achieve target frame rate using frame position seeking."""
-        drop_frames = (self.fps_source / self.fps_target) - 1 + self.remainder
+        drop_frames = (self.fps_source / self.config.max_fps) - 1 + self.remainder
         frames_to_drop = round(drop_frames)
 
         if frames_to_drop > 0:
@@ -1332,19 +1195,7 @@ class FileStreamFrameGrabber(FrameGrabber):
             self.capture.set(cv2.CAP_PROP_POS_FRAMES, current_pos + frames_to_drop)
 
         self.remainder = round(drop_frames - frames_to_drop, 2)
-        logger.debug(f"Dropped {frames_to_drop} frames to meet {self.fps_target} FPS target")
-
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        """Handle camera-specific options for file streams.
-
-        For video files, most camera options like resolution cannot be modified since the video
-        is pre-recorded. This method validates that unsupported options aren't being set.
-        """
-        if options.get("resolution"):
-            camera_name = self.config.get("name", "Unnamed File Stream")
-            raise ValueError(
-                f"Resolution was set for {camera_name}, but resolution cannot be modified for video files."
-            )
+        logger.debug(f"Dropped {frames_to_drop} frames to meet {self.config.max_fps} FPS target")
 
     def release(self) -> None:
         """Release the video capture resources."""
@@ -1352,7 +1203,7 @@ class FileStreamFrameGrabber(FrameGrabber):
             self.capture.release()
 
 
-class MockFrameGrabber(FrameGrabber):
+class MockFrameGrabber(FrameGrabberWithSerialNumber):
     """A mock camera class for testing purposes"""
 
     # Represents the serial numbers of the mock cameras that are discoverable
@@ -1361,10 +1212,10 @@ class MockFrameGrabber(FrameGrabber):
     # Keeps track of the available serial numbers so that we don't try to connect to them twice
     serial_numbers_in_use = set()
 
-    def __init__(self, config: dict):
-        self.config = config
+    config_class = MockFrameGrabberConfig
 
-        provided_serial_number = self.config.get("id", {}).get("serial_number")
+    def _initialize_grabber_implementation(self):
+        provided_serial_number = self.config.serial_number
 
         # Iterate through each detected camera and attempt to match it with the provided camera config
         for curr_serial_number in MockFrameGrabber.available_serial_numbers:
@@ -1381,16 +1232,13 @@ class MockFrameGrabber(FrameGrabber):
         MockFrameGrabber.serial_numbers_in_use.add(curr_serial_number)
 
         # In case the serial_number wasn't provided by the user, add it to the config
-        self.config["id"] = {"serial_number": curr_serial_number}
+        self.config.serial_number = curr_serial_number
 
     def _grab_implementation(self) -> np.ndarray:
-        width = self.config.get("options", {}).get("resolution", {}).get("width", 640)
-        height = self.config.get("options", {}).get("resolution", {}).get("height", 480)
+        width = self.config.resolution_width or 640
+        height = self.config.resolution_height or 480
 
         return np.zeros((height, width, 3), dtype=np.uint8)
 
     def release(self) -> None:
-        MockFrameGrabber.serial_numbers_in_use.remove(self.config["id"]["serial_number"])
-
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        pass  # no action necessary for mock cameras
+        MockFrameGrabber.serial_numbers_in_use.remove(self.config.serial_number)
