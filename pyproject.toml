@@ -33,8 +33,6 @@ all = ["pypylon", "pyrealsense2", "picamera2", "streamlink"]
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"
 pytest = "^8.3.3"
-keyring = "^25.6.0"
-secretstorage = "^3.3.3"
 
 [build-system]
 requires = ["poetry-core"]
