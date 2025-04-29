@@ -1,11 +1,23 @@
 from framegrab import FrameGrabber
 import cv2
 
+# import os
+# config = {
+#     'input_type': 'rtsp',
+#     'id': {
+#         'rtsp_url': os.environ.get('RTSP_URL')
+#     }
+#     }
+# grabber = FrameGrabber.create_grabber(config)
+# frame = grabber.grab()
+# print(frame.shape)
+# exit()
+
 config = {
     'input_type': 'ros2',
     'name': 'My ROS2 Camera',
     'id': {
-        'topic': '/groundlight/sample_image'
+        'topic': '/groundlight/sample_image/compressed'
     },
 }
 

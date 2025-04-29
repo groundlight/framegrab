@@ -6,7 +6,6 @@ import time
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
 from typing import Dict, List, Optional, Union
-from urllib.parse import urlparse
 
 import cv2
 import numpy as np
@@ -24,6 +23,7 @@ from .config import (
     RealSenseFrameGrabberConfig,
     RTSPFrameGrabberConfig,
     YouTubeLiveFrameGrabberConfig,
+    ROS2GrabberConfig,
 )
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
@@ -63,6 +63,11 @@ try:
     import streamlink
 except ImportError as e:
     streamlink = UnavailableModuleOrObject(e)
+
+try:
+    from .ros2_client import ROS2Client
+except ImportError as e:
+    ROS2Client = UnavailableModuleOrObject(e)
 
 logger = logging.getLogger(__name__)
 
@@ -292,7 +297,7 @@ class FrameGrabber(ABC):
         elif input_type == InputTypes.MOCK:
             grabber = MockFrameGrabber(model_config)
         elif input_type == InputTypes.ROS2:
-            grabber = ROS2FrameGrabber(config)
+            grabber = ROS2FrameGrabber(model_config)
         else:
             raise ValueError(
                 f"The provided input_type ({input_type}) is not valid. Valid types are {InputTypes.get_options()}"
@@ -528,44 +533,33 @@ class FrameGrabber(ABC):
 
 
 class ROS2FrameGrabber(FrameGrabber):
-    def __init__(self, config: dict):
-        self.config = config
-
-        topic = self.config.get("id", {}).get("topic")
-        if not topic:
-            raise ValueError("No topic provided for ROS2FrameGrabber")
-
+    
+    config_class = ROS2GrabberConfig
+    
+    def _initialize_grabber_implementation(self):
+        topic = self.config.topic
         self._ros2_client = ROS2Client(topic)
+    
+    # def __init__(self, config: dict):
+    #     self.config = config
+
+    #     topic = self.config.get("id", {}).get("topic")
+    #     if not topic:
+    #         raise ValueError("No topic provided for ROS2FrameGrabber")
+
+    #     self._ros2_client = ROS2Client(topic)
 
     def _grab_implementation(self) -> np.ndarray:
         return self._ros2_client.grab()
 
     def _apply_camera_specific_options(self, options: dict) -> None:
         pass  # no camera-specific options for ROS2FrameGrabber
+    
+    def _default_name(self) -> str:
+        return f'ROS2 Topic {self.config.topic}'
 
     def release(self) -> None:
         self._ros2_client.release()
-
-
-class ROS2FrameGrabber(FrameGrabber):
-    def __init__(self, config: dict):
-        self.config = config
-
-        topic = self.config.get("id", {}).get("topic")
-        if not topic:
-            raise ValueError("No topic provided for ROS2FrameGrabber")
-
-        self._ros2_client = ROS2Client(topic)
-
-    def _grab_implementation(self) -> np.ndarray:
-        return self._ros2_client.grab()
-
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        pass  # no camera-specific options for ROS2FrameGrabber
-
-    def release(self) -> None:
-        self._ros2_client.release()
-
 
 class FrameGrabberWithSerialNumber(FrameGrabber, ABC):
     def _default_name(self) -> str:

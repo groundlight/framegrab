@@ -21,7 +21,7 @@ from pydantic import (
     model_validator,
 )
 
-from .unavailable_module import UnavailableModule
+from .unavailable_module import UnavailableModuleOrObject
 
 DIGITAL_ZOOM_MAX = 4
 
@@ -29,7 +29,7 @@ DIGITAL_ZOOM_MAX = 4
 try:
     import streamlink
 except ImportError as e:
-    streamlink = UnavailableModule(e)
+    streamlink = UnavailableModuleOrObject(e)
 
 
 class InputTypes(Enum):
@@ -132,6 +132,7 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
             InputTypes.YOUTUBE_LIVE: YouTubeLiveFrameGrabberConfig,
             InputTypes.FILE_STREAM: FileStreamFrameGrabberConfig,
             InputTypes.MOCK: MockFrameGrabberConfig,
+            InputTypes.ROS2: ROS2GrabberConfig,
         }
         return input_type_to_class
 
@@ -164,6 +165,7 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
             InputTypes.YOUTUBE_LIVE: "youtube_url",
             InputTypes.FILE_STREAM: "filename",
             InputTypes.MOCK: "serial_number",
+            InputTypes.ROS2: "topic",
         }
         return input_type_to_id
 
@@ -517,3 +519,8 @@ class MockFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for Mock Frame Grabber."""
 
     serial_number: Optional[str] = None
+    
+class ROS2GrabberConfig(FrameGrabberConfig):
+    """Configuration class for ROS 2 Grabber."""
+
+    topic: str = Field(..., pattern=r"^/")

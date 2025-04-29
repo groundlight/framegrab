@@ -35,10 +35,12 @@ def generate_image(width: int = 640, height: int = 480) -> np.ndarray:
 class SampleCameraPublisher(Node):
     def __init__(self):
         super().__init__('sample_camera_publisher', namespace='groundlight')
-        self.publisher_ = self.create_publisher(CompressedImage, 'sample_image/compressed', 10)
+        self.publisher = self.create_publisher(CompressedImage, 'sample_image/compressed', 10)
         timer_period = 1 / 15
         self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.get_logger().info("Static compressed image publisher started")
+        
+        resolved_topic = self.resolve_topic_name(self.publisher.topic)
+        self.get_logger().info(f"Publishing images to {resolved_topic}...")
 
     def timer_callback(self):
         image = generate_image()
@@ -55,8 +57,7 @@ class SampleCameraPublisher(Node):
         msg.format = 'jpeg'
         msg.data = encoded_image.tobytes()
 
-        self.publisher_.publish(msg)
-        self.get_logger().info("Published a compressed image")
+        self.publisher.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)
