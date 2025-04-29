@@ -97,6 +97,8 @@ class InputTypes:
 class FrameGrabber(ABC):
     # for naming FrameGrabber objects that have no user-defined name
     unnamed_grabber_count = 0
+
+
 class FrameGrabber(ABC):
     # for naming FrameGrabber objects that have no user-defined name
     unnamed_grabber_count = 0
