@@ -21,9 +21,9 @@ from .config import (
     MockFrameGrabberConfig,
     RaspberryPiCSI2FrameGrabberConfig,
     RealSenseFrameGrabberConfig,
+    ROS2GrabberConfig,
     RTSPFrameGrabberConfig,
     YouTubeLiveFrameGrabberConfig,
-    ROS2GrabberConfig,
 )
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
@@ -534,13 +534,13 @@ class FrameGrabber(ABC):
 
 
 class ROS2FrameGrabber(FrameGrabber):
-    
+
     config_class = ROS2GrabberConfig
-    
+
     def _initialize_grabber_implementation(self):
         topic = self.config.topic
         self._ros2_client = ROS2Client(topic)
-    
+
     # def __init__(self, config: dict):
     #     self.config = config
 
@@ -555,12 +555,13 @@ class ROS2FrameGrabber(FrameGrabber):
 
     def _apply_camera_specific_options(self, options: dict) -> None:
         pass  # no camera-specific options for ROS2FrameGrabber
-    
+
     def _default_name(self) -> str:
-        return f'ROS2 Topic {self.config.topic}'
+        return f"ROS2 Topic {self.config.topic}"
 
     def release(self) -> None:
         self._ros2_client.release()
+
 
 class FrameGrabberWithSerialNumber(FrameGrabber, ABC):
     def _default_name(self) -> str:

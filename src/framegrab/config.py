@@ -519,7 +519,8 @@ class MockFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for Mock Frame Grabber."""
 
     serial_number: Optional[str] = None
-    
+
+
 class ROS2GrabberConfig(FrameGrabberConfig):
     """Configuration class for ROS 2 Grabber."""
 
