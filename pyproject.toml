@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "framegrab"
-version = "0.10.1"
+version = "0.11.0"
 description = "Easily grab frames from cameras or streams"
 authors = ["Groundlight <info@groundlight.ai>"]
 license = "MIT"
@@ -33,6 +33,8 @@ all = ["pypylon", "pyrealsense2", "picamera2", "streamlink"]
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"
 pytest = "^8.3.3"
+keyring = "^25.6.0"
+secretstorage = "^3.3.3"
 
 [build-system]
 requires = ["poetry-core"]
