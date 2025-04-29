@@ -396,7 +396,7 @@ RealSenseFrameGrabberConfig:
       anyOf:
       - type: boolean
       - type: 'null'
-      default: false
+      default: null
       title: Side By Side Depth
   title: RealSenseFrameGrabberConfig
   type: object
