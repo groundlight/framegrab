@@ -74,6 +74,7 @@ logger = logging.getLogger(__name__)
 OPERATING_SYSTEM = platform.system()
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
 
+
 class FrameGrabber(ABC):
     # for naming FrameGrabber objects that have no user-defined name
     unnamed_grabber_count = 0
