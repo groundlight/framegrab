@@ -3,7 +3,7 @@
 
 FrameGrab is an open-source Python library designed to make it easy to grab frames (images) from cameras or streams. The library supports generic USB cameras (such as webcams), RTSP streams, Basler USB cameras, Basler GigE cameras, Intel RealSense depth cameras, and video file streams (mp4, mov, mjpeg, avi, etc.).
 
-FrameGrab also provides basic motion detection functionality. FrameGrab requires Python 3.7 or higher.
+FrameGrab also provides basic motion detection functionality. FrameGrab requires Python 3.9 or higher.
 
 ## Table of Contents
 
@@ -72,16 +72,31 @@ lists the sub-commands, including `autodiscover` and `preview`.
 
 ### Frame Grabbing
 
-Frame Grabbers are defined by a configuration dict which is usually stored as YAML.  The configuration combines the camera type, the camera ID, and the camera options.  The configuration is passed to the `FrameGrabber.create_grabber` method to create a grabber object.  The grabber object can then be used to grab frames from the camera.
+Frame Grabbers are defined by a configuration parameter. This parameter can take several forms: a python FrameGrabConfig object, a python dictionary object, a yaml string, or a yaml file.  The configuration combines the camera type, the camera ID, and the camera options.  The configuration is passed to the `FrameGrabber.create_grabber` method to create a grabber object.  The grabber object can then be used to grab frames from the camera.
 
-
-`config` can contain many details and settings about your camera, but only `input_type` is required. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense`, `basler`, `rpi_csi2`, `hls`, `youtube_live`, and `file_stream`.
+`config` can contain many details and settings about your camera must contain information about the `input_type` of the camera. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense`, `basler`, `rpi_csi2`, `hls`, `youtube_live`, and `file_stream`.
 
 Here's an example of a single USB camera configured with several options:
 ```python
+from framegrab.config import GenericUSBFrameGrabberConfig, InputTypes
+config = GenericUSBFrameGrabberConfig(serial_number="1234567890", resolution_width=1280,resolution_height=720, digital_zoom=1.5)
+grabber = FrameGrabber.create_grabber(config)
+```
+You can also create a config using the `FrameGrabberConfig.create` method:
+```python
+from framegrab import FrameGrabber
+from framegrab.config import FrameGrabberConfig
+config = FrameGrabberConfig.create(input_type=InputTypes.GENERIC_USB, serial_number="1234567890", resolution_width=1280,resolution_height=720, digital_zoom=1.5)
+grabber = FrameGrabber.create_grabber(config)
+```
+
+If you'd prefer to store your config as a yaml you can use the framegrab serialized format (we use the same format creating with dictionaries as well)
+```python
 config = """
-name: Raspberry Pi Ribbon Cable Camera
-input_type: rpi_csi2
+name: Generic USB Camera
+input_type: generic_usb
+id:
+    serial_number: 1234567890
 options:
     resolution:
         height: 720
@@ -93,11 +108,14 @@ options:
 grabber = FrameGrabber.create_grabber_yaml(config)
 ```
 
+
 To get a frame, simply run:
 ```python
 frame = grabber.grab()
 ```
-You can also change the options after the grabber is created.
+
+You can also change the options after the grabber is created. The options passed in
+must be a dictionary according to the framegrabber serialized format.
 ```python
 new_options = {
     'resolution': {
@@ -174,7 +192,12 @@ for grabber in grabbers.values():
     grabber.release()
 ```
 ### Configurations
-The table below shows all available configurations and the cameras to which they apply.
+#### Dictionary or YamlFormat
+The table below shows all available configurations and the cameras to which they apply. This is the format used when creating grabbers from dictionaries or yaml strings. If you want to use the python FrameGrabberConfig object, the format is slightly different to optimize for python readability (see format and examples). We use the python pydantic model to validate the dictionary and yaml format
+so if you want to know the correct format of your parameters, you can read more in config.py, or 
+use the python pydantic model to validate your configuration.
+
+
 | Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense | Raspberry Pi CSI2 | HLS | YouTube Live | File Stream |
 |----------------------------|-----------------|------------|-----------|-----------|-----------|-----------|-----------|-----------|-------------|
 | name                       | On Robot Arm    | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
@@ -202,6 +225,468 @@ The table below shows all available configurations and the cameras to which they
 
 
 In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
+
+#### python FrameGrabberConfig format
+You can also specify a configuration using the python FrameGrabberConfig object. This is useful if 
+you want quick validation of your configuration and your framegrab data stored under a validated, centralized object.
+
+##### Config Schema
+```yaml
+GenericUSBFrameGrabberConfig:
+  additionalProperties: false
+  description: Configuration class for Generic USB Frame Grabber.
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4
+        minimum: 1
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    name:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Name
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+    resolution_height:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: null
+      title: Resolution Height
+    resolution_width:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: null
+      title: Resolution Width
+    serial_number:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Serial Number
+  title: GenericUSBFrameGrabberConfig
+  type: object
+
+RTSPFrameGrabberConfig:
+  additionalProperties: false
+  description: Configuration class for RTSP Frame Grabber.
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4
+        minimum: 1
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    keep_connection_open:
+      default: true
+      title: Keep Connection Open
+      type: boolean
+    max_fps:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 30
+      title: Max Fps
+    name:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Name
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+    rtsp_url:
+      pattern: ^rtsp://
+      title: Rtsp Url
+      type: string
+  required:
+  - rtsp_url
+  title: RTSPFrameGrabberConfig
+  type: object
+
+RealSenseFrameGrabberConfig:
+  additionalProperties: false
+  description: Configuration class for RealSense Frame Grabber.
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4
+        minimum: 1
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    name:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Name
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+    resolution_height:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: null
+      title: Resolution Height
+    resolution_width:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: null
+      title: Resolution Width
+    serial_number:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Serial Number
+    side_by_side_depth:
+      anyOf:
+      - type: boolean
+      - type: 'null'
+      default: null
+      title: Side By Side Depth
+  title: RealSenseFrameGrabberConfig
+  type: object
+
+BaslerFrameGrabberConfig:
+  additionalProperties: false
+  description: Configuration class for Basler Frame Grabber.
+  properties:
+    basler_options:
+      anyOf:
+      - additionalProperties: true
+        type: object
+      - type: 'null'
+      default: null
+      title: Basler Options
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4
+        minimum: 1
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    name:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Name
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+    serial_number:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Serial Number
+  title: BaslerFrameGrabberConfig
+  type: object
+
+RaspberryPiCSI2FrameGrabberConfig:
+  additionalProperties: false
+  description: Configuration class for Raspberry Pi CSI-2 Frame Grabber.
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4
+        minimum: 1
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    name:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Name
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+  title: RaspberryPiCSI2FrameGrabberConfig
+  type: object
+
+HttpLiveStreamingFrameGrabberConfig:
+  additionalProperties: false
+  description: Configuration class for HTTP Live Streaming Frame Grabber.
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4
+        minimum: 1
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    hls_url:
+      pattern: ^https?://
+      title: Hls Url
+      type: string
+    keep_connection_open:
+      default: true
+      title: Keep Connection Open
+      type: boolean
+    name:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Name
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+  required:
+  - hls_url
+  title: HttpLiveStreamingFrameGrabberConfig
+  type: object
+
+YouTubeLiveFrameGrabberConfig:
+  additionalProperties: false
+  description: Configuration class for YouTube Live Frame Grabber.
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4
+        minimum: 1
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    keep_connection_open:
+      default: true
+      title: Keep Connection Open
+      type: boolean
+    name:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Name
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+    youtube_url:
+      pattern: ^https?://
+      title: Youtube Url
+      type: string
+  required:
+  - youtube_url
+  title: YouTubeLiveFrameGrabberConfig
+  type: object
+
+FileStreamFrameGrabberConfig:
+  additionalProperties: false
+  description: Configuration class for File Stream Frame Grabber.
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4
+        minimum: 1
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    filename:
+      pattern: ^[\w\-/]+\.mp4|mov|mjpeg$
+      title: Filename
+      type: string
+    max_fps:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 30
+      title: Max Fps
+    name:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Name
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+  required:
+  - filename
+  title: FileStreamFrameGrabberConfig
+  type: object
+
+MockFrameGrabberConfig:
+  additionalProperties: false
+  description: Configuration class for Mock Frame Grabber.
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4
+        minimum: 1
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    name:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Name
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+    resolution_height:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: null
+      title: Resolution Height
+    resolution_width:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: null
+      title: Resolution Width
+    serial_number:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Serial Number
+  title: MockFrameGrabberConfig
+  type: object
+
+```
 
 ### Autodiscovery
 Autodiscovery automatically connects to cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense`, `basler`, and ONVIF supported `rtsp` cameras. Note that `rpi_csi2` cameras are not yet supported by autodiscover. Default configurations will be loaded for each camera. Note that discovery of RTSP cameras will be disabled by default but can be enabled by setting `rtsp_discover_mode`. Refer to [RTSP Discovery](#rtsp-discovery) section for different options.
