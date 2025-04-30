@@ -337,3 +337,4 @@ class TestAllGrabberTypes(unittest.TestCase):
         # this won't work because there are multiple input types that could be mapped to the serial_number field
         with self.assertRaises(ValueError):
             FrameGrabberConfig.create(serial_number="1234567890", resolution_width=640, resolution_height=480, digital_zoom=2)
+            
