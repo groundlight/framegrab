@@ -520,10 +520,6 @@ class FrameGrabber(ABC):
         framegrab_config_dict["options"] = options
         # this will validate the new options
         new_config = FrameGrabberConfig.from_framegrab_config_dict(framegrab_config_dict)
-<<<<<<< HEAD
-=======
-        print("new_config", new_config)
->>>>>>> 9d11453356c2e6479a02db9a93f33bfc9f0e8559
         self.config = new_config
 
     @abstractmethod
