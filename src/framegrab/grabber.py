@@ -499,13 +499,13 @@ class FrameGrabber(ABC):
             current_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
             if new_height != current_height:
                 self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
-                
+
     def _get_framegrab_config_dict(self) -> dict:
         """
         Converts the grabber's pydantic config model as a dictionary and returns it.
         """
         return type(self.config).to_framegrab_config_dict(self.config)
-                
+
     def get_options(self) -> dict:
         """
         Returns the grabbers options as a dictionary
@@ -520,6 +520,7 @@ class FrameGrabber(ABC):
         framegrab_config_dict["options"] = options
         # this will validate the new options
         new_config = FrameGrabberConfig.from_framegrab_config_dict(framegrab_config_dict)
+        print('new_config', new_config)
         self.config = new_config
 
     @abstractmethod
