@@ -283,7 +283,14 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
                 except KeyError:
                     continue
             raise ValueError("Could not determine input type from provided arguments")
-
+        
+    @property
+    def options(self) -> dict:
+        """
+        Return the FrameGrabber options portion of the config as a dictionary,
+        consistent with the 'options' key in the framegrab standard format.
+        """
+        return self.to_framegrab_config_dict().get("options", {})
 
 class WithResolutionMixin(FrameGrabberConfig, ABC):
     """Mixin class to add resolution configuration to FrameGrabberConfig."""
