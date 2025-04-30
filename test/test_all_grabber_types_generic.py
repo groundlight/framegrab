@@ -337,3 +337,21 @@ class TestAllGrabberTypes(unittest.TestCase):
         # this won't work because there are multiple input types that could be mapped to the serial_number field
         with self.assertRaises(ValueError):
             FrameGrabberConfig.create(serial_number="1234567890", resolution_width=640, resolution_height=480, digital_zoom=2)
+            
+    # def test_get_and_apply_options(self):
+    #     """
+    #     Test that we can get the grabber's options and make an update to the options
+    #     """
+    #     original_zoom = 2.0
+    #     new_zoom = 2.1
+        
+    #     config = MockFrameGrabberConfig(digital_zoom=original_zoom)
+    #     grabber = FrameGrabber.create_grabber(config)
+
+    #     assert grabber.config.get_options() == {'zoom': {'digital': original_zoom}}
+        
+    #     new_options = grabber.config.get_options()
+    #     new_options["zoom"] = {'digital': new_zoom}
+    #     grabber.apply_options(new_options)
+    #     options = grabber.config.get_options()
+    #     assert options == {'zoom': {'digital': new_zoom}}
