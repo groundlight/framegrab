@@ -1,58 +1,60 @@
+import argparse
 from framegrab import FrameGrabber
 import cv2
 
-# import os
-# config = {
-#     'input_type': 'rtsp',
-#     'id': {
-#         'rtsp_url': os.environ.get('RTSP_URL')
-#     }
-#     }
-# grabber = FrameGrabber.create_grabber(config)
-# frame = grabber.grab()
-# print(frame.shape)
-# exit()
+def main():
+    parser = argparse.ArgumentParser(description="FrameGrab demo for ROS2 cameras.")
+    parser.add_argument(
+        "--topic",
+        type=str,
+        default="/undefined",
+    )
+    args = parser.parse_args()
 
-config = {
-    'input_type': 'ros2',
-    'name': 'My ROS2 Camera',
-    'id': {
-        'topic': '/groundlight/sample_image/compressed'
-    },
-}
-
-grabber = FrameGrabber.create_grabber(config)
-frame = grabber.grab()
-print(
-    'Demo started. Press "q" to quit. '
-    'Press "r" to rotate the image. '
-    'Press any other key to grab the next frame. '
-    'Hold any other key to stream video.'
-)
-
-num_90_deg_rotations = 0
-
-while True:
-    
-    if frame is None:
-        print('No frame received.')
-        break
-    
-    cv2.imshow('FrameGrab Image', frame)
-    key = cv2.waitKey(0)
-    if key == ord('q'):
-        break
-    elif key == ord('r'):
-        num_90_deg_rotations += 1
-        if num_90_deg_rotations > 3:
-            num_90_deg_rotations = 0
-            
-    options = {
-        'num_90_deg_rotations': num_90_deg_rotations
+    config = {
+        'input_type': 'ros2',
+        'name': 'My ROS2 Camera',
+        'id': {
+            'topic': args.topic
+        },
     }
-    grabber.apply_options(options)
-            
+
+    grabber = FrameGrabber.create_grabber(config)
     frame = grabber.grab()
-    
-grabber.release()
-cv2.destroyAllWindows()
+    print(
+        'Demo started. Press "q" to quit. '
+        'Press "r" to rotate the image. '
+        'Press any other key to grab the next frame. '
+        'Hold any other key to stream video.'
+    )
+
+    num_90_deg_rotations = 0
+
+    while True:
+        if frame is None:
+            print('No frame received.')
+            break
+
+        cv2.imshow('FrameGrab Image', frame)
+        key = cv2.waitKey(0)
+        if key == ord('q'):
+            break
+        elif key == ord('r'):
+            num_90_deg_rotations = (num_90_deg_rotations + 1) % 4
+
+        options = {
+            'num_90_deg_rotations': num_90_deg_rotations
+        }
+        grabber.apply_options(options)
+
+        frame = grabber.grab()
+
+    grabber.release()
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        cv2.destroyAllWindows()

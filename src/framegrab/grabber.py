@@ -541,15 +541,6 @@ class ROS2FrameGrabber(FrameGrabber):
         topic = self.config.topic
         self._ros2_client = ROS2Client(topic)
 
-    # def __init__(self, config: dict):
-    #     self.config = config
-
-    #     topic = self.config.get("id", {}).get("topic")
-    #     if not topic:
-    #         raise ValueError("No topic provided for ROS2FrameGrabber")
-
-    #     self._ros2_client = ROS2Client(topic)
-
     def _grab_implementation(self) -> np.ndarray:
         return self._ros2_client.grab()
 

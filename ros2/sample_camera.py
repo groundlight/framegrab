@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import CompressedImage, Image
 import numpy as np
 from datetime import datetime
 import cv2
@@ -35,29 +35,43 @@ def generate_image(width: int = 640, height: int = 480) -> np.ndarray:
 class SampleCameraPublisher(Node):
     def __init__(self):
         super().__init__('sample_camera_publisher', namespace='groundlight')
-        self.publisher = self.create_publisher(CompressedImage, 'sample_image/compressed', 10)
-        timer_period = 1 / 15
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        
-        resolved_topic = self.resolve_topic_name(self.publisher.topic)
-        self.get_logger().info(f"Publishing images to {resolved_topic}...")
+        self.pub_compressed = self.create_publisher(CompressedImage, 'sample_image/compressed', 10)
+        self.pub_uncompressed = self.create_publisher(Image, 'sample_image/raw', 10)
+
+        self.timer = self.create_timer(1 / 15, self.timer_callback)
+
+        self.get_logger().info(f"Publishing to topics:\n"
+                               f" - {self.resolve_topic_name(self.pub_compressed.topic)} (compressed)\n"
+                               f" - {self.resolve_topic_name(self.pub_uncompressed.topic)} (uncompressed)")
 
     def timer_callback(self):
         image = generate_image()
+        now = self.get_clock().now().to_msg()
 
-        # Encode the image as JPEG
+        # Compressed
         success, encoded_image = cv2.imencode('.jpg', image)
         if not success:
             self.get_logger().error("Failed to encode image")
             return
 
-        # Create a CompressedImage message
-        msg = CompressedImage()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.format = 'jpeg'
-        msg.data = encoded_image.tobytes()
+        msg_compressed = CompressedImage()
+        msg_compressed.header.stamp = now
+        msg_compressed.format = 'jpeg'
+        msg_compressed.data = encoded_image.tobytes()
+        self.pub_compressed.publish(msg_compressed)
 
-        self.publisher.publish(msg)
+        # Uncompressed
+        msg_raw = Image()
+        msg_raw.header.stamp = now
+        msg_raw.height = image.shape[0]
+        msg_raw.width = image.shape[1]
+        msg_raw.encoding = 'rgb8'
+        msg_raw.is_bigendian = False
+        msg_raw.step = msg_raw.width * 3
+        # Convert BGR (OpenCV default) to RGB for ROS
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        msg_raw.data = rgb_image.tobytes()
+        self.pub_uncompressed.publish(msg_raw)
 
 def main(args=None):
     rclpy.init(args=args)
