@@ -499,15 +499,26 @@ class FrameGrabber(ABC):
             current_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
             if new_height != current_height:
                 self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
+                
+    def _get_framegrab_config_dict(self) -> dict:
+        return type(self.config).to_framegrab_config_dict(self.config)
+                
+    def get_options(self) -> dict:
+        """
+        Converts the Framegrab pydantic configuration to a dictionary, extracts the options and
+        returns the options as a dictionary.
+        """
+        return self._get_framegrab_config_dict()["options"]
 
     def apply_options(self, options: dict) -> None:
         """Update generic options such as crop and zoom as well as
         camera-specific options.
         """
-        framegrab_config_dict = type(self.config).to_framegrab_config_dict(self.config)
+        framegrab_config_dict = self._get_framegrab_config_dict()
         framegrab_config_dict["options"] = options
         # this will validate the new options
         new_config = FrameGrabberConfig.from_framegrab_config_dict(framegrab_config_dict)
+        print('new_config', new_config)
         self.config = new_config
 
     @abstractmethod
