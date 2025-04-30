@@ -348,10 +348,10 @@ class TestAllGrabberTypes(unittest.TestCase):
         config = MockFrameGrabberConfig(digital_zoom=original_zoom)
         grabber = FrameGrabber.create_grabber(config)
 
-        options = grabber.get_options()
-        assert options == {'zoom': {'digital': original_zoom}}
+        assert grabber.config.get_options() == {'zoom': {'digital': original_zoom}}
         
-        options["zoom"] = {'digital': new_zoom}
-        grabber.apply_options(options)
-        options = grabber.get_options()
+        new_options = grabber.config.get_options()
+        new_options["zoom"] = {'digital': new_zoom}
+        grabber.apply_options(new_options)
+        options = grabber.config.get_options()
         assert options == {'zoom': {'digital': new_zoom}}

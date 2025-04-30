@@ -284,8 +284,7 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
                     continue
             raise ValueError("Could not determine input type from provided arguments")
         
-    @property
-    def options(self) -> dict:
+    def get_options(self) -> dict:
         """
         Return the FrameGrabber options portion of the config as a dictionary,
         consistent with the 'options' key in the framegrab standard format.
