@@ -534,6 +534,9 @@ class FrameGrabber(ABC):
 
 
 class ROS2FrameGrabber(FrameGrabber):
+    """
+    Grabs frames from ROS 2 image topics
+    """
 
     config_class = ROS2GrabberConfig
 

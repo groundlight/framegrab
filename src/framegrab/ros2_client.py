@@ -7,6 +7,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage, Image
 
+ROS_NODE_NAMESPACE = 'groundlight'
 SUPPORTED_IMAGE_TYPES = (
     'sensor_msgs/msg/CompressedImage',
     'sensor_msgs/msg/Image',
@@ -15,36 +16,44 @@ SUPPORTED_IMAGE_TYPES = (
 # start the ROS client if it isn't already started
 if not rclpy.ok():
     rclpy.init()
-
+    
+def discover_topics() -> list[str]:
+    """
+    Returns a list of available ROS 2 image topics (both Image and CompressedImage)
+    """
+    node = Node("topic_discovery", namespace=ROS_NODE_NAMESPACE)
+    topic_list = node.get_topic_names_and_types()
+    node.destroy_node()
+    
+    available_topics = []
+    for name, types in topic_list:
+        type_ = types[0] # assuming that each topic only has one type, which should be okay for image topics
+        if type_ in SUPPORTED_IMAGE_TYPES:
+            available_topics.append(name)
+        
+    return available_topics
+        
 class ROS2Client(Node):
     def __init__(self, topic: str):
         # create a unique node name so that multiple clients can be run simultaneously
-        # node_name = f"framegrab_node_{uuid.uuid4().hex[:8]}"
         node_name = topic.replace('/', '_').lstrip('_') + f'_{uuid.uuid4().hex[:8]}'
-        # node_name = topic.replace('/', '')
-        super().__init__(node_name, namespace="groundlight")
+        super().__init__(node_name, namespace=ROS_NODE_NAMESPACE)
         self._msg_event = Event()
         self._latest_msg = None
         
         # Validate the topic type and create the subscription
+        available_topics = discover_topics()
         topic_list = self.get_topic_names_and_types()
-        available_topics = []
         for name, types in topic_list:
-            type_ = types[0]
-            
-            if type_ in SUPPORTED_IMAGE_TYPES:
-                available_topics.append(name)
-                
             if name != topic:
                 continue
             
+            type_ = types[0]
             if type_ == 'sensor_msgs/msg/CompressedImage':
-                print('sensor_msgs/msg/CompressedImage')
-                self._subscription = self.create_subscription(CompressedImage, topic, self._image_callback, 10)
+                image_type = CompressedImage
                 break
             elif type_ == 'sensor_msgs/msg/Image':
-                print('sensor_msgs/msg/Image')
-                self._subscription = self.create_subscription(Image, topic, self._image_callback, 10)
+                image_type = Image
                 break
             else:
                 raise ValueError(
@@ -55,6 +64,8 @@ class ROS2Client(Node):
             raise ValueError(
                 f'Requested topic {topic} was not found. Available topics are {available_topics}.'
             )
+            
+        self._subscription = self.create_subscription(image_type, topic, self._image_callback, 1)
 
     def _image_callback(self, msg: Image | CompressedImage) -> None:
         self._latest_msg = msg
