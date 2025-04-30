@@ -338,3 +338,20 @@ class TestAllGrabberTypes(unittest.TestCase):
         with self.assertRaises(ValueError):
             FrameGrabberConfig.create(serial_number="1234567890", resolution_width=640, resolution_height=480, digital_zoom=2)
             
+    def test_get_and_apply_options(self):
+        """
+        Test that we can get the grabber's options and make an update to the options
+        """
+        original_zoom = 2.0
+        new_zoom = 2.1
+        
+        config = MockFrameGrabberConfig(digital_zoom=original_zoom)
+        grabber = FrameGrabber.create_grabber(config)
+
+        options = grabber.get_options()
+        assert options == {'zoom': {'digital': original_zoom}}
+        
+        options["zoom"] = {'digital': new_zoom}
+        grabber.apply_options(options)
+        options = grabber.get_options()
+        assert options == {'zoom': {'digital': new_zoom}}
