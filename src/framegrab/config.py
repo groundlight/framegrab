@@ -291,6 +291,7 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
         """
         return self.to_framegrab_config_dict().get("options", {})
 
+
 class WithResolutionMixin(FrameGrabberConfig, ABC):
     """Mixin class to add resolution configuration to FrameGrabberConfig."""
 
