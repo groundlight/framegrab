@@ -9,8 +9,8 @@ from sensor_msgs.msg import CompressedImage, Image
 
 ROS_NODE_NAMESPACE = 'groundlight'
 SUPPORTED_IMAGE_TYPES = (
-    'sensor_msgs/msg/CompressedImage',
-    'sensor_msgs/msg/Image',
+    "sensor_msgs/msg/CompressedImage",
+    "sensor_msgs/msg/Image",
 )
 
 # start the ROS client if it isn't already started
@@ -40,11 +40,16 @@ class ROS2Client(Node):
         super().__init__(node_name, namespace=ROS_NODE_NAMESPACE)
         self._msg_event = Event()
         self._latest_msg = None
-        
+
         # Validate the topic type and create the subscription
         available_topics = discover_topics()
         topic_list = self.get_topic_names_and_types()
         for name, types in topic_list:
+            type_ = types[0]
+
+            if type_ in SUPPORTED_IMAGE_TYPES:
+                available_topics.append(name)
+
             if name != topic:
                 continue
             
@@ -57,8 +62,8 @@ class ROS2Client(Node):
                 break
             else:
                 raise ValueError(
-                    f'Requested topic {topic} is of type {type_}, which is not a supported type. '
-                    f'Supported types are {SUPPORTED_IMAGE_TYPES}.'
+                    f"Requested topic {topic} is of type {type_}, which is not a supported type. "
+                    f"Supported types are {SUPPORTED_IMAGE_TYPES}."
                 )
         else:
             raise ValueError(
