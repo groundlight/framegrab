@@ -63,7 +63,9 @@ class ROS2Client(Node):
                 )
         else:
             available_supported_topics = discover_supported_topics()
-            raise ValueError(f"Requested topic {topic} was not found. Available topics are {available_supported_topics}.")
+            raise ValueError(
+                f"Requested topic {topic} was not found. Available topics are {available_supported_topics}."
+            )
 
         self._subscription = self.create_subscription(image_type, topic, self._image_callback, 1)
 
