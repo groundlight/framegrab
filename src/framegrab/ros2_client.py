@@ -40,6 +40,10 @@ class ROS2Client(Node):
         # create a unique node name so that multiple clients can be run simultaneously
         node_name = topic.replace("/", "_").lstrip("_") + f"_{uuid.uuid4().hex[:8]}"
         super().__init__(node_name, namespace=ROS_NODE_NAMESPACE)
+        
+        # Track the lastest message received by the subscriber, and use an Event to signal a new frame is requested.
+        # This ensures that when `grab` is called, the next available frame will be returned, instead
+        # of a previous frame, which could potentially be stale. 
         self._msg_event = Event()
         self._latest_msg = None
 
