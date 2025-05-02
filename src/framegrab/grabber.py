@@ -29,12 +29,12 @@ from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
 from .unavailable_module import UnavailableModuleOrObject
 
-# The wsdiscovery packages calls logging.basicConfig, which will wipe out any logging config
-# that framegrab users have set, which is not good. To clear the config that wsdiscovery sets, we
-# will run the following
-root_logger = logging.getLogger()
-if root_logger.hasHandlers():
-    root_logger.handlers.clear()
+# # The wsdiscovery packages calls logging.basicConfig, which will wipe out any logging config
+# # that framegrab users have set, which is not good. To clear the config that wsdiscovery sets, we
+# # will run the following
+# root_logger = logging.getLogger()
+# if root_logger.hasHandlers():
+#     root_logger.handlers.clear()
 
 logger = logging.getLogger(__name__)
 

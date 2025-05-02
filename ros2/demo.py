@@ -1,6 +1,6 @@
 import argparse
 from framegrab import FrameGrabber
-from framegrab.ros2_client import discover_topics
+from framegrab.ros2_client import discover_supported_topics
 import cv2
 
 def main():
@@ -13,7 +13,7 @@ def main():
     args = parser.parse_args()
     
     if not args.topic:
-        available_topics = discover_topics()
+        available_topics = discover_supported_topics()
         raise ValueError(
             f'Please provide a --topic argument. Available topics are: {available_topics}'
         )
