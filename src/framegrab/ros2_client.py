@@ -45,11 +45,6 @@ class ROS2Client(Node):
         available_topics = discover_topics()
         topic_list = self.get_topic_names_and_types()
         for name, types in topic_list:
-            type_ = types[0]
-
-            if type_ in SUPPORTED_IMAGE_TYPES:
-                available_topics.append(name)
-
             if name != topic:
                 continue
             
@@ -76,7 +71,7 @@ class ROS2Client(Node):
         self._latest_msg = msg
         self._msg_event.set()
 
-    def grab(self) -> np.ndarray:
+    def grab(self) -> np.ndarray | None:
         rclpy.spin_once(self, timeout_sec=1.0)
         self.get_logger().debug("Waiting for a message...")
         self._msg_event.wait(timeout=1.0)
