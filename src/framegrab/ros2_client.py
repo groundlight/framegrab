@@ -18,9 +18,9 @@ if not rclpy.ok():
     rclpy.init()
 
 
-def discover_topics() -> list[str]:
+def discover_supported_topics() -> list[str]:
     """
-    Returns a list of available ROS 2 image topics (both Image and CompressedImage)
+    Returns a list of available ROS 2 image topics that are of a supported type
     """
     node = Node("topic_discovery", namespace=ROS_NODE_NAMESPACE)
     topic_list = node.get_topic_names_and_types()
@@ -44,9 +44,8 @@ class ROS2Client(Node):
         self._latest_msg = None
 
         # Validate the topic type and create the subscription
-        available_topics = discover_topics()
-        topic_list = self.get_topic_names_and_types()
-        for name, types in topic_list:
+        full_topic_list = self.get_topic_names_and_types()
+        for name, types in full_topic_list:
             if name != topic:
                 continue
 
@@ -63,7 +62,8 @@ class ROS2Client(Node):
                     f"Supported types are {SUPPORTED_IMAGE_TYPES}."
                 )
         else:
-            raise ValueError(f"Requested topic {topic} was not found. Available topics are {available_topics}.")
+            available_supported_topics = discover_supported_topics()
+            raise ValueError(f"Requested topic {topic} was not found. Available topics are {available_supported_topics}.")
 
         self._subscription = self.create_subscription(image_type, topic, self._image_callback, 1)
 
