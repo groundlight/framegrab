@@ -17,25 +17,24 @@ SUPPORTED_IMAGE_TYPES = (
 if not rclpy.ok():
     rclpy.init()
 
-
-def discover_supported_topics() -> list[str]:
-    """
-    Returns a list of available ROS 2 image topics that are of a supported type
-    """
-    node = Node("topic_discovery", namespace=ROS_NODE_NAMESPACE)
-    topic_list = node.get_topic_names_and_types()
-    node.destroy_node()
-
-    available_topics = []
-    for name, types in topic_list:
-        type_ = types[0]  # assuming that each topic only has one type, which should be okay for image topics
-        if type_ in SUPPORTED_IMAGE_TYPES:
-            available_topics.append(name)
-
-    return available_topics
-
-
 class ROS2Client(Node):
+    @staticmethod
+    def discover_topics() -> list[str]:
+        """
+        Returns a list of available ROS 2 image topics that are of a supported type
+        """
+        node = Node("topic_discovery", namespace=ROS_NODE_NAMESPACE)
+        topic_list = node.get_topic_names_and_types()
+        node.destroy_node()
+
+        available_topics = []
+        for name, types in topic_list:
+            type_ = types[0]  # assuming that each topic only has one type, which should be okay for image topics
+            if type_ in SUPPORTED_IMAGE_TYPES:
+                available_topics.append(name)
+
+        return available_topics
+    
     def __init__(self, topic: str):
         # create a unique node name so that multiple clients can be run simultaneously
         node_name = topic.replace("/", "_").lstrip("_") + f"_{uuid.uuid4().hex[:8]}"
@@ -66,7 +65,7 @@ class ROS2Client(Node):
                     f"Supported types are {SUPPORTED_IMAGE_TYPES}."
                 )
         else:
-            available_supported_topics = discover_supported_topics()
+            available_supported_topics = ROS2Client.discover_topics()
             raise ValueError(
                 f"Requested topic {topic} was not found. Available topics are {available_supported_topics}."
             )

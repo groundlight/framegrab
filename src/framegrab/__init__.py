@@ -3,6 +3,7 @@ from .exceptions import GrabError
 from .grabber import FrameGrabber
 from .motion import MotionDetector
 from .rtsp_discovery import AutodiscoverMode, ONVIFDeviceInfo, RTSPDiscovery
+from .ros2_client import ROS2Client
 
 try:
     import importlib.metadata
@@ -23,4 +24,5 @@ __all__ = [
     "ONVIFDeviceInfo",
     "AutodiscoverMode",
     "preview_image",
+    "ROS2Client",
 ]
