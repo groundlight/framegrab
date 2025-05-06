@@ -17,6 +17,7 @@ SUPPORTED_IMAGE_TYPES = (
 if not rclpy.ok():
     rclpy.init()
 
+
 class ROS2Client(Node):
     @staticmethod
     def discover_topics() -> list[str]:
@@ -34,7 +35,7 @@ class ROS2Client(Node):
                 available_topics.append(name)
 
         return available_topics
-    
+
     def __init__(self, topic: str):
         # create a unique node name so that multiple clients can be run simultaneously
         node_name = topic.replace("/", "_").lstrip("_") + f"_{uuid.uuid4().hex[:8]}"
