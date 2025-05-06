@@ -2,8 +2,8 @@ from .cli.clitools import preview_image
 from .exceptions import GrabError
 from .grabber import FrameGrabber
 from .motion import MotionDetector
-from .rtsp_discovery import AutodiscoverMode, ONVIFDeviceInfo, RTSPDiscovery
 from .ros2_client import ROS2Client
+from .rtsp_discovery import AutodiscoverMode, ONVIFDeviceInfo, RTSPDiscovery
 
 try:
     import importlib.metadata
