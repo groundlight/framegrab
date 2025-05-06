@@ -524,4 +524,4 @@ class MockFrameGrabberConfig(WithResolutionMixin):
 class ROS2GrabberConfig(FrameGrabberConfig):
     """Configuration class for ROS 2 Grabber."""
 
-    topic: str = Field(..., pattern=r"^/")
+    topic: str = Field(..., pattern=r"^(~|/)?([a-z_][a-z0-9_]*/)*[a-z_][a-z0-9_]*$")

@@ -548,9 +548,6 @@ class ROS2FrameGrabber(FrameGrabber):
     def _grab_implementation(self) -> np.ndarray:
         return self._ros2_client.grab()
 
-    def _apply_camera_specific_options(self, options: dict) -> None:
-        pass  # no camera-specific options for ROS2FrameGrabber
-
     def _default_name(self) -> str:
         return f"ROS2 Topic {self.config.topic}"
 
