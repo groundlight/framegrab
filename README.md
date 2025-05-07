@@ -721,7 +721,7 @@ ROS2GrabberConfig:
       default: 0
       title: Num 90 Deg Rotations
     topic:
-      pattern: ^/
+      pattern: ^(~|/)?([A-Za-z_][A-Za-z0-9_]*)(/[A-Za-z_][A-Za-z0-9_]*)*$
       title: Topic
       type: string
   required:
