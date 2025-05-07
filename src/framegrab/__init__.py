@@ -3,7 +3,6 @@ from .exceptions import GrabError
 from .grabber import FrameGrabber
 from .motion import MotionDetector
 from .rtsp_discovery import AutodiscoverMode, ONVIFDeviceInfo, RTSPDiscovery
-
 from .unavailable_module import UnavailableModuleOrObject
 
 try:
