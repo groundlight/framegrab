@@ -5,6 +5,8 @@ from .motion import MotionDetector
 from .ros2_client import ROS2Client
 from .rtsp_discovery import AutodiscoverMode, ONVIFDeviceInfo, RTSPDiscovery
 
+from .unavailable_module import UnavailableModuleOrObject
+
 try:
     import importlib.metadata
 
@@ -15,6 +17,10 @@ except ModuleNotFoundError:
     # We're still supporting py3.7
     __version__ = "(version number only available in python 3.8+)"
 
+try:
+    from .ros2_client import ROS2Client
+except ImportError as e:
+    ROS2Client = UnavailableModuleOrObject(e)
 
 __all__ = [
     "FrameGrabber",
