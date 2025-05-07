@@ -1,5 +1,7 @@
 import uuid
 from threading import Event
+from typing import Callable, List, Tuple, Dict
+import time
 
 import cv2
 import numpy as np
@@ -13,10 +15,29 @@ SUPPORTED_IMAGE_TYPES = (
     "sensor_msgs/msg/Image",
 )
 
+def _topic_discovery_retry(
+    func: Callable[[], List[Tuple[str, List[str]]]],
+    attempts: int = 5,
+    delay: float = 0.01
+) -> List[Tuple[str, List[str]]]:
+    
+    topic_dict: Dict[str, set] = {}
+
+    for _ in range(attempts):
+        topics = func()
+        for name, types in topics:
+            if name not in topic_dict:
+                topic_dict[name] = set()
+            topic_dict[name].update(types)
+        time.sleep(delay)
+
+    # Convert the merged dictionary back to a list of tuples
+    merged_topics = [(name, list(types)) for name, types in topic_dict.items()]
+    return merged_topics
+
 # start the ROS client if it isn't already started
 if not rclpy.ok():
     rclpy.init()
-
 
 class ROS2Client(Node):
     @staticmethod
@@ -25,7 +46,7 @@ class ROS2Client(Node):
         Returns a list of available ROS 2 image topics that are of a supported type
         """
         node = Node("topic_discovery", namespace=ROS_NODE_NAMESPACE)
-        topic_list = node.get_topic_names_and_types()
+        topic_list = _topic_discovery_retry(node.get_topic_names_and_types())
         node.destroy_node()
 
         available_topics = []
@@ -48,7 +69,7 @@ class ROS2Client(Node):
         self._latest_msg = None
 
         # Validate the topic type and create the subscription
-        full_topic_list = self.get_topic_names_and_types()
+        full_topic_list = _topic_discovery_retry(self.get_topic_names_and_types())
         for name, types in full_topic_list:
             if name != topic:
                 continue
@@ -66,9 +87,8 @@ class ROS2Client(Node):
                     f"Supported types are {SUPPORTED_IMAGE_TYPES}."
                 )
         else:
-            available_supported_topics = ROS2Client.discover_topics()
             raise ValueError(
-                f"Requested topic {topic} was not found. Available topics are {available_supported_topics}."
+                f"Requested topic {topic} was not found."
             )
 
         self._subscription = self.create_subscription(image_type, topic, self._image_callback, 1)
