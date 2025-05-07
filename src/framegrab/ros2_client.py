@@ -17,8 +17,13 @@ SUPPORTED_IMAGE_TYPES = (
 
 
 def _topic_discovery_retry(
-    func: Callable[[], List[Tuple[str, List[str]]]], attempts: int = 5, delay: float = 0.01
+    func: Callable[[], List[Tuple[str, List[str]]]], attempts: int = 10, delay: float = 0.01
 ) -> List[Tuple[str, List[str]]]:
+    """
+    Topic discovery can be flakey in ROS. 
+    
+    Wrap topic discovery (Node.get_topic_names_and_types) in this function to get more robust results.
+    """
 
     topic_dict: Dict[str, set] = {}
 
