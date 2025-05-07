@@ -1,7 +1,7 @@
+import time
 import uuid
 from threading import Event
-from typing import Callable, List, Tuple, Dict
-import time
+from typing import Callable, Dict, List, Tuple
 
 import cv2
 import numpy as np
@@ -15,12 +15,11 @@ SUPPORTED_IMAGE_TYPES = (
     "sensor_msgs/msg/Image",
 )
 
+
 def _topic_discovery_retry(
-    func: Callable[[], List[Tuple[str, List[str]]]],
-    attempts: int = 5,
-    delay: float = 0.01
+    func: Callable[[], List[Tuple[str, List[str]]]], attempts: int = 5, delay: float = 0.01
 ) -> List[Tuple[str, List[str]]]:
-    
+
     topic_dict: Dict[str, set] = {}
 
     for _ in range(attempts):
@@ -35,9 +34,11 @@ def _topic_discovery_retry(
     merged_topics = [(name, list(types)) for name, types in topic_dict.items()]
     return merged_topics
 
+
 # start the ROS client if it isn't already started
 if not rclpy.ok():
     rclpy.init()
+
 
 class ROS2Client(Node):
     @staticmethod
@@ -87,9 +88,7 @@ class ROS2Client(Node):
                     f"Supported types are {SUPPORTED_IMAGE_TYPES}."
                 )
         else:
-            raise ValueError(
-                f"Requested topic {topic} was not found."
-            )
+            raise ValueError(f"Requested topic {topic} was not found.")
 
         self._subscription = self.create_subscription(image_type, topic, self._image_callback, 1)
 
