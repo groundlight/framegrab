@@ -46,7 +46,7 @@ class ROS2Client(Node):
         Returns a list of available ROS 2 image topics that are of a supported type
         """
         node = Node("topic_discovery", namespace=ROS_NODE_NAMESPACE)
-        topic_list = _topic_discovery_retry(node.get_topic_names_and_types())
+        topic_list = _topic_discovery_retry(node.get_topic_names_and_types)
         node.destroy_node()
 
         available_topics = []
@@ -69,7 +69,7 @@ class ROS2Client(Node):
         self._latest_msg = None
 
         # Validate the topic type and create the subscription
-        full_topic_list = _topic_discovery_retry(self.get_topic_names_and_types())
+        full_topic_list = _topic_discovery_retry(self.get_topic_names_and_types)
         for name, types in full_topic_list:
             if name != topic:
                 continue
