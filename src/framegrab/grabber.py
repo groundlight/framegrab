@@ -218,15 +218,17 @@ class FrameGrabber(ABC):
         """
 
         # Sort the grabbers by serial_number to make sure they always come up in the same order
-        grabber_list = sorted(
-            grabber_list,
-            key=lambda grabber: grabber.config.serial_number if hasattr(grabber.config, "serial_number") else "",
-        )
+        # Sort the grabbers by serial_number if available, otherwise use a default value
+        def get_sort_key(grabber):
+            if hasattr(grabber.config, "serial_number") and grabber.config.serial_number is not None:
+                return str(grabber.config.serial_number)
+            return "~"  # Tilde character is after alphanumeric in ASCII/Unicode sorting
+
+        grabber_list = sorted(grabber_list, key=get_sort_key)
 
         # Create the grabbers dictionary, autogenerating names for any unnamed grabbers
         grabbers = {}
         for grabber in grabber_list:
-
             # Add the grabber to the dictionary
             grabber_name = grabber.config.name
             grabbers[grabber_name] = grabber
@@ -352,7 +354,7 @@ class FrameGrabber(ABC):
 
             # If the input type is RTSP and rtsp_discover_modes is provided, use RTSPDiscovery to find the cameras
             if input_type == InputTypes.RTSP:
-                if rtsp_discover_mode is not None:
+                if rtsp_discover_mode is not AutodiscoverMode.off:
                     onvif_devices = RTSPDiscovery.discover_onvif_devices(auto_discover_mode=rtsp_discover_mode)
                     for device in onvif_devices:
                         for index, rtsp_url in enumerate(device.rtsp_urls):
