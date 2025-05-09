@@ -6,7 +6,6 @@ import time
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
 from typing import Dict, List, Optional, Union
-from urllib.parse import urlparse
 
 import cv2
 import numpy as np
@@ -22,16 +21,18 @@ from .config import (
     MockFrameGrabberConfig,
     RaspberryPiCSI2FrameGrabberConfig,
     RealSenseFrameGrabberConfig,
+    ROS2GrabberConfig,
     RTSPFrameGrabberConfig,
     YouTubeLiveFrameGrabberConfig,
 )
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
-from .unavailable_module import UnavailableModule
+from .unavailable_module import UnavailableModuleOrObject
 
 # The wsdiscovery packages calls logging.basicConfig, which will wipe out any logging config
 # that framegrab users have set, which is not good. To clear the config that wsdiscovery sets, we
 # will run the following
+# I made a PR to fix this aspect of python-ws-discovery: https://github.com/andreikop/python-ws-discovery/pull/89
 root_logger = logging.getLogger()
 if root_logger.hasHandlers():
     root_logger.handlers.clear()
@@ -44,26 +45,32 @@ logger = logging.getLogger(__name__)
 try:
     from pypylon import pylon
 except ImportError as e:
-    pylon = UnavailableModule(e)
+    pylon = UnavailableModuleOrObject(e)
 
 # Only used for RealSense cameras, not required otherwise
 try:
     from pyrealsense2 import pyrealsense2 as rs
 except ImportError as e:
-    rs = UnavailableModule(e)
+    rs = UnavailableModuleOrObject(e)
 
 # Only used for CSI2 cameras with Raspberry Pi, not required otherwise
 try:
     from picamera2 import Picamera2
 except ImportError as e:
-    Picamera2 = UnavailableModule(e)
+    Picamera2 = UnavailableModuleOrObject(e)
 
 # Only used for Youtube Live streams, not required otherwise
 try:
     import streamlink
 except ImportError as e:
-    streamlink = UnavailableModule(e)
+    streamlink = UnavailableModuleOrObject(e)
 
+try:
+    from .ros2_client import ROS2Client
+except ImportError as e:
+    ROS2Client = UnavailableModuleOrObject(e)
+
+logger = logging.getLogger(__name__)
 
 OPERATING_SYSTEM = platform.system()
 NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a camera can't get a frame
@@ -293,6 +300,8 @@ class FrameGrabber(ABC):
             grabber = FileStreamFrameGrabber(model_config)
         elif input_type == InputTypes.MOCK:
             grabber = MockFrameGrabber(model_config)
+        elif input_type == InputTypes.ROS2:
+            grabber = ROS2FrameGrabber(model_config)
         else:
             raise ValueError(
                 f"The provided input_type ({input_type}) is not valid. Valid types are {InputTypes.get_options()}"
@@ -525,6 +534,27 @@ class FrameGrabber(ABC):
         """Context manager exit point that ensures proper resource cleanup."""
         self.release()
         return False  # re-raise any exceptions that occurred
+
+
+class ROS2FrameGrabber(FrameGrabber):
+    """
+    Grabs frames from ROS 2 image topics
+    """
+
+    config_class = ROS2GrabberConfig
+
+    def _initialize_grabber_implementation(self):
+        topic = self.config.topic
+        self._ros2_client = ROS2Client(topic)
+
+    def _grab_implementation(self) -> np.ndarray:
+        return self._ros2_client.grab()
+
+    def _default_name(self) -> str:
+        return f"ROS2 Topic {self.config.topic}"
+
+    def release(self) -> None:
+        self._ros2_client.release()
 
 
 class FrameGrabberWithSerialNumber(FrameGrabber, ABC):

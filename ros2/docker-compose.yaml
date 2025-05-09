@@ -1,0 +1,12 @@
+services:
+  framegrab_ros:
+    build: .
+    container_name: framegrab_ros_container
+    network_mode: host
+    environment:
+      # Allow the user to get a GUI from the container using the host's X server
+      # This is necessary for RViz and OpenCV windows to work
+      - DISPLAY=${DISPLAY:-host.docker.internal:0}
+    volumes:
+      # Mount framegrab for interactive development
+      - ../:/framegrab

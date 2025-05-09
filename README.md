@@ -686,6 +686,49 @@ MockFrameGrabberConfig:
   title: MockFrameGrabberConfig
   type: object
 
+ROS2GrabberConfig:
+  additionalProperties: false
+  description: Configuration class for ROS 2 Grabber.
+  properties:
+    crop:
+      anyOf:
+      - additionalProperties:
+          additionalProperties:
+            type: number
+          type: object
+        type: object
+      - type: 'null'
+      default: null
+      title: Crop
+    digital_zoom:
+      anyOf:
+      - maximum: 4
+        minimum: 1
+        type: number
+      - type: 'null'
+      default: null
+      title: Digital Zoom
+    name:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      title: Name
+    num_90_deg_rotations:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 0
+      title: Num 90 Deg Rotations
+    topic:
+      pattern: ^(~|/)?([A-Za-z_][A-Za-z0-9_]*)(/[A-Za-z_][A-Za-z0-9_]*)*$
+      title: Topic
+      type: string
+  required:
+  - topic
+  title: ROS2GrabberConfig
+  type: object
+
 ```
 
 ### Autodiscovery
