@@ -81,7 +81,7 @@ class FrameGrabber(ABC):
     unnamed_grabber_count = 0
     config: FrameGrabberConfig
 
-    def __init__(self, config: FrameGrabberConfig | dict):
+    def __init__(self, config: Union[FrameGrabberConfig, dict]):
         """To create a FrameGrabber object with the generic FrameGrabber class or with a config dict, use create_grabber()"""
         if isinstance(config, dict):
             config = self.config_class.from_framegrab_config_dict(config)
