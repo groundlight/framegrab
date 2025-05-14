@@ -104,7 +104,8 @@ class TestAllGrabberTypes(unittest.TestCase):
         grabber_from_class = grabber_class(grabber.config.to_framegrab_config_dict())
         new_frame = grabber_from_class.grab()
         np.testing.assert_array_equal(new_frame, expected_frame)
-        
+        grabber_from_class.release()
+
     @patch('framegrab.grabber.GenericUSBFrameGrabber._find_cameras')
     @patch('cv2.VideoCapture')
     def test_generic_usb_grabber(self, mock_video_capture, mock_find_cameras):
