@@ -99,6 +99,13 @@ class TestAllGrabberTypes(unittest.TestCase):
         self.assertEqual(new_grabber.config.digital_zoom, 4)
         new_grabber.release()
 
+        # test creating grabber directly from class with a dictionary
+        grabber_class = type(grabber)
+        grabber_from_class = grabber_class(grabber.config.to_framegrab_config_dict())
+        new_frame = grabber_from_class.grab()
+        np.testing.assert_array_equal(new_frame, expected_frame)
+        grabber_from_class.release()
+
     @patch('framegrab.grabber.GenericUSBFrameGrabber._find_cameras')
     @patch('cv2.VideoCapture')
     def test_generic_usb_grabber(self, mock_video_capture, mock_find_cameras):

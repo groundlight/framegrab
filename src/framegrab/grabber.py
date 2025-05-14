@@ -79,11 +79,12 @@ NOISE = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)  # in case a ca
 class FrameGrabber(ABC):
     # for naming FrameGrabber objects that have no user-defined name
     unnamed_grabber_count = 0
-
     config: FrameGrabberConfig
 
-    def __init__(self, config: FrameGrabberConfig):
+    def __init__(self, config: Union[FrameGrabberConfig, dict]):
         """To create a FrameGrabber object with the generic FrameGrabber class or with a config dict, use create_grabber()"""
+        if isinstance(config, dict):
+            config = self.config_class.from_framegrab_config_dict(config)
         if not isinstance(config, self.config_class):
             raise TypeError(
                 f"Expected config to be of type {self.config_class.__name__}, but got {type(config).__name__}"
