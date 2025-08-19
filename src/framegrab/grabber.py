@@ -532,20 +532,22 @@ class FrameGrabber(ABC):
         No-op if unchanged. Raise RuntimeError if setting fails.
         """
         video_stream = self.config.video_stream
-        
+
         # Determine desired buffer size based on video_stream setting
         if video_stream:
             desired_buffer_size = 2  # Larger buffer for better FPS when streaming
         else:
             desired_buffer_size = 1  # Small buffer to always get most recent frame
-        
+
         # Check current buffer size
         current_buffer_size = int(self.capture.get(cv2.CAP_PROP_BUFFERSIZE))
-        
+
         if desired_buffer_size != current_buffer_size:
             success = self.capture.set(cv2.CAP_PROP_BUFFERSIZE, desired_buffer_size)
             if not success:
-                raise RuntimeError(f"Failed to set buffer size to {desired_buffer_size} for camera '{self.config.name}'")
+                raise RuntimeError(
+                    f"Failed to set buffer size to {desired_buffer_size} for camera '{self.config.name}'"
+                )
 
     def _set_cv2_fps(self) -> None:
         """Set FPS from the config.
@@ -553,13 +555,13 @@ class FrameGrabber(ABC):
         No-op if FPS is None or unchanged. Raise RuntimeError if setting fails.
         """
         new_fps = self.config.fps
-        
+
         if new_fps is None:
             return
-        
+
         # Check current FPS
         current_fps = int(self.capture.get(cv2.CAP_PROP_FPS))
-        
+
         if new_fps != current_fps:
             success = self.capture.set(cv2.CAP_PROP_FPS, new_fps)
             if not success:

@@ -369,12 +369,13 @@ class WithMaxFPSMixin(ABC, BaseModel):
             data["max_fps"] = max_fps
         return data
 
+
 class GenericUSBFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for Generic USB Frame Grabber."""
 
     serial_number: Optional[str] = None
     video_stream: Optional[bool] = False
-    fourcc: Optional[str] = 'MJPG'
+    fourcc: Optional[str] = "MJPG"
     fps: Optional[int] = 30
 
     def to_framegrab_config_dict(self) -> dict:
@@ -391,15 +392,16 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
         """Extract model parameters from the framegrab standard format dictionary config."""
         data = copy.deepcopy(config_dict)
         options = data.get("options", {})
-        
+
         # Extract custom options using their field defaults
         for field_name in ["video_stream", "fourcc", "fps"]:
             default_value = cls.model_fields[field_name].default
             field_value = options.pop(field_name, default_value)
             if field_value is not None:
                 data[field_name] = field_value
-                
+
         return super().get_model_parameters(data)
+
 
 class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, WithMaxFPSMixin):
     """Configuration class for RTSP Frame Grabber."""
