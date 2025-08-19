@@ -254,6 +254,18 @@ GenericUSBFrameGrabberConfig:
       - type: 'null'
       default: null
       title: Digital Zoom
+    fourcc:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: MJPG
+      title: Fourcc
+    fps:
+      anyOf:
+      - type: integer
+      - type: 'null'
+      default: 30
+      title: Fps
     name:
       anyOf:
       - type: string
@@ -284,6 +296,12 @@ GenericUSBFrameGrabberConfig:
       - type: 'null'
       default: null
       title: Serial Number
+    video_stream:
+      anyOf:
+      - type: boolean
+      - type: 'null'
+      default: false
+      title: Video Stream
   title: GenericUSBFrameGrabberConfig
   type: object
 
