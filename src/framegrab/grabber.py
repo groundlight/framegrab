@@ -488,13 +488,10 @@ class FrameGrabber(ABC):
         return frame
 
     def _set_cv2_resolution(self) -> None:
-        """Set the resolution of the cv2.VideoCapture object based on the FrameGrabber's config.
-        If the FrameGrabber lacks both of these properties (height and width), this method
-        will do nothing.
+        """Set resolution from the config.
 
-        Similarly, if the specified resolution equals the existing resolution, this function will
-        do nothing. This is because setting the resolution of a cv2.VideoCapture object is non-trivial and
-        can take multiple seconds, so we should only do it when something has changed.
+        No-op if width or height is None or unchanged. Resolution updates on
+        cv2.VideoCapture can be slow, so only apply when different.
         """
 
         new_height = self.config.resolution_height
@@ -513,10 +510,9 @@ class FrameGrabber(ABC):
                 self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
 
     def _set_cv2_fourcc(self) -> None:
-        """Set the FOURCC of the cv2.VideoCapture object based on the FrameGrabber's config.
+        """Set FOURCC from the config.
 
-        Similarly, if the specified FOURCC equals the existing FOURCC, this function will
-        do nothing to avoid unnecessary camera reconfigurations.
+        No-op if FOURCC is None or unchanged. Raise RuntimeError if setting fails.
         """
         new_fourcc = self.config.fourcc
 
@@ -531,11 +527,9 @@ class FrameGrabber(ABC):
                 raise RuntimeError(f"Failed to set FOURCC to '{new_fourcc}' for camera '{self.config.name}'")
 
     def _set_cv2_buffersize(self) -> None:
-        """Set the buffer size of the cv2.VideoCapture object based on the video_stream config.
-        Buffer size should be 2 if streaming video (for better FPS), otherwise 1 (for most recent frame).
-        
-        If the requested buffer size equals the existing buffer size, this function will
-        do nothing to avoid unnecessary camera reconfigurations.
+        """Set buffer size from the config (2 when streaming, else 1).
+
+        No-op if unchanged. Raise RuntimeError if setting fails.
         """
         video_stream = self.config.video_stream
         
@@ -554,11 +548,9 @@ class FrameGrabber(ABC):
                 raise RuntimeError(f"Failed to set buffer size to {desired_buffer_size} for camera '{self.config.name}'")
 
     def _set_cv2_fps(self) -> None:
-        """Set the FPS of the cv2.VideoCapture object based on the FrameGrabber's config.
-        If the FrameGrabber lacks this property, this method will do nothing.
+        """Set FPS from the config.
 
-        Similarly, if the specified FPS equals the existing FPS, this function will
-        do nothing to avoid unnecessary camera reconfigurations.
+        No-op if FPS is None or unchanged. Raise RuntimeError if setting fails.
         """
         new_fps = self.config.fps
         
@@ -757,9 +749,11 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
         if not self.capture.isOpened():
             self.capture.open(self.idx)
 
-        # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
-        # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
-        # Assuming buffer size of 1, we need to read twice to get the current frame.
+        # Video streaming mode: to minimize latency and maximize frame rate, we read only once to get the latest frame.
+        # As long as the client repeatedly grabs frames, this will work fine.
+
+        # Non streaming (snapshot) mode: OpenCV's internal buffer may return a stale frame on the first read,
+        # so we read twice to ensure we get the most up-to-date image from the camera.
         iterations = 1 if self.config.video_stream else 2
         for _ in range(iterations):
             _, frame = self.capture.read()
