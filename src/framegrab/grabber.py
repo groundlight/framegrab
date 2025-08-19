@@ -512,6 +512,67 @@ class FrameGrabber(ABC):
             if new_height != current_height:
                 self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
 
+    def _set_cv2_fourcc(self) -> None:
+        """Set the FOURCC of the cv2.VideoCapture object based on the FrameGrabber's config.
+
+        Similarly, if the specified FOURCC equals the existing FOURCC, this function will
+        do nothing to avoid unnecessary camera reconfigurations.
+        """
+        new_fourcc = self.config.fourcc
+
+        if new_fourcc is None:
+            return
+
+        current_fourcc_str = self.capture.get(cv2.CAP_PROP_FOURCC)
+        if new_fourcc != current_fourcc_str:
+            fourcc_int = cv2.VideoWriter_fourcc(*new_fourcc)
+            success = self.capture.set(cv2.CAP_PROP_FOURCC, fourcc_int)
+            if not success:
+                raise RuntimeError(f"Failed to set FOURCC to '{new_fourcc}' for camera '{self.config.name}'")
+
+    def _set_cv2_buffersize(self) -> None:
+        """Set the buffer size of the cv2.VideoCapture object based on the video_stream config.
+        Buffer size should be 2 if streaming video (for better FPS), otherwise 1 (for most recent frame).
+        
+        If the requested buffer size equals the existing buffer size, this function will
+        do nothing to avoid unnecessary camera reconfigurations.
+        """
+        video_stream = self.config.video_stream
+        
+        # Determine desired buffer size based on video_stream setting
+        if video_stream:
+            desired_buffer_size = 2  # Larger buffer for better FPS when streaming
+        else:
+            desired_buffer_size = 1  # Small buffer to always get most recent frame
+        
+        # Check current buffer size
+        current_buffer_size = int(self.capture.get(cv2.CAP_PROP_BUFFERSIZE))
+        
+        if desired_buffer_size != current_buffer_size:
+            success = self.capture.set(cv2.CAP_PROP_BUFFERSIZE, desired_buffer_size)
+            if not success:
+                raise RuntimeError(f"Failed to set buffer size to {desired_buffer_size} for camera '{self.config.name}'")
+
+    def _set_cv2_fps(self) -> None:
+        """Set the FPS of the cv2.VideoCapture object based on the FrameGrabber's config.
+        If the FrameGrabber lacks this property, this method will do nothing.
+
+        Similarly, if the specified FPS equals the existing FPS, this function will
+        do nothing to avoid unnecessary camera reconfigurations.
+        """
+        new_fps = self.config.fps
+        
+        if new_fps is None:
+            return
+        
+        # Check current FPS
+        current_fps = int(self.capture.get(cv2.CAP_PROP_FPS))
+        
+        if new_fps != current_fps:
+            success = self.capture.set(cv2.CAP_PROP_FPS, new_fps)
+            if not success:
+                raise RuntimeError(f"Failed to set FPS to {new_fps} for camera '{self.config.name}'")
+
     def apply_options(self, options: dict) -> None:
         """Update generic options such as crop and zoom as well as
         camera-specific options.
@@ -699,7 +760,8 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
         # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
         # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
         # Assuming buffer size of 1, we need to read twice to get the current frame.
-        for _ in range(2):
+        iterations = 1 if self.config.video_stream else 2
+        for _ in range(iterations):
             _, frame = self.capture.read()
 
         return frame
@@ -711,9 +773,9 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
     def apply_options(self, options: dict) -> None:
         super().apply_options(options)
         self._set_cv2_resolution()
-
-        # set the buffer size to 1 to always get the most recent frame
-        self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self._set_cv2_fourcc()
+        self._set_cv2_buffersize()
+        self._set_cv2_fps()
 
     @staticmethod
     def _run_system_command(command: str) -> str:
