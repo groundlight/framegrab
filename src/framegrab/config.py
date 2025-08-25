@@ -375,7 +375,7 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
 
     serial_number: Optional[str] = None
     video_stream: Optional[bool] = False
-    fourcc: Optional[str] = "MJPG"
+    fourcc: Optional[str] = None
     fps: Optional[int] = 30
 
     def to_framegrab_config_dict(self) -> dict:
