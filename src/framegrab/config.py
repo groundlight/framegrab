@@ -24,6 +24,8 @@ from pydantic import (
 from .unavailable_module import UnavailableModuleOrObject
 
 DIGITAL_ZOOM_MAX = 4
+DEFAULT_FOURCC = 'MJPG'
+DEFAULT_FPS = 30
 
 # Only used for YouTube Live streams, not required otherwise
 try:
@@ -376,7 +378,7 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
     serial_number: Optional[str] = None
     video_stream: Optional[bool] = False
     fourcc: Optional[str] = None
-    fps: Optional[int] = 30
+    fps: Optional[int] = None
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""

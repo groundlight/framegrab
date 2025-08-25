@@ -24,6 +24,8 @@ from .config import (
     ROS2GrabberConfig,
     RTSPFrameGrabberConfig,
     YouTubeLiveFrameGrabberConfig,
+    DEFAULT_FOURCC,
+    DEFAULT_FPS,
 )
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
@@ -512,24 +514,32 @@ class FrameGrabber(ABC):
     def _set_cv2_fourcc(self) -> None:
         """Set FOURCC from the config.
 
-        No-op if FOURCC is None or unchanged. Raise RuntimeError if setting fails.
+        Do nothing if FOURCC is None or unchanged.
         """
         new_fourcc = self.config.fourcc
 
-        if new_fourcc is None:
-            return
+        # Check if the caller set a FOURCC
+        new_fourcc_is_user_provided = new_fourcc is not None
+
+        # Set to a default FOURCC if the user provided no FOURCC
+        new_fourcc = new_fourcc if new_fourcc is not None else DEFAULT_FOURCC
 
         current_fourcc_str = self.capture.get(cv2.CAP_PROP_FOURCC)
         if new_fourcc != current_fourcc_str:
             fourcc_int = cv2.VideoWriter_fourcc(*new_fourcc)
             success = self.capture.set(cv2.CAP_PROP_FOURCC, fourcc_int)
             if not success:
-                raise RuntimeError(f"Failed to set FOURCC to '{new_fourcc}' for camera '{self.config.name}'")
+                # Treat the failure to set FOURCC has an exception if the user explicitly requested a fourcc, otherwise just log it
+                message = f"Failed to set FOURCC to '{new_fourcc}' for camera '{self.config.name}'. The camera might not support this setting."
+                if new_fourcc_is_user_provided:
+                    raise RuntimeError(message)
+                else:
+                    logger.warning(message)
 
     def _set_cv2_buffersize(self) -> None:
         """Set buffer size from the config (2 when streaming, else 1).
 
-        No-op if unchanged. Raise RuntimeError if setting fails.
+        Do nothing if unchanged. Raise RuntimeError if setting fails.
         """
         video_stream = self.config.video_stream
 
@@ -545,19 +555,22 @@ class FrameGrabber(ABC):
         if desired_buffer_size != current_buffer_size:
             success = self.capture.set(cv2.CAP_PROP_BUFFERSIZE, desired_buffer_size)
             if not success:
-                raise RuntimeError(
-                    f"Failed to set buffer size to {desired_buffer_size} for camera '{self.config.name}'"
+                logger.warning(
+                    f"Failed to set buffer size to {desired_buffer_size} for camera '{self.config.name}. The camera might not support this setting.'"
                 )
 
     def _set_cv2_fps(self) -> None:
         """Set FPS from the config.
 
-        No-op if FPS is None or unchanged. Raise RuntimeError if setting fails.
+        Do nothing if FPS is None or unchanged. Raise RuntimeError if setting fails.
         """
         new_fps = self.config.fps
 
-        if new_fps is None:
-            return
+        # Check if the caller set an FPS
+        new_fps_is_user_provided = new_fps is not None
+
+        # Set to a default FPS if the user provided no FPS
+        new_fps = new_fps if new_fps is not None else DEFAULT_FPS
 
         # Check current FPS
         current_fps = int(self.capture.get(cv2.CAP_PROP_FPS))
@@ -565,7 +578,11 @@ class FrameGrabber(ABC):
         if new_fps != current_fps:
             success = self.capture.set(cv2.CAP_PROP_FPS, new_fps)
             if not success:
-                raise RuntimeError(f"Failed to set FPS to {new_fps} for camera '{self.config.name}'")
+                message = f"Failed to set FPS to {new_fps} for camera '{self.config.name}'. The camera might not support this setting."
+                if new_fps_is_user_provided:
+                    raise RuntimeError(message)
+                else:
+                    logger.warning(message)
 
     def apply_options(self, options: dict) -> None:
         """Update generic options such as crop and zoom as well as

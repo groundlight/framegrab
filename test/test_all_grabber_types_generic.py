@@ -331,6 +331,12 @@ class TestAllGrabberTypes(unittest.TestCase):
                     params[param] = 30
                 elif param == "topic":
                     params[param] = '/groundlight/sample_image'
+                elif param == "video_stream":
+                    params[param] = False
+                elif param == "fourcc":
+                    params[param] = None # Unable to set this to a real value in our test environment since there is no real camera
+                elif param == "fps":
+                    params[param] = None # Unable to set this to a real value in our test environment since there is no real camera
                 else:
                     raise ValueError(f"Unknown parameter: {param}")
 
