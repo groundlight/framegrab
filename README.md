@@ -258,7 +258,7 @@ GenericUSBFrameGrabberConfig:
       anyOf:
       - type: string
       - type: 'null'
-      default: MJPG
+      default: null
       title: Fourcc
     fps:
       anyOf:
