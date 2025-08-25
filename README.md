@@ -264,7 +264,7 @@ GenericUSBFrameGrabberConfig:
       anyOf:
       - type: integer
       - type: 'null'
-      default: 30
+      default: null
       title: Fps
     name:
       anyOf:
