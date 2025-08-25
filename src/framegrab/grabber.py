@@ -12,6 +12,8 @@ import numpy as np
 import yaml
 
 from .config import (
+    DEFAULT_FOURCC,
+    DEFAULT_FPS,
     BaslerFrameGrabberConfig,
     FileStreamFrameGrabberConfig,
     FrameGrabberConfig,
@@ -24,8 +26,6 @@ from .config import (
     ROS2GrabberConfig,
     RTSPFrameGrabberConfig,
     YouTubeLiveFrameGrabberConfig,
-    DEFAULT_FOURCC,
-    DEFAULT_FPS,
 )
 from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery

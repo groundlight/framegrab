@@ -24,7 +24,7 @@ from pydantic import (
 from .unavailable_module import UnavailableModuleOrObject
 
 DIGITAL_ZOOM_MAX = 4
-DEFAULT_FOURCC = 'MJPG'
+DEFAULT_FOURCC = "MJPG"
 DEFAULT_FPS = 30
 
 # Only used for YouTube Live streams, not required otherwise
