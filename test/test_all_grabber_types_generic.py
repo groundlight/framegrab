@@ -158,8 +158,8 @@ class TestAllGrabberTypes(unittest.TestCase):
         """Test FPS: user-provided values should raise exceptions when that setting is not supported (as it is in our test environment)."""
         mock_capture_instance = self.setup_mock_generic_usb_grabber(mock_video_capture)
         mock_capture_instance.isOpened.return_value = True
-        mock_serial_number = '123'
-        mock_find_cameras.return_value = [{'serial_number': mock_serial_number, 'device_path': '/dev/video0', 'idx': 0, 'camera_name': 'test'}]
+        mock_serial_number = '456'
+        mock_find_cameras.return_value = [{'serial_number': mock_serial_number, 'device_path': '/dev/video0', 'idx': 1, 'camera_name': 'test'}]
 
         # User-provided FPS should raise exception in this testing environment where that setting is not supported
         config_user = GenericUSBFrameGrabberConfig(serial_number=mock_serial_number, fps=30)
