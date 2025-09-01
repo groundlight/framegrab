@@ -24,6 +24,8 @@ from pydantic import (
 from .unavailable_module import UnavailableModuleOrObject
 
 DIGITAL_ZOOM_MAX = 4
+DEFAULT_FOURCC = "MJPG"
+DEFAULT_FPS = 30
 
 # Only used for YouTube Live streams, not required otherwise
 try:
@@ -374,6 +376,33 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for Generic USB Frame Grabber."""
 
     serial_number: Optional[str] = None
+    video_stream: Optional[bool] = False
+    fourcc: Optional[str] = None
+    fps: Optional[int] = None
+
+    def to_framegrab_config_dict(self) -> dict:
+        """Convert the config to the framegrab standard format."""
+        base_dict = super().to_framegrab_config_dict()
+        # Move custom options to options section
+        for field_name in ["video_stream", "fourcc", "fps"]:
+            if field_name in base_dict:
+                base_dict["options"][field_name] = base_dict.pop(field_name)
+        return base_dict
+
+    @classmethod
+    def get_model_parameters(cls, config_dict: dict) -> dict:
+        """Extract model parameters from the framegrab standard format dictionary config."""
+        data = copy.deepcopy(config_dict)
+        options = data.get("options", {})
+
+        # Extract custom options using their field defaults
+        for field_name in ["video_stream", "fourcc", "fps"]:
+            default_value = cls.model_fields[field_name].default
+            field_value = options.pop(field_name, default_value)
+            if field_value is not None:
+                data[field_name] = field_value
+
+        return super().get_model_parameters(data)
 
 
 class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, WithMaxFPSMixin):

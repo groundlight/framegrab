@@ -134,6 +134,42 @@ class TestAllGrabberTypes(unittest.TestCase):
         self._test_grabber_helper(usb_framegrabber, resolution_width, resolution_height)
 
 
+    @patch('framegrab.grabber.GenericUSBFrameGrabber._find_cameras')
+    @patch('cv2.VideoCapture')
+    def test_generic_usb_grabber_set_fourcc_not_allowed(self, mock_video_capture, mock_find_cameras):
+        """Test FOURCC: user-provided values should raise exceptions when that setting is not supported (as it is in our test environment)."""
+        mock_capture_instance = self.setup_mock_generic_usb_grabber(mock_video_capture)
+        mock_capture_instance.isOpened.return_value = True
+        mock_serial_number = '123'
+        mock_find_cameras.return_value = [{'serial_number': mock_serial_number, 'device_path': '/dev/video0', 'idx': 0, 'camera_name': 'test'}]
+
+        # User-provided FOURCC should raise exception in this testing environment where that setting is not supported
+        config_user = GenericUSBFrameGrabberConfig(serial_number=mock_serial_number, fourcc="MJPG")
+        with self.assertRaises(RuntimeError) as e:
+            grabber = GenericUSBFrameGrabber(config_user)
+            grabber.release()
+
+        # The raised exception should pertain to FOURCC
+        self.assertIn("fourcc", str(e.exception).lower())
+
+    @patch('framegrab.grabber.GenericUSBFrameGrabber._find_cameras')
+    @patch('cv2.VideoCapture')
+    def test_generic_usb_grabber_set_fps_not_allowed(self, mock_video_capture, mock_find_cameras):
+        """Test FPS: user-provided values should raise exceptions when that setting is not supported (as it is in our test environment)."""
+        mock_capture_instance = self.setup_mock_generic_usb_grabber(mock_video_capture)
+        mock_capture_instance.isOpened.return_value = True
+        mock_serial_number = '456'
+        mock_find_cameras.return_value = [{'serial_number': mock_serial_number, 'device_path': '/dev/video0', 'idx': 1, 'camera_name': 'test'}]
+
+        # User-provided FPS should raise exception in this testing environment where that setting is not supported
+        config_user = GenericUSBFrameGrabberConfig(serial_number=mock_serial_number, fps=30)
+        with self.assertRaises(RuntimeError) as e:
+            grabber = GenericUSBFrameGrabber(config_user)
+            grabber.release()
+
+        # The raised exception should pertain to FPS
+        self.assertIn("fps", str(e.exception).lower())
+        
     @patch('cv2.VideoCapture')
     def test_rtsp_grabber(self, mock_video_capture):
         mock_capture_instance = MagicMock()
@@ -331,6 +367,12 @@ class TestAllGrabberTypes(unittest.TestCase):
                     params[param] = 30
                 elif param == "topic":
                     params[param] = '/groundlight/sample_image'
+                elif param == "video_stream":
+                    params[param] = False
+                elif param == "fourcc":
+                    params[param] = None # Unable to set this to a real value in our test environment since there is no real camera
+                elif param == "fps":
+                    params[param] = None # Unable to set this to a real value in our test environment since there is no real camera
                 else:
                     raise ValueError(f"Unknown parameter: {param}")
 

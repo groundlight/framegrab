@@ -12,6 +12,8 @@ import numpy as np
 import yaml
 
 from .config import (
+    DEFAULT_FOURCC,
+    DEFAULT_FPS,
     BaslerFrameGrabberConfig,
     FileStreamFrameGrabberConfig,
     FrameGrabberConfig,
@@ -487,31 +489,6 @@ class FrameGrabber(ABC):
 
         return frame
 
-    def _set_cv2_resolution(self) -> None:
-        """Set the resolution of the cv2.VideoCapture object based on the FrameGrabber's config.
-        If the FrameGrabber lacks both of these properties (height and width), this method
-        will do nothing.
-
-        Similarly, if the specified resolution equals the existing resolution, this function will
-        do nothing. This is because setting the resolution of a cv2.VideoCapture object is non-trivial and
-        can take multiple seconds, so we should only do it when something has changed.
-        """
-
-        new_height = self.config.resolution_height
-        new_width = self.config.resolution_width
-
-        if new_width is None or new_height is None:
-            return
-
-        if new_width:
-            current_width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-            if new_width != current_width:
-                self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, new_width)
-        if new_height:
-            current_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            if new_height != current_height:
-                self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
-
     def apply_options(self, options: dict) -> None:
         """Update generic options such as crop and zoom as well as
         camera-specific options.
@@ -572,6 +549,14 @@ class FrameGrabberWithSerialNumber(FrameGrabber, ABC):
 
 class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
     """For any generic USB camera, such as a webcam"""
+
+    # Buffer size constants for OpenCV capture
+    BUFFER_SIZE_STREAMING = 2  # Larger buffer for better FPS when streaming
+    BUFFER_SIZE_STANDARD = 1  # Small buffer to always get most recent frame
+
+    # Frame read strategies for different modes
+    FRAME_READS_STREAMING = 1  # Single read for minimal latency
+    FRAME_READS_SNAPSHOT = 2  # Double read to ensure fresh frame
 
     # keep track of the cameras that are already in use so that we don't try to connect to them twice
     indices_in_use = set()
@@ -696,10 +681,13 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
         if not self.capture.isOpened():
             self.capture.open(self.idx)
 
-        # OpenCV VideoCapture buffers frames by default. It's usually not possible to turn buffering off.
-        # Buffer can be set as low as 1, but even still, if we simply read once, we will get the buffered (stale) frame.
-        # Assuming buffer size of 1, we need to read twice to get the current frame.
-        for _ in range(2):
+        # Video streaming mode: to minimize latency and maximize frame rate, we read only once to get the latest frame.
+        # As long as the client repeatedly grabs frames, this will work fine.
+
+        # Non streaming (snapshot) mode: OpenCV's internal buffer may return a stale frame on the first read,
+        # so we read twice to ensure we get the most up-to-date image from the camera.
+        iterations = self.FRAME_READS_STREAMING if self.config.video_stream else self.FRAME_READS_SNAPSHOT
+        for _ in range(iterations):
             _, frame = self.capture.read()
 
         return frame
@@ -711,9 +699,9 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
     def apply_options(self, options: dict) -> None:
         super().apply_options(options)
         self._set_cv2_resolution()
-
-        # set the buffer size to 1 to always get the most recent frame
-        self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self._set_cv2_fourcc()
+        self._set_cv2_buffersize()
+        self._set_cv2_fps()
 
     @staticmethod
     def _run_system_command(command: str) -> str:
@@ -773,6 +761,101 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
                 )
 
         return found_cams
+
+    def _set_cv2_resolution(self) -> None:
+        """Set resolution from the config.
+
+        No-op if width or height is None or unchanged. Resolution updates on
+        cv2.VideoCapture can be slow, so only apply when different.
+        """
+
+        new_height = self.config.resolution_height
+        new_width = self.config.resolution_width
+
+        if new_width is None or new_height is None:
+            return
+
+        if new_width:
+            current_width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+            if new_width != current_width:
+                self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, new_width)
+        if new_height:
+            current_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            if new_height != current_height:
+                self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, new_height)
+
+    def _set_cv2_fourcc(self) -> None:
+        """Set FOURCC from the config.
+
+        Do nothing if FOURCC is None or unchanged.
+        """
+        new_fourcc = self.config.fourcc
+
+        # Check if the caller set a FOURCC
+        new_fourcc_is_user_provided = new_fourcc is not None
+
+        # Set to a default FOURCC if the user provided no FOURCC
+        new_fourcc = new_fourcc if new_fourcc is not None else DEFAULT_FOURCC
+
+        current_fourcc_str = self.capture.get(cv2.CAP_PROP_FOURCC)
+        if new_fourcc != current_fourcc_str:
+            fourcc_int = cv2.VideoWriter_fourcc(*new_fourcc)
+            success = self.capture.set(cv2.CAP_PROP_FOURCC, fourcc_int)
+            if not success:
+                # Treat the failure to set FOURCC has an exception if the user explicitly requested a fourcc, otherwise just log it
+                message = f"Failed to set FOURCC to '{new_fourcc}' for camera '{self.config.name}'. The camera might not support this setting."
+                if new_fourcc_is_user_provided:
+                    raise RuntimeError(message)
+                else:
+                    logger.warning(message)
+
+    def _set_cv2_buffersize(self) -> None:
+        """Set buffer size from the config (2 when streaming, else 1).
+
+        Do nothing if unchanged. Raise RuntimeError if setting fails.
+        """
+        video_stream = self.config.video_stream
+
+        # Determine desired buffer size based on video_stream setting
+        if video_stream:
+            desired_buffer_size = self.BUFFER_SIZE_STREAMING
+        else:
+            desired_buffer_size = self.BUFFER_SIZE_STANDARD
+
+        # Check current buffer size
+        current_buffer_size = int(self.capture.get(cv2.CAP_PROP_BUFFERSIZE))
+
+        if desired_buffer_size != current_buffer_size:
+            success = self.capture.set(cv2.CAP_PROP_BUFFERSIZE, desired_buffer_size)
+            if not success:
+                logger.warning(
+                    f"Failed to set buffer size to {desired_buffer_size} for camera '{self.config.name}. The camera might not support this setting.'"
+                )
+
+    def _set_cv2_fps(self) -> None:
+        """Set FPS from the config.
+
+        Do nothing if FPS is None or unchanged. Raise RuntimeError if setting fails.
+        """
+        new_fps = self.config.fps
+
+        # Check if the caller set an FPS
+        new_fps_is_user_provided = new_fps is not None
+
+        # Set to a default FPS if the user provided no FPS
+        new_fps = new_fps if new_fps is not None else DEFAULT_FPS
+
+        # Check current FPS
+        current_fps = int(self.capture.get(cv2.CAP_PROP_FPS))
+
+        if new_fps != current_fps:
+            success = self.capture.set(cv2.CAP_PROP_FPS, new_fps)
+            if not success:
+                message = f"Failed to set FPS to {new_fps} for camera '{self.config.name}'. The camera might not support this setting."
+                if new_fps_is_user_provided:
+                    raise RuntimeError(message)
+                else:
+                    logger.warning(message)
 
 
 class RTSPFrameGrabber(FrameGrabber):
