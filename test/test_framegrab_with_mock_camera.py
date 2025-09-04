@@ -5,8 +5,10 @@ Intended to check basic functionality like cropping, zooming, config validation,
 import os
 import unittest
 from unittest.mock import patch
-from framegrab.grabber import FrameGrabber, RTSPFrameGrabber
-from framegrab.config import FrameGrabberConfig, InputTypes
+from framegrab.grabber import FrameGrabber
+from framegrab.config import FrameGrabberConfig, InputTypes, MockFrameGrabberConfig
+
+import cv2
 
 class TestFrameGrabWithMockCamera(unittest.TestCase):
     def test_crop_pixels(self):
@@ -242,7 +244,24 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
             grabber.release()
         
         assert len(grabbers) == 2
-        
+
+    def test_rotating_frame_outputs_contiguous_array(self):
+        for n in range(0, 4):
+            config = MockFrameGrabberConfig(
+                num_90_deg_rotations=n
+            )
+            try:
+                grabber = FrameGrabber.create_grabber(config)
+                frame = grabber.grab()
+            finally:
+                grabber.release()
+
+            # The resulting frame should be a contiguous array
+            assert frame.flags['C_CONTIGUOUS'], f"Frame is not C_CONTIGUOUS after {n} rotations. Framegrab should always output contiguous arrays."
+
+            # OpenCV should be able to draw on the resulting frame
+            cv2.line(frame, (10, 10), (20, 20), (0, 255, 0), 1)
+
         
         
            

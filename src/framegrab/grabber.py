@@ -1,4 +1,5 @@
 import logging
+from multiprocessing import Value
 import platform
 import re
 import subprocess
@@ -480,14 +481,27 @@ class FrameGrabber(ABC):
         return frame
 
     def _rotate(self, frame: np.ndarray) -> np.ndarray:
-        """Rotates the provided frame a specified number of 90 degree rotations clockwise"""
+        """Rotates the provided frame a specified number of 90 degree rotations counterclockwise"""
 
         num_90_deg_rotations = self.config.num_90_deg_rotations
 
-        for n in range(num_90_deg_rotations):
-            frame = np.rot90(frame)
+        if num_90_deg_rotations == 0: # no rotation
+            return frame
 
-        return frame
+        # Calculate rotation
+        if num_90_deg_rotations == 1:
+            rotate_code = cv2.ROTATE_90_COUNTERCLOCKWISE
+        elif num_90_deg_rotations == 2:
+            rotate_code = cv2.ROTATE_180
+        elif num_90_deg_rotations == 3:
+            rotate_code = cv2.ROTATE_90_CLOCKWISE
+        else:
+            raise ValueError(
+                f'Invalid value for num_90_deg_rotations. Got: {num_90_deg_rotations}. Expected 0, 1, 2, or 3.'
+            )
+        
+        # Apply the rotation
+        return cv2.rotate(frame, rotate_code)
 
     def apply_options(self, options: dict) -> None:
         """Update generic options such as crop and zoom as well as
