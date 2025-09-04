@@ -1,10 +1,10 @@
 import logging
-from multiprocessing import Value
 import platform
 import re
 import subprocess
 import time
 from abc import ABC, abstractmethod
+from multiprocessing import Value
 from threading import Lock, Thread
 from typing import Dict, List, Optional, Union
 
@@ -485,7 +485,7 @@ class FrameGrabber(ABC):
 
         num_90_deg_rotations = self.config.num_90_deg_rotations
 
-        if num_90_deg_rotations == 0: # no rotation
+        if num_90_deg_rotations == 0:  # no rotation
             return frame
 
         # Calculate rotation
@@ -497,9 +497,9 @@ class FrameGrabber(ABC):
             rotate_code = cv2.ROTATE_90_CLOCKWISE
         else:
             raise ValueError(
-                f'Invalid value for num_90_deg_rotations. Got: {num_90_deg_rotations}. Expected 0, 1, 2, or 3.'
+                f"Invalid value for num_90_deg_rotations. Got: {num_90_deg_rotations}. Expected 0, 1, 2, or 3."
             )
-        
+
         # Apply the rotation
         return cv2.rotate(frame, rotate_code)
 
