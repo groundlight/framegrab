@@ -1,5 +1,4 @@
 import logging
-from multiprocessing import Value
 import platform
 import re
 import subprocess

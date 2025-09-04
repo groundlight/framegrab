@@ -246,6 +246,14 @@ class TestFrameGrabWithMockCamera(unittest.TestCase):
         assert len(grabbers) == 2
 
     def test_rotating_frame_outputs_contiguous_array(self):
+        """Test that all rotation operations produce contiguous arrays.
+    
+        Rotates frames by 0, 90, 180, and 270 degrees and verifies that:
+        1. The resulting arrays are C_CONTIGUOUS for optimal memory layout
+        2. OpenCV operations like cv2.line() work without errors
+        
+        This ensures rotated frames maintain performance and compatibility.
+        """
         for n in range(0, 4):
             config = MockFrameGrabberConfig(
                 num_90_deg_rotations=n
