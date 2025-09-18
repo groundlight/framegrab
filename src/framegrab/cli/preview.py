@@ -85,11 +85,10 @@ def grabber_from_input_type(source: str, input_type: str) -> FrameGrabber:
     elif input_type_enum == InputTypes.ROS2:
         config = ROS2GrabberConfig(topic=source)
     else:
-        raise click.BadParameter(
-            f'Unrecognized input_type: {input_type}'
-        )
-    
+        raise click.BadParameter(f"Unrecognized input_type: {input_type}")
+
     return FrameGrabber.create_grabber(config)
+
 
 @click.command()
 @click.argument("source")
