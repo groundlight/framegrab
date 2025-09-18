@@ -62,13 +62,30 @@ pip install framegrab[all]
 
 ### Command line interface (CLI)
 
-There is a simple CLI for `framegrab` to discover and preview configurations.
+FrameGrab provides a CLI for discovering and previewing cameras.
 
-```
-framegrab
+**Auto-detect source type:**
+```bash
+framegrab preview rtsp://admin:password@192.168.1.20/stream0    # RTSP camera
+framegrab preview camera_config.yaml                            # YAML config file
 ```
 
-lists the sub-commands, including `autodiscover` and `preview`.
+**Explicit input type:**
+```bash
+framegrab preview ABC123 -i generic_usb -o cv2                 # USB camera by serial number
+framegrab preview video.mp4 -i file -o imgcat                  # Video file
+```
+
+**Discovery:**
+```bash
+framegrab autodiscover                                          # Find all cameras
+```
+
+**Help:**
+```bash
+framegrab --help                                               # Show all commands
+framegrab preview --help                                       # Show preview options
+```
 
 ### Frame Grabbing
 
