@@ -40,7 +40,7 @@ def source_to_grabbers(source: str, input_type: str | None) -> dict[str, FrameGr
     # grabber type from the serial number. 
     if source.startswith('rtsp://'):
         rtsp_config = RTSPFrameGrabberConfig(rtsp_url=source)
-        grabber = FrameGrabber.create_grabber(rtsp_config.to_framegrab_config_dict())
+        grabber = FrameGrabber.create_grabber(rtsp_config)
         return {grabber.config.name: grabber}
     elif looks_like_yaml_file(source):
         source_path = Path(source)
@@ -87,7 +87,7 @@ def grabber_from_input_type(source: str, input_type: str) -> FrameGrabber:
             f'Unrecognized input_type: {input_type}'
         )
     
-    return FrameGrabber.create_grabber(config.to_framegrab_config_dict())
+    return FrameGrabber.create_grabber(config)
 
 @click.command()
 @click.argument("source")
