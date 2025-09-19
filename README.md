@@ -72,8 +72,8 @@ framegrab preview camera_config.yaml                            # YAML config fi
 
 **Explicit input type:**
 ```bash
-framegrab preview 1234567890123 -i generic_usb                  # USB camera by serial number
-framegrab preview video.mp4 -i file                             # Video file
+framegrab preview 12345678901 -i generic_usb                    # USB camera by serial number
+framegrab preview 35432343252 -i basler                         # Basler camera
 ```
 
 **Discovery:**

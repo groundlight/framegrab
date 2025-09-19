@@ -12,9 +12,10 @@ from framegrab.config import (
     SUPPORTED_VIDEO_EXTENSIONS,
 )
 
-# All the input types that framegrab supports as a list of strings
+# All input types that framegrab supports
 INPUT_TYPES_AS_STR = [item.value for item in InputTypes]
 
+# Mapping between input_type strings and their corresponding ID keys (e.g. serial_number, rtsp_url, etc.)
 INPUT_TYPE_TO_ID_DICT = FrameGrabberConfig.get_input_type_to_id_dict()
 
 
