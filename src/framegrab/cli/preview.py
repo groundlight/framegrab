@@ -5,11 +5,11 @@ import click
 
 from framegrab import FrameGrabber, preview_image
 from framegrab.config import (
+    SUPPORTED_VIDEO_EXTENSIONS,
     FileStreamFrameGrabberConfig,
     FrameGrabberConfig,
     InputTypes,
     RTSPFrameGrabberConfig,
-    SUPPORTED_VIDEO_EXTENSIONS,
 )
 
 # All input types that framegrab supports
@@ -67,18 +67,15 @@ def source_to_grabbers(source: str, input_type: str | None) -> dict[str, FrameGr
             f"Try specifying the input type explicitly with -i/--input-type. Available input types are {INPUT_TYPES_AS_STR}"
         )
 
+
 def grabber_from_input_type_and_source(source: str, input_type: str) -> FrameGrabber:
     """Create a FrameGrabber given an explicit input type and source identifier."""
-    
+
     input_type_enum = InputTypes(input_type)
     id_key = INPUT_TYPE_TO_ID_DICT.get(input_type_enum)
-    config = {
-        'input_type': input_type,
-        'id': {
-            id_key: source
-        }
-    }
+    config = {"input_type": input_type, "id": {id_key: source}}
     return FrameGrabber.create_grabber(config)
+
 
 @click.command()
 @click.argument("source")

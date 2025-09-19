@@ -654,7 +654,7 @@ FileStreamFrameGrabberConfig:
       default: null
       title: Digital Zoom
     filename:
-      pattern: ^[\w\-/]+\.mp4|mov|mjpeg$
+      pattern: (?i)^.*\.(mp4|mov|mjpeg|avi|mkv|webm)$
       title: Filename
       type: string
     max_fps:
