@@ -27,6 +27,9 @@ DIGITAL_ZOOM_MAX = 4
 DEFAULT_FOURCC = "MJPG"
 DEFAULT_FPS = 30
 
+# Supported video file extensions for FileStreamFrameGrabber
+SUPPORTED_VIDEO_EXTENSIONS = ["mp4", "mov", "mjpeg", "avi", "mkv", "webm"]
+
 # Only used for YouTube Live streams, not required otherwise
 try:
     import streamlink
@@ -541,7 +544,7 @@ class YouTubeLiveFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMi
 class FileStreamFrameGrabberConfig(FrameGrabberConfig, WithMaxFPSMixin):
     """Configuration class for File Stream Frame Grabber."""
 
-    filename: str = Field(..., pattern=r"^[\w\-/]+\.mp4|mov|mjpeg$")
+    filename: str = Field(..., pattern=rf"(?i)^.*\.({'|'.join(SUPPORTED_VIDEO_EXTENSIONS)})$")
 
 
 class MockFrameGrabberConfig(WithResolutionMixin):

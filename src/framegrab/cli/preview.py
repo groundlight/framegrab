@@ -2,25 +2,20 @@ import traceback
 from pathlib import Path
 
 import click
-import yaml
 
 from framegrab import FrameGrabber, preview_image
 from framegrab.config import (
-    BaslerFrameGrabberConfig,
     FileStreamFrameGrabberConfig,
-    GenericUSBFrameGrabberConfig,
-    HttpLiveStreamingFrameGrabberConfig,
+    FrameGrabberConfig,
     InputTypes,
-    MockFrameGrabberConfig,
-    RaspberryPiCSI2FrameGrabberConfig,
-    RealSenseFrameGrabberConfig,
-    ROS2GrabberConfig,
     RTSPFrameGrabberConfig,
-    YouTubeLiveFrameGrabberConfig,
+    SUPPORTED_VIDEO_EXTENSIONS,
 )
 
 # All the input types that framegrab supports as a list of strings
 INPUT_TYPES_AS_STR = [item.value for item in InputTypes]
+
+INPUT_TYPE_TO_ID_DICT = FrameGrabberConfig.get_input_type_to_id_dict()
 
 
 def looks_like_yaml_file(source: str) -> bool:
@@ -29,11 +24,18 @@ def looks_like_yaml_file(source: str) -> bool:
     return source_path.suffix.lower() in [".yaml", ".yml"]
 
 
+def looks_like_video_file(source: str) -> bool:
+    """Check if a file path has a supported video extension."""
+    source_path = Path(source)
+    supported_extensions = [f".{ext}" for ext in SUPPORTED_VIDEO_EXTENSIONS]
+    return source_path.suffix.lower() in supported_extensions
+
+
 def source_to_grabbers(source: str, input_type: str | None) -> dict[str, FrameGrabber]:
     """Create FrameGrabber objects from a source (URL, yaml file path, serial number, etc.) and optional input type."""
     # If input type is explicitly provided, use it
     if input_type:
-        grabber = grabber_from_input_type(source, input_type)
+        grabber = grabber_from_input_type_and_source(source, input_type)
         return {grabber.config.name: grabber}
 
     # Otherwise, try to auto-detect.
@@ -53,42 +55,29 @@ def source_to_grabbers(source: str, input_type: str | None) -> dict[str, FrameGr
         grabbers_list = FrameGrabber.from_yaml(source)
         grabbers = {grabber.config.name: grabber for grabber in grabbers_list}
         return grabbers
+    elif looks_like_video_file(source):
+        source_path = Path(source)
+        file_config = FileStreamFrameGrabberConfig(filename=source)
+        grabber = FrameGrabber.create_grabber(file_config)
+        return {grabber.config.name: grabber}
     else:
         raise click.BadParameter(
             f"Unable to infer input type of SOURCE: {source}. "
             f"Try specifying the input type explicitly with -i/--input-type. Available input types are {INPUT_TYPES_AS_STR}"
         )
 
-
-def grabber_from_input_type(source: str, input_type: str) -> FrameGrabber:
+def grabber_from_input_type_and_source(source: str, input_type: str) -> FrameGrabber:
     """Create a FrameGrabber given an explicit input type and source identifier."""
-
+    
     input_type_enum = InputTypes(input_type)
-    if input_type_enum == InputTypes.GENERIC_USB:
-        config = GenericUSBFrameGrabberConfig(serial_number=source)
-    elif input_type_enum == InputTypes.BASLER:
-        config = BaslerFrameGrabberConfig(serial_number=source)
-    elif input_type_enum == InputTypes.RTSP:
-        config = RTSPFrameGrabberConfig(rtsp_url=source)
-    elif input_type_enum == InputTypes.REALSENSE:
-        config = RealSenseFrameGrabberConfig(serial_number=source)
-    elif input_type_enum == InputTypes.RPI_CSI2:
-        config = RaspberryPiCSI2FrameGrabberConfig()  # No source needed
-    elif input_type_enum == InputTypes.HLS:
-        config = HttpLiveStreamingFrameGrabberConfig(hls_url=source)
-    elif input_type_enum == InputTypes.YOUTUBE_LIVE:
-        config = YouTubeLiveFrameGrabberConfig(youtube_url=source)
-    elif input_type_enum == InputTypes.FILE_STREAM:
-        config = FileStreamFrameGrabberConfig(filename=source)
-    elif input_type_enum == InputTypes.MOCK:
-        config = MockFrameGrabberConfig(serial_number=source)
-    elif input_type_enum == InputTypes.ROS2:
-        config = ROS2GrabberConfig(topic=source)
-    else:
-        raise click.BadParameter(f"Unrecognized input_type: {input_type}")
-
+    id_key = INPUT_TYPE_TO_ID_DICT.get(input_type_enum)
+    config = {
+        'input_type': input_type,
+        'id': {
+            id_key: source
+        }
+    }
     return FrameGrabber.create_grabber(config)
-
 
 @click.command()
 @click.argument("source")

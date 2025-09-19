@@ -72,8 +72,8 @@ framegrab preview camera_config.yaml                            # YAML config fi
 
 **Explicit input type:**
 ```bash
-framegrab preview ABC123 -i generic_usb -o cv2                 # USB camera by serial number
-framegrab preview video.mp4 -i file -o imgcat                  # Video file
+framegrab preview 1234567890123 -i generic_usb                  # USB camera by serial number
+framegrab preview video.mp4 -i file                             # Video file
 ```
 
 **Discovery:**
@@ -81,10 +81,24 @@ framegrab preview video.mp4 -i file -o imgcat                  # Video file
 framegrab autodiscover                                          # Find all cameras
 ```
 
+**Output formats:**
+The CLI supports different ways to display camera frames using the `-o/--output` option:
+
+- `imgcat` (default): Displays images directly in compatible terminals like iTerm2
+- `cv2`: Opens frames in an OpenCV window (requires GUI)  
+- `ascii`: Shows frames as ASCII art in the terminal
+- `none`: Captures frames but doesn't display them
+
+```bash
+framegrab preview rtsp://camera-url -o cv2                      # OpenCV window
+framegrab preview camera_config.yaml -o ascii                   # ASCII art  
+framegrab autodiscover -o none                                  # No display
+```
+
 **Help:**
 ```bash
-framegrab --help                                               # Show all commands
-framegrab preview --help                                       # Show preview options
+framegrab --help                                                # Show all commands
+framegrab preview --help                                        # Show preview options
 ```
 
 ### Frame Grabbing
