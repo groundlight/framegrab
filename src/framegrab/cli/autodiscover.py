@@ -12,10 +12,11 @@ from framegrab.cli.clitools import (
 
 @click.command()
 @click.option(
-    "-o", "--output",
+    "-o",
+    "--output",
     type=click.Choice(preview_image.OUTPUT_TYPE_CHOICES, case_sensitive=False),
     default="imgcat",
-    help="Output format for preview"
+    help="Output format for preview",
 )
 @click.option(
     "--rtsp-discover-mode",

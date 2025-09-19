@@ -96,7 +96,7 @@ def grabber_from_input_type_and_source(source: str, input_type: str) -> FrameGra
     help="Output format for preview",
 )
 def preview(source: str, input_type: str | None, output: str):
-    """Previews images from the provided source. Must pass an image SOURCE (RTSP URL, serial number 
+    """Previews images from the provided source. Must pass an image SOURCE (RTSP URL, serial number
     framegrab yaml config file etc.)
     """
 
