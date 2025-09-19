@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages
-RUN pip3 install numpy opencv-python
+RUN pip3 install numpy opencv-python framegrab
 
 # Copy the RTSP publisher script
 COPY rtsp_publisher.py /app/rtsp_publisher.py
@@ -28,5 +28,5 @@ WORKDIR /app
 # Expose RTSP port
 EXPOSE 8554
 
-# Run the RTSP publisher
+# Default command - can be overridden
 CMD ["python3", "rtsp_publisher.py"]
