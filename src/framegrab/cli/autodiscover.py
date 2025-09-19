@@ -5,7 +5,6 @@ import yaml
 
 from framegrab import FrameGrabber
 from framegrab.cli.clitools import (
-    PREVIEW_COMMAND_CHOICES,
     PREVIEW_RTSP_COMMAND_CHOICES,
     preview_image,
 )
@@ -13,10 +12,11 @@ from framegrab.cli.clitools import (
 
 @click.command()
 @click.option(
-    "--preview",
-    type=click.Choice(PREVIEW_COMMAND_CHOICES, case_sensitive=False),
+    "-o",
+    "--output",
+    type=click.Choice(preview_image.OUTPUT_TYPE_CHOICES, case_sensitive=False),
     default="imgcat",
-    show_default=True,
+    help="Output format for preview",
 )
 @click.option(
     "--rtsp-discover-mode",
@@ -24,7 +24,7 @@ from framegrab.cli.clitools import (
     default="off",
     show_default=True,
 )
-def autodiscover(preview: str, rtsp_discover_mode: str = "off"):
+def autodiscover(output: str, rtsp_discover_mode: str = "off"):
     """Automatically discover cameras connected to the current host (e.g. USB)."""
     # Print message to stderr
     click.echo("Discovering cameras...", err=True)
@@ -50,7 +50,7 @@ def autodiscover(preview: str, rtsp_discover_mode: str = "off"):
                 err=True,
             )
             click.echo(grabber.config.to_framegrab_config_dict(), err=True)
-            preview_image(frame, camera_name, preview)
+            preview_image(frame, camera_name, output)
 
             grabber.release()
         except Exception:

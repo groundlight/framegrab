@@ -347,7 +347,6 @@ class FrameGrabber(ABC):
             InputTypes.GENERIC_USB,
             InputTypes.BASLER,
             InputTypes.RTSP,
-            InputTypes.RPI_CSI2,
         )
 
         # Autodiscover the grabbers
@@ -1253,7 +1252,7 @@ class FileStreamFrameGrabber(FrameGrabber):
 
     Supports dropping frames to achieve a target FPS.
 
-    Some of the supported formats: mp4, avi, mov, mjpeg
+    Some of the supported formats: mp4, avi, mov, mjpeg, mkv, webm
 
     Configuration:
         id:

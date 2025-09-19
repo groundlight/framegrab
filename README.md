@@ -62,13 +62,44 @@ pip install framegrab[all]
 
 ### Command line interface (CLI)
 
-There is a simple CLI for `framegrab` to discover and preview configurations.
+FrameGrab provides a CLI for discovering and previewing cameras.
 
-```
-framegrab
+**Auto-detect source type:**
+```bash
+framegrab preview rtsp://admin:password@192.168.1.20/stream0    # RTSP camera
+framegrab preview camera_config.yaml                            # YAML config file
 ```
 
-lists the sub-commands, including `autodiscover` and `preview`.
+**Explicit input type:**
+```bash
+framegrab preview 12345678901 -i generic_usb                    # USB camera by serial number
+framegrab preview 35432343252 -i basler                         # Basler camera
+```
+
+**Discovery:**
+```bash
+framegrab autodiscover                                          # Find all cameras
+```
+
+**Output formats:**
+The CLI supports different ways to display camera frames using the `-o/--output` option:
+
+- `imgcat` (default): Displays images directly in compatible terminals like iTerm2
+- `cv2`: Opens frames in an OpenCV window (requires GUI)  
+- `ascii`: Shows frames as ASCII art in the terminal
+- `none`: Captures frames but doesn't display them
+
+```bash
+framegrab preview rtsp://camera-url -o cv2                      # OpenCV window
+framegrab preview camera_config.yaml -o ascii                   # ASCII art  
+framegrab autodiscover -o none                                  # No display
+```
+
+**Help:**
+```bash
+framegrab --help                                                # Show all commands
+framegrab preview --help                                        # Show preview options
+```
 
 ### Frame Grabbing
 
@@ -623,7 +654,7 @@ FileStreamFrameGrabberConfig:
       default: null
       title: Digital Zoom
     filename:
-      pattern: ^[\w\-/]+\.mp4|mov|mjpeg$
+      pattern: (?i)^.*\.(mp4|mov|mjpeg|avi|mkv|webm)$
       title: Filename
       type: string
     max_fps:
