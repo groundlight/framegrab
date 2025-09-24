@@ -8,7 +8,7 @@ import os
 import re
 from abc import ABC
 from enum import Enum
-from typing import Any, ClassVar, Dict, Optional, Tuple, TypeVar, Generic
+from typing import Any, ClassVar, Dict, Generic, Optional, Tuple, TypeVar
 
 from pydantic import (
     BaseModel,
@@ -63,7 +63,9 @@ class InputTypes(Enum):
                 output.append(attr_value)
         return output
 
+
 T = TypeVar("T")
+
 
 class OptionsField(FieldInfo, Generic[T]):
     """
@@ -75,6 +77,7 @@ class OptionsField(FieldInfo, Generic[T]):
     Example:
         video_stream: OptionsField[bool] = OptionsField(key="video_stream", default=False)
     """
+
     def __init__(self, *, key: str, default: T = ..., **kwargs: Any):
         kwargs.setdefault("json_schema_extra", {})["options_key"] = key
         kwargs.setdefault("default", default)
@@ -82,9 +85,7 @@ class OptionsField(FieldInfo, Generic[T]):
         self.key = key
 
     @classmethod
-    def __get_pydantic_core_schema__(
-        cls, _source, handler: GetCoreSchemaHandler
-    ) -> core_schema.CoreSchema:
+    def __get_pydantic_core_schema__(cls, _source, handler: GetCoreSchemaHandler) -> core_schema.CoreSchema:
         """
         Delegate validation & schema generation to the inner type `T`.
         Allows OptionsField[T] to be used anywhere a plain `T` could be.
@@ -92,7 +93,6 @@ class OptionsField(FieldInfo, Generic[T]):
         # `__args__` holds the type parameter, e.g. dict | None
         inner_type = _source.__args__[0]
         return handler.generate_schema(inner_type)
-
 
 
 # Private helpers for nested option dict manipulation
@@ -136,20 +136,14 @@ def _clean_empty(d: dict):
                 del d[k]
 
 
-
-
 class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
     """Base configuration class for all frame grabbers."""
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
     crop: OptionsField[dict | None] = OptionsField(key="crop", default=None)
-    digital_zoom: OptionsField[float | None] = OptionsField(
-        key="zoom.digital", default=None, ge=1, le=DIGITAL_ZOOM_MAX
-    )
-    num_90_deg_rotations: OptionsField[int | None] = OptionsField(
-        key="rotation.num_90_deg_rotations", default=0
-    )
+    digital_zoom: OptionsField[float | None] = OptionsField(key="zoom.digital", default=None, ge=1, le=DIGITAL_ZOOM_MAX)
+    num_90_deg_rotations: OptionsField[int | None] = OptionsField(key="rotation.num_90_deg_rotations", default=0)
 
     name: Optional[str] = None
 
@@ -278,7 +272,6 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
         id_field = self.get_input_type_to_id_dict()[input_type]
         id_value = getattr(self, id_field) if id_field else None
         return id_field, id_value
-    
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
@@ -315,7 +308,7 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
 
         # Unpack id section first
         id_section = cfg.pop("id", {})
-        id_field_name, id_field_value = (next(iter(id_section.items())) if id_section else (None, None))
+        id_field_name, id_field_value = next(iter(id_section.items())) if id_section else (None, None)
 
         options = cfg.pop("options", {})
 
@@ -377,7 +370,6 @@ class WithResolutionMixin(FrameGrabberConfig, ABC):
 
     resolution_width: OptionsField[int | None] = OptionsField(key="resolution.width", default=None)
     resolution_height: OptionsField[int | None] = OptionsField(key="resolution.height", default=None)
-
 
     @field_validator("resolution_height", mode="before")
     def validate_resolution(cls, v: int, info: dict):
@@ -449,11 +441,13 @@ class BaslerFrameGrabberConfig(FrameGrabberConfig):
     serial_number: Optional[str] = None
     basler_options: OptionsField[dict | None] = OptionsField(key="basler_options", default=None)
 
+
 class RealSenseFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for RealSense Frame Grabber."""
 
     serial_number: Optional[str] = None
     side_by_side_depth: OptionsField[bool | None] = OptionsField(key="depth.side_by_side", default=None)
+
 
 class HttpLiveStreamingFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin):
     """Configuration class for HTTP Live Streaming Frame Grabber."""
