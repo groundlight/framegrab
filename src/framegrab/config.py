@@ -8,18 +8,21 @@ import os
 import re
 from abc import ABC
 from enum import Enum
-from typing import Any, ClassVar, Dict, Optional, Tuple
+from typing import Any, ClassVar, Dict, Optional, Tuple, TypeVar, Generic
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    GetCoreSchemaHandler,
     PrivateAttr,
     computed_field,
     confloat,
     field_validator,
     model_validator,
 )
+from pydantic.fields import FieldInfo
+from pydantic_core import core_schema
 
 from .unavailable_module import UnavailableModuleOrObject
 
@@ -60,15 +63,55 @@ class InputTypes(Enum):
                 output.append(attr_value)
         return output
 
+T = TypeVar("T")
+
+class OptionsField(FieldInfo, Generic[T]):
+    """
+    Marks a model attribute that belongs under the ``options`` section.
+
+    key: dot-path from ``options`` to the value
+         e.g. "zoom.digital" → {"options": {"zoom": {"digital": 2}}}
+
+    Example:
+        video_stream: OptionsField[bool] = OptionsField(key="video_stream", default=False)
+    """
+    def __init__(self, *, key: str, default: T = ..., **kwargs: Any):
+        kwargs.setdefault("metadata", {})
+        kwargs["metadata"]["options_key"] = key
+
+        # FieldInfo in Pydantic v2 requires keyword-only arguments.
+        kwargs.setdefault("default", default)
+        super().__init__(**kwargs)
+        self.key = key
+        self.default = default
+        self.kwargs = kwargs
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, _source, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        """
+        Delegate validation & schema generation to the inner type `T`.
+        Allows OptionsField[T] to be used anywhere a plain `T` could be.
+        """
+        # `__args__` holds the type parameter, e.g. dict | None
+        inner_type = _source.__args__[0]
+        return handler.generate_schema(inner_type)
+
 
 class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
     """Base configuration class for all frame grabbers."""
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    crop: Optional[Dict[str, Dict[str, float]]] = None
-    digital_zoom: Optional[confloat(ge=1, le=DIGITAL_ZOOM_MAX)] = None
-    num_90_deg_rotations: Optional[int] = 0
+    crop: OptionsField[dict | None] = OptionsField(key="crop", default=None)
+    digital_zoom: OptionsField[float | None] = OptionsField(
+        key="zoom.digital", default=None, ge=1, le=DIGITAL_ZOOM_MAX
+    )
+    num_90_deg_rotations: OptionsField[int | None] = OptionsField(
+        key="rotation.num_90_deg_rotations", default=0
+    )
+
     name: Optional[str] = None
 
     _unnamed_grabber_count: ClassVar[int] = PrivateAttr(default=0)
@@ -296,8 +339,9 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
 class WithResolutionMixin(FrameGrabberConfig, ABC):
     """Mixin class to add resolution configuration to FrameGrabberConfig."""
 
-    resolution_width: Optional[int] = None
-    resolution_height: Optional[int] = None
+    resolution_width: OptionsField[int | None] = OptionsField(key="resolution.width", default=None)
+    resolution_height: OptionsField[int | None] = OptionsField(key="resolution.height", default=None)
+
 
     @field_validator("resolution_height", mode="before")
     def validate_resolution(cls, v: int, info: dict):
@@ -334,7 +378,7 @@ class WithResolutionMixin(FrameGrabberConfig, ABC):
 class WithKeepConnectionOpenMixin(ABC, BaseModel):
     """Mixin class to add keep_connection_open configuration to FrameGrabberConfig."""
 
-    keep_connection_open: bool = Field(default=True)
+    keep_connection_open: OptionsField[bool] = OptionsField(key="keep_connection_open", default=True)
 
     def update_framegrab_config_dict(self, dictionary_config: dict) -> dict:
         """Update the framegrab config dictionary with keep_connection_open option."""
@@ -356,7 +400,7 @@ class WithKeepConnectionOpenMixin(ABC, BaseModel):
 class WithMaxFPSMixin(ABC, BaseModel):
     """Mixin class to add max_fps configuration to FrameGrabberConfig."""
 
-    max_fps: Optional[int] = 30
+    max_fps: OptionsField[int | None] = OptionsField(key="max_fps", default=30)
 
     def update_framegrab_config_dict(self, dictionary_config: dict) -> dict:
         """Update the framegrab config dictionary with max_fps option."""
@@ -379,9 +423,9 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for Generic USB Frame Grabber."""
 
     serial_number: Optional[str] = None
-    video_stream: Optional[bool] = False
-    fourcc: Optional[str] = None
-    fps: Optional[int] = None
+    video_stream: OptionsField[bool] = OptionsField(key="video_stream", default=False)
+    fourcc: OptionsField[str | None] = OptionsField(key="fourcc", default=None)
+    fps: OptionsField[int | None] = OptionsField(key="fps", default=None)
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
@@ -465,7 +509,7 @@ class BaslerFrameGrabberConfig(FrameGrabberConfig):
     """Configuration class for Basler Frame Grabber."""
 
     serial_number: Optional[str] = None
-    basler_options: Optional[dict] = None
+    basler_options: OptionsField[dict | None] = OptionsField(key="basler_options", default=None)
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
@@ -488,7 +532,7 @@ class RealSenseFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for RealSense Frame Grabber."""
 
     serial_number: Optional[str] = None
-    side_by_side_depth: Optional[bool] = None
+    side_by_side_depth: OptionsField[bool | None] = OptionsField(key="depth.side_by_side", default=None)
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
