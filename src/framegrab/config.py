@@ -8,7 +8,7 @@ import os
 import re
 from abc import ABC
 from enum import Enum
-from typing import Any, ClassVar, Dict, Optional, Tuple, TypeVar, Generic
+from typing import Any, ClassVar, Dict, Optional, Tuple, TypeVar, Generic, Union
 
 from pydantic import (
     BaseModel,
@@ -143,11 +143,11 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    crop: OptionsField[dict | None] = OptionsField(key="crop", default=None)
-    digital_zoom: OptionsField[float | None] = OptionsField(
+    crop: OptionsField[Optional[dict]] = OptionsField(key="crop", default=None)
+    digital_zoom: OptionsField[Optional[float]] = OptionsField(
         key="zoom.digital", default=None, ge=1, le=DIGITAL_ZOOM_MAX
     )
-    num_90_deg_rotations: OptionsField[int | None] = OptionsField(
+    num_90_deg_rotations: OptionsField[Optional[int]] = OptionsField(
         key="rotation.num_90_deg_rotations", default=0
     )
 
@@ -375,8 +375,8 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
 class WithResolutionMixin(FrameGrabberConfig, ABC):
     """Mixin class to add resolution configuration to FrameGrabberConfig."""
 
-    resolution_width: OptionsField[int | None] = OptionsField(key="resolution.width", default=None)
-    resolution_height: OptionsField[int | None] = OptionsField(key="resolution.height", default=None)
+    resolution_width: OptionsField[Optional[int]] = OptionsField(key="resolution.width", default=None)
+    resolution_height: OptionsField[Optional[int]] = OptionsField(key="resolution.height", default=None)
 
 
     @field_validator("resolution_height", mode="before")
@@ -396,7 +396,7 @@ class WithKeepConnectionOpenMixin(ABC, BaseModel):
 class WithMaxFPSMixin(ABC, BaseModel):
     """Mixin class to add max_fps configuration to FrameGrabberConfig."""
 
-    max_fps: OptionsField[int | None] = OptionsField(key="max_fps", default=30)
+    max_fps: OptionsField[Optional[int]] = OptionsField(key="max_fps", default=30)
 
 
 class GenericUSBFrameGrabberConfig(WithResolutionMixin):
@@ -404,8 +404,8 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
 
     serial_number: Optional[str] = None
     video_stream: OptionsField[bool] = OptionsField(key="video_stream", default=False)
-    fourcc: OptionsField[str | None] = OptionsField(key="fourcc", default=None)
-    fps: OptionsField[int | None] = OptionsField(key="fps", default=None)
+    fourcc: OptionsField[Optional[str]] = OptionsField(key="fourcc", default=None)
+    fps: OptionsField[Optional[int]] = OptionsField(key="fps", default=None)
 
 
 class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, WithMaxFPSMixin):
@@ -447,13 +447,13 @@ class BaslerFrameGrabberConfig(FrameGrabberConfig):
     """Configuration class for Basler Frame Grabber."""
 
     serial_number: Optional[str] = None
-    basler_options: OptionsField[dict | None] = OptionsField(key="basler_options", default=None)
+    basler_options: OptionsField[Optional[dict]] = OptionsField(key="basler_options", default=None)
 
 class RealSenseFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for RealSense Frame Grabber."""
 
     serial_number: Optional[str] = None
-    side_by_side_depth: OptionsField[bool | None] = OptionsField(key="depth.side_by_side", default=None)
+    side_by_side_depth: OptionsField[Optional[bool]] = OptionsField(key="depth.side_by_side", default=None)
 
 class HttpLiveStreamingFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin):
     """Configuration class for HTTP Live Streaming Frame Grabber."""

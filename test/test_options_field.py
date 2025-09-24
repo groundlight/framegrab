@@ -11,13 +11,13 @@ class OptionsFieldTestConfig(FrameGrabberConfig):
     simple_value: OptionsField[int] = OptionsField(key="simple_value", default=42)
     
     # Nested option with dot-path
-    nested_setting: OptionsField[str | None] = OptionsField(key="camera.setting", default=None)
+    nested_setting: OptionsField[Optional[str]] = OptionsField(key="camera.setting", default=None)
     
     # Deeply nested option
     deep_option: OptionsField[bool] = OptionsField(key="advanced.features.enabled", default=False)
     
     # Optional field that can be None
-    optional_param: OptionsField[float | None] = OptionsField(key="optional_param", default=None)
+    optional_param: OptionsField[Optional[float]] = OptionsField(key="optional_param", default=None)
     
     # Test ID field (not an OptionsField) - use serial_number which MockFrameGrabberConfig expects
     serial_number: Optional[str] = None
