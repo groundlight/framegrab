@@ -63,7 +63,9 @@ class InputTypes(Enum):
                 output.append(attr_value)
         return output
 
+
 T = TypeVar("T")
+
 
 class OptionsField(FieldInfo, Generic[T]):
     """
@@ -75,6 +77,7 @@ class OptionsField(FieldInfo, Generic[T]):
     Example:
         video_stream: OptionsField[bool] = OptionsField(key="video_stream", default=False)
     """
+
     def __init__(self, *, key: str, default: T = ..., **kwargs: Any):
         kwargs.setdefault("json_schema_extra", {})["options_key"] = key
         kwargs.setdefault("default", default)
@@ -82,9 +85,7 @@ class OptionsField(FieldInfo, Generic[T]):
         self.key = key
 
     @classmethod
-    def __get_pydantic_core_schema__(
-        cls, _source, handler: GetCoreSchemaHandler
-    ) -> core_schema.CoreSchema:
+    def __get_pydantic_core_schema__(cls, _source, handler: GetCoreSchemaHandler) -> core_schema.CoreSchema:
         """
         Delegate validation & schema generation to the inner type `T`.
         Allows OptionsField[T] to be used anywhere a plain `T` could be.
@@ -92,7 +93,6 @@ class OptionsField(FieldInfo, Generic[T]):
         # `__args__` holds the type parameter, e.g. dict | None
         inner_type = _source.__args__[0]
         return handler.generate_schema(inner_type)
-
 
 
 # Private helpers for nested option dict manipulation
@@ -134,8 +134,6 @@ def _clean_empty(d: dict):
             _clean_empty(d[k])
             if not d[k]:
                 del d[k]
-
-
 
 
 class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
@@ -278,7 +276,6 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
         id_field = self.get_input_type_to_id_dict()[input_type]
         id_value = getattr(self, id_field) if id_field else None
         return id_field, id_value
-    
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
@@ -315,7 +312,7 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
 
         # Unpack id section first
         id_section = cfg.pop("id", {})
-        id_field_name, id_field_value = (next(iter(id_section.items())) if id_section else (None, None))
+        id_field_name, id_field_value = next(iter(id_section.items())) if id_section else (None, None)
 
         options = cfg.pop("options", {})
 
@@ -377,7 +374,6 @@ class WithResolutionMixin(FrameGrabberConfig, ABC):
 
     resolution_width: OptionsField[Optional[int]] = OptionsField(key="resolution.width", default=None)
     resolution_height: OptionsField[Optional[int]] = OptionsField(key="resolution.height", default=None)
-
 
     @field_validator("resolution_height", mode="before")
     def validate_resolution(cls, v: int, info: dict):
@@ -449,11 +445,13 @@ class BaslerFrameGrabberConfig(FrameGrabberConfig):
     serial_number: Optional[str] = None
     basler_options: OptionsField[Optional[dict]] = OptionsField(key="basler_options", default=None)
 
+
 class RealSenseFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for RealSense Frame Grabber."""
 
     serial_number: Optional[str] = None
     side_by_side_depth: OptionsField[Optional[bool]] = OptionsField(key="depth.side_by_side", default=None)
+
 
 class HttpLiveStreamingFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin):
     """Configuration class for HTTP Live Streaming Frame Grabber."""
