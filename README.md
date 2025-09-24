@@ -269,10 +269,7 @@ GenericUSBFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
@@ -328,11 +325,9 @@ GenericUSBFrameGrabberConfig:
       default: null
       title: Serial Number
     video_stream:
-      anyOf:
-      - type: boolean
-      - type: 'null'
       default: false
       title: Video Stream
+      type: boolean
   title: GenericUSBFrameGrabberConfig
   type: object
 
@@ -342,10 +337,7 @@ RTSPFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
@@ -395,10 +387,7 @@ RealSenseFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
@@ -463,10 +452,7 @@ BaslerFrameGrabberConfig:
       title: Basler Options
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
@@ -506,10 +492,7 @@ RaspberryPiCSI2FrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
@@ -543,10 +526,7 @@ HttpLiveStreamingFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
@@ -590,10 +570,7 @@ YouTubeLiveFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
@@ -637,10 +614,7 @@ FileStreamFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
@@ -686,10 +660,7 @@ MockFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
@@ -741,10 +712,7 @@ ROS2GrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
