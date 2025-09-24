@@ -8,7 +8,7 @@ import os
 import re
 from abc import ABC
 from enum import Enum
-from typing import Any, ClassVar, Dict, Optional, Tuple, TypeVar, Generic, Union
+from typing import Any, ClassVar, Dict, Generic, Optional, Tuple, TypeVar, Union
 
 from pydantic import (
     BaseModel,
@@ -145,9 +145,7 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
     digital_zoom: OptionsField[Optional[float]] = OptionsField(
         key="zoom.digital", default=None, ge=1, le=DIGITAL_ZOOM_MAX
     )
-    num_90_deg_rotations: OptionsField[Optional[int]] = OptionsField(
-        key="rotation.num_90_deg_rotations", default=0
-    )
+    num_90_deg_rotations: OptionsField[Optional[int]] = OptionsField(key="rotation.num_90_deg_rotations", default=0)
 
     name: Optional[str] = None
 
