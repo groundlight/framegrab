@@ -1,0 +1,22 @@
+import subprocess
+from pathlib import Path
+
+import click
+
+
+@click.command("balena-rtsp-tunnel")
+@click.argument("device_id")
+@click.argument("rtsp_ip")
+@click.argument("pem_file", required=False)
+def balena_rtsp_tunnel(device_id: str, rtsp_ip: str, pem_file: str = None):
+    """Tunnel RTSP stream from Balena device via SSH tunneling.
+    
+    DEVICE_ID: Balena device ID
+    RTSP_IP: IP address of RTSP camera (e.g., 192.168.2.219)
+    PEM_FILE: Optional path to PEM file for SSH authentication
+    """
+    script_path = Path(__file__).parent / "balena_rtsp_tunnel.sh"
+    cmd = [str(script_path), device_id, rtsp_ip]
+    if pem_file:
+        cmd.append(pem_file)
+    subprocess.run(cmd)
