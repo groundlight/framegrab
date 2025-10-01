@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Simple RTSP tunnel script for Balena devices
-
 # Check arguments
 if [ $# -lt 2 ]; then
     echo "Usage: $0 <device-id> <rtsp-ip> [pem-file]"
