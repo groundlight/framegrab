@@ -20,6 +20,8 @@ def balena_rtsp_tunnel(
     RTSP_IP: IP address of RTSP camera (e.g. 192.168.2.219)
     PEM_FILE: Optional path to PEM file for SSH authentication
     """
-    script_path = Path(__file__).parent / "balena_rtsp_tunnel.sh"  # Poetry packages .sh files alongside .py files, so this works
+    script_path = (
+        Path(__file__).parent / "balena_rtsp_tunnel.sh"
+    )  # Poetry packages .sh files alongside .py files, so this works
     cmd = [str(script_path), device_id, rtsp_ip, pem_file or "", str(local_port), str(remote_port)]
     subprocess.run(cmd)
