@@ -1,10 +1,12 @@
 import subprocess
 from pathlib import Path
+import os
 
 import click
 
+COMMAND_NAME = "balena-rtsp-tunnel"
 
-@click.command("balena-rtsp-tunnel")
+@click.command(COMMAND_NAME)
 @click.argument("device_id")
 @click.argument("rtsp_ip")
 @click.argument("pem_file", required=False)
@@ -20,6 +22,9 @@ def balena_rtsp_tunnel(
     RTSP_IP: IP address of RTSP camera (e.g. 192.168.2.219)
     PEM_FILE: Optional path to PEM file for SSH authentication
     """
+    if os.name == 'nt':
+        raise RuntimeError(f"{COMMAND_NAME} is not supported on Windows. Try running this command on a Unix-like machine.")
+
     script_path = Path(__file__).parent / "balena_rtsp_tunnel.sh"  # Poetry packages .sh files alongside .py files, so this works
     cmd = [str(script_path), device_id, rtsp_ip, pem_file or "", str(local_port), str(remote_port)]
     subprocess.run(cmd)
