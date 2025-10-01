@@ -11,7 +11,7 @@ import click
 @click.option("-l", "--local-port", default=8554, help="Local port for RTSP stream")
 def balena_rtsp_tunnel(device_id: str, rtsp_ip: str, pem_file: str = None, local_port: int = 8554):
     """Tunnel RTSP stream from Balena device via SSH tunneling.
-    
+
     DEVICE_ID: Balena device ID
     RTSP_IP: IP address of RTSP camera (e.g., 192.168.2.219)
     PEM_FILE: Optional path to PEM file for SSH authentication
