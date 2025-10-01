@@ -1,10 +1,11 @@
+import os
 import subprocess
 from pathlib import Path
-import os
 
 import click
 
 COMMAND_NAME = "balena-rtsp-tunnel"
+
 
 @click.command(COMMAND_NAME)
 @click.argument("device_id")
