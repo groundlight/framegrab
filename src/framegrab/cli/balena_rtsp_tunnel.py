@@ -8,7 +8,8 @@ import click
 @click.argument("device_id")
 @click.argument("rtsp_ip")
 @click.argument("pem_file", required=False)
-def balena_rtsp_tunnel(device_id: str, rtsp_ip: str, pem_file: str = None):
+@click.option("-l", "--local-port", default=8554, help="Local port for RTSP stream")
+def balena_rtsp_tunnel(device_id: str, rtsp_ip: str, pem_file: str = None, local_port: int = 8554):
     """Tunnel RTSP stream from Balena device via SSH tunneling.
     
     DEVICE_ID: Balena device ID
@@ -16,7 +17,5 @@ def balena_rtsp_tunnel(device_id: str, rtsp_ip: str, pem_file: str = None):
     PEM_FILE: Optional path to PEM file for SSH authentication
     """
     script_path = Path(__file__).parent / "balena_rtsp_tunnel.sh"
-    cmd = [str(script_path), device_id, rtsp_ip]
-    if pem_file:
-        cmd.append(pem_file)
+    cmd = [str(script_path), device_id, rtsp_ip, pem_file or "", str(local_port)]
     subprocess.run(cmd)

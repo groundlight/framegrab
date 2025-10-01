@@ -11,7 +11,8 @@ fi
 
 DEVICE_ID="$1"
 RTSP_IP="$2"
-PEM_FILE="${3:-}"
+PEM_FILE="$3"
+LOCAL_PORT="${4:-8554}"
 
 # Check balena CLI
 if ! command -v balena &>/dev/null; then
@@ -44,7 +45,7 @@ balena device tunnel "$DEVICE_ID" -p 22222:4321 &
 sleep 3
 
 # Build SSH command
-SSH_CMD="ssh -N -L 8554:$RTSP_IP:554 $USERNAME@localhost -p 4321 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+SSH_CMD="ssh -N -L $LOCAL_PORT:$RTSP_IP:554 $USERNAME@localhost -p 4321 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 if [ -n "$PEM_FILE" ]; then
     SSH_CMD="$SSH_CMD -i $PEM_FILE"
 fi
@@ -53,7 +54,7 @@ $SSH_CMD &
 
 echo "RTSP stream available"
 echo "Use your camera's credentials and stream path, e.g.:"
-echo "  rtsp://admin:123456@localhost:8554/stream0"
+echo "  rtsp://admin:123456@localhost:$LOCAL_PORT/stream0"
 echo "Press Ctrl+C to stop"
 
 # Wait
