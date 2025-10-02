@@ -1284,6 +1284,9 @@ class FileStreamFrameGrabber(FrameGrabber):
             self.capture.release()
             raise ValueError(f"Could not read first frame of file {self.config.filename}. Is it a valid video file?")
 
+        # Reset frame position back to the first frame after validation
+        self.capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
         self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
         if self.fps_source <= 0.1:
             logger.warning(f"Captured framerate is very low or zero: {self.fps_source} FPS")
@@ -1327,7 +1330,7 @@ class FileStreamFrameGrabber(FrameGrabber):
 
     def get_current_frame_number(self) -> int:
         """Return the current (last read) frame number"""
-        return int(self.capture.get(cv2.CAP_PROP_POS_FRAMES)) - 1
+        return int(self.capture.get(cv2.CAP_PROP_POS_FRAMES))
 
     def release(self) -> None:
         """Release the video capture resources."""
