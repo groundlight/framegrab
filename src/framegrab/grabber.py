@@ -1326,7 +1326,7 @@ class FileStreamFrameGrabber(FrameGrabber):
         logger.debug(f"Dropped {frames_to_drop} frames to meet {self.config.max_fps} FPS target")
 
     def get_current_frame_number(self) -> int:
-        """ Return the current (last read) frame number """
+        """Return the current (last read) frame number"""
         return int(self.capture.get(cv2.CAP_PROP_POS_FRAMES)) - 1
 
     def release(self) -> None:
