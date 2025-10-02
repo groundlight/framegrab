@@ -1328,9 +1328,17 @@ class FileStreamFrameGrabber(FrameGrabber):
         self.remainder = round(drop_frames - frames_to_drop, 2)
         logger.debug(f"Dropped {frames_to_drop} frames to meet {self.config.max_fps} FPS target")
 
-    def get_current_frame_number(self) -> int:
-        """Return the current (last read) frame number"""
+    def get_next_frame_number(self) -> int:
+        """Return the next frame number that will be read (current position in file)"""
         return int(self.capture.get(cv2.CAP_PROP_POS_FRAMES))
+    
+    def get_last_frame_read_number(self) -> int:
+        """Return the frame number of the last frame read"""
+        current_pos = self.get_next_frame_number()
+        if current_pos:
+            return self.get_next_frame_number() - 1
+        else:
+            return None
 
     def release(self) -> None:
         """Release the video capture resources."""
