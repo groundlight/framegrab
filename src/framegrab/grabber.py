@@ -1331,7 +1331,7 @@ class FileStreamFrameGrabber(FrameGrabber):
     def get_next_frame_number(self) -> int:
         """Return the next frame number that will be read (current position in file)"""
         return int(self.capture.get(cv2.CAP_PROP_POS_FRAMES))
-    
+
     def get_last_frame_read_number(self) -> int:
         """Return the frame number of the last frame read"""
         current_pos = self.get_next_frame_number()
