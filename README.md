@@ -269,13 +269,11 @@ GenericUSBFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
+      options_key: crop
       title: Crop
     digital_zoom:
       anyOf:
@@ -284,18 +282,21 @@ GenericUSBFrameGrabberConfig:
         type: number
       - type: 'null'
       default: null
+      options_key: zoom.digital
       title: Digital Zoom
     fourcc:
       anyOf:
       - type: string
       - type: 'null'
       default: null
+      options_key: fourcc
       title: Fourcc
     fps:
       anyOf:
       - type: integer
       - type: 'null'
       default: null
+      options_key: fps
       title: Fps
     name:
       anyOf:
@@ -308,18 +309,21 @@ GenericUSBFrameGrabberConfig:
       - type: integer
       - type: 'null'
       default: 0
+      options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
     resolution_height:
       anyOf:
       - type: integer
       - type: 'null'
       default: null
+      options_key: resolution.height
       title: Resolution Height
     resolution_width:
       anyOf:
       - type: integer
       - type: 'null'
       default: null
+      options_key: resolution.width
       title: Resolution Width
     serial_number:
       anyOf:
@@ -328,11 +332,10 @@ GenericUSBFrameGrabberConfig:
       default: null
       title: Serial Number
     video_stream:
-      anyOf:
-      - type: boolean
-      - type: 'null'
       default: false
+      options_key: video_stream
       title: Video Stream
+      type: boolean
   title: GenericUSBFrameGrabberConfig
   type: object
 
@@ -342,13 +345,11 @@ RTSPFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
+      options_key: crop
       title: Crop
     digital_zoom:
       anyOf:
@@ -357,9 +358,11 @@ RTSPFrameGrabberConfig:
         type: number
       - type: 'null'
       default: null
+      options_key: zoom.digital
       title: Digital Zoom
     keep_connection_open:
       default: true
+      options_key: keep_connection_open
       title: Keep Connection Open
       type: boolean
     max_fps:
@@ -367,6 +370,7 @@ RTSPFrameGrabberConfig:
       - type: integer
       - type: 'null'
       default: 30
+      options_key: max_fps
       title: Max Fps
     name:
       anyOf:
@@ -379,6 +383,7 @@ RTSPFrameGrabberConfig:
       - type: integer
       - type: 'null'
       default: 0
+      options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
     rtsp_url:
       pattern: ^rtsp://
@@ -395,13 +400,11 @@ RealSenseFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
+      options_key: crop
       title: Crop
     digital_zoom:
       anyOf:
@@ -410,6 +413,7 @@ RealSenseFrameGrabberConfig:
         type: number
       - type: 'null'
       default: null
+      options_key: zoom.digital
       title: Digital Zoom
     name:
       anyOf:
@@ -422,18 +426,21 @@ RealSenseFrameGrabberConfig:
       - type: integer
       - type: 'null'
       default: 0
+      options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
     resolution_height:
       anyOf:
       - type: integer
       - type: 'null'
       default: null
+      options_key: resolution.height
       title: Resolution Height
     resolution_width:
       anyOf:
       - type: integer
       - type: 'null'
       default: null
+      options_key: resolution.width
       title: Resolution Width
     serial_number:
       anyOf:
@@ -446,6 +453,7 @@ RealSenseFrameGrabberConfig:
       - type: boolean
       - type: 'null'
       default: null
+      options_key: depth.side_by_side
       title: Side By Side Depth
   title: RealSenseFrameGrabberConfig
   type: object
@@ -460,16 +468,15 @@ BaslerFrameGrabberConfig:
         type: object
       - type: 'null'
       default: null
+      options_key: basler_options
       title: Basler Options
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
+      options_key: crop
       title: Crop
     digital_zoom:
       anyOf:
@@ -478,6 +485,7 @@ BaslerFrameGrabberConfig:
         type: number
       - type: 'null'
       default: null
+      options_key: zoom.digital
       title: Digital Zoom
     name:
       anyOf:
@@ -490,6 +498,7 @@ BaslerFrameGrabberConfig:
       - type: integer
       - type: 'null'
       default: 0
+      options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
     serial_number:
       anyOf:
@@ -506,13 +515,11 @@ RaspberryPiCSI2FrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
+      options_key: crop
       title: Crop
     digital_zoom:
       anyOf:
@@ -521,6 +528,7 @@ RaspberryPiCSI2FrameGrabberConfig:
         type: number
       - type: 'null'
       default: null
+      options_key: zoom.digital
       title: Digital Zoom
     name:
       anyOf:
@@ -533,6 +541,7 @@ RaspberryPiCSI2FrameGrabberConfig:
       - type: integer
       - type: 'null'
       default: 0
+      options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
   title: RaspberryPiCSI2FrameGrabberConfig
   type: object
@@ -543,13 +552,11 @@ HttpLiveStreamingFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
+      options_key: crop
       title: Crop
     digital_zoom:
       anyOf:
@@ -558,6 +565,7 @@ HttpLiveStreamingFrameGrabberConfig:
         type: number
       - type: 'null'
       default: null
+      options_key: zoom.digital
       title: Digital Zoom
     hls_url:
       pattern: ^https?://
@@ -565,6 +573,7 @@ HttpLiveStreamingFrameGrabberConfig:
       type: string
     keep_connection_open:
       default: true
+      options_key: keep_connection_open
       title: Keep Connection Open
       type: boolean
     name:
@@ -578,6 +587,7 @@ HttpLiveStreamingFrameGrabberConfig:
       - type: integer
       - type: 'null'
       default: 0
+      options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
   required:
   - hls_url
@@ -590,13 +600,11 @@ YouTubeLiveFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
+      options_key: crop
       title: Crop
     digital_zoom:
       anyOf:
@@ -605,9 +613,11 @@ YouTubeLiveFrameGrabberConfig:
         type: number
       - type: 'null'
       default: null
+      options_key: zoom.digital
       title: Digital Zoom
     keep_connection_open:
       default: true
+      options_key: keep_connection_open
       title: Keep Connection Open
       type: boolean
     name:
@@ -621,6 +631,7 @@ YouTubeLiveFrameGrabberConfig:
       - type: integer
       - type: 'null'
       default: 0
+      options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
     youtube_url:
       pattern: ^https?://
@@ -637,13 +648,11 @@ FileStreamFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
+      options_key: crop
       title: Crop
     digital_zoom:
       anyOf:
@@ -652,6 +661,7 @@ FileStreamFrameGrabberConfig:
         type: number
       - type: 'null'
       default: null
+      options_key: zoom.digital
       title: Digital Zoom
     filename:
       pattern: (?i)^.*\.(mp4|mov|mjpeg|avi|mkv|webm)$
@@ -662,6 +672,7 @@ FileStreamFrameGrabberConfig:
       - type: integer
       - type: 'null'
       default: 30
+      options_key: max_fps
       title: Max Fps
     name:
       anyOf:
@@ -674,6 +685,7 @@ FileStreamFrameGrabberConfig:
       - type: integer
       - type: 'null'
       default: 0
+      options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
   required:
   - filename
@@ -686,13 +698,11 @@ MockFrameGrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
+      options_key: crop
       title: Crop
     digital_zoom:
       anyOf:
@@ -701,6 +711,7 @@ MockFrameGrabberConfig:
         type: number
       - type: 'null'
       default: null
+      options_key: zoom.digital
       title: Digital Zoom
     name:
       anyOf:
@@ -713,18 +724,21 @@ MockFrameGrabberConfig:
       - type: integer
       - type: 'null'
       default: 0
+      options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
     resolution_height:
       anyOf:
       - type: integer
       - type: 'null'
       default: null
+      options_key: resolution.height
       title: Resolution Height
     resolution_width:
       anyOf:
       - type: integer
       - type: 'null'
       default: null
+      options_key: resolution.width
       title: Resolution Width
     serial_number:
       anyOf:
@@ -741,13 +755,11 @@ ROS2GrabberConfig:
   properties:
     crop:
       anyOf:
-      - additionalProperties:
-          additionalProperties:
-            type: number
-          type: object
+      - additionalProperties: true
         type: object
       - type: 'null'
       default: null
+      options_key: crop
       title: Crop
     digital_zoom:
       anyOf:
@@ -756,6 +768,7 @@ ROS2GrabberConfig:
         type: number
       - type: 'null'
       default: null
+      options_key: zoom.digital
       title: Digital Zoom
     name:
       anyOf:
@@ -768,6 +781,7 @@ ROS2GrabberConfig:
       - type: integer
       - type: 'null'
       default: 0
+      options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
     topic:
       pattern: ^(~|/)?([A-Za-z_][A-Za-z0-9_]*)(/[A-Za-z_][A-Za-z0-9_]*)*$
