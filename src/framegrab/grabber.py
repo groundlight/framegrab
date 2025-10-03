@@ -1342,13 +1342,13 @@ class FileStreamFrameGrabber(FrameGrabber):
 
     def seek_to_frame(self, frame_number: int) -> None:
         """Seek to a specific frame number in the video file.
-        
+
         Args:
             frame_number: Frame number to seek to (0-based)
         """
         if frame_number < 0:
             raise ValueError(f"Frame number must be non-negative, got {frame_number}")
-            
+
         self.capture.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
 
     def seek_to_beginning(self) -> None:
