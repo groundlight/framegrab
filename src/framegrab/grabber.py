@@ -1340,6 +1340,26 @@ class FileStreamFrameGrabber(FrameGrabber):
         else:
             return None
 
+    def seek_to_frame(self, frame_number: int) -> None:
+        """Seek to a specific frame number in the video file.
+        
+        Args:
+            frame_number: Frame number to seek to (0-based)
+        """
+        if frame_number < 0:
+            raise ValueError(f"Frame number must be non-negative, got {frame_number}")
+            
+        self.capture.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+
+    def seek_to_beginning(self) -> None:
+        """Seek to the beginning of the video file (frame 0)."""
+        self.seek_to_frame(0)
+
+    @property
+    def fps(self) -> float:
+        """FPS of the source video file."""
+        return self.fps_source
+
     def release(self) -> None:
         """Release the video capture resources."""
         if hasattr(self, "capture"):
