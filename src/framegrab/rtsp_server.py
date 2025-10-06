@@ -84,6 +84,10 @@ class RTSPServer:
         status = "running" if self._running else "stopped"
         return f"RTSPServer({status}) - {self.rtsp_url}"
 
+    def __repr__(self) -> str:
+        status = "running" if self._running else "stopped"
+        return f"RTSPServer({status}) - {self.rtsp_url}"
+
     def start(self) -> None:
         """Start the RTSP server in a background thread."""
         if self._running:
