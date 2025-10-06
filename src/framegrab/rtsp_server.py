@@ -5,6 +5,7 @@ from typing import Callable
 
 import cv2
 import numpy as np
+import platform
 
 from .unavailable_module import UnavailableModuleOrObject
 
@@ -46,6 +47,20 @@ class RTSPServer:
             mount_point: RTSP mount point (default: /stream)
             fps: Target FPS for RTSP stream (default: 30)
         """
+
+        system = platform.system()
+        if system == "Windows":
+            raise RuntimeError(
+                "RTSPServer is not supported on Windows. "
+                "GStreamer RTSP server libraries are difficult to install on Windows. "
+                "Please use a Linux system, WSL2, or Docker container."
+            )
+        elif system == "Darwin":  # macOS
+            logger.warning(
+                "RTSPServer has limited support on macOS. "
+                "You may need to install GStreamer via Homebrew: "
+            )
+
         _ = gi, cv2, GLib, Gst, GstRtspServer
 
         self.callback = callback
