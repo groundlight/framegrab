@@ -46,14 +46,12 @@ class RTSPServer:
             mount_point: RTSP mount point (default: /stream)
             fps: Target FPS for RTSP stream (default: 30)
         """
-        # This will raise the ImportError if GStreamer is not available
-        # following the UnavailableModuleOrObject pattern
         _ = gi, cv2, GLib, Gst, GstRtspServer
 
         self.callback = callback
         self.port = port
         self.mount_point = mount_point
-        self.fps = fps
+        self.fps = int(fps)
         self.width = width
         self.height = height
 
@@ -70,13 +68,6 @@ class RTSPServer:
     def __str__(self) -> str:
         status = "running" if self._running else "stopped"
         return f"RTSPServer({status}) - {self.rtsp_url}"
-
-    def __repr__(self) -> str:
-        return (
-            f"RTSPServer(port={self.port}, mount_point='{self.mount_point}', "
-            f"fps={self.fps}, width={self.width}, height={self.height}, "
-            f"running={self._running})"
-        )
 
     def start(self) -> None:
         """Start the RTSP server in a background thread."""
@@ -148,7 +139,6 @@ class RTSPServer:
                 appsrc.connect("need-data", self.on_need_data)
 
             def on_need_data(self, src, length):
-                # Call the user's callback to get the latest frame
                 frame = self.rtsp_server.callback()
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 

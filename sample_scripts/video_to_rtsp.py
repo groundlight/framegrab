@@ -1,9 +1,10 @@
 import argparse
 from framegrab import FrameGrabber
-from framegrab.config import FileStreamFrameGrabberConfig
+from framegrab.config import FileStreamFrameGrabberConfig, GenericUSBFrameGrabberConfig
 
 from framegrab.rtsp_server import RTSPServer
 
+import cv2
 import numpy as np
 import time 
 
@@ -14,16 +15,20 @@ def main():
     args = parser.parse_args()
 
     # Connect to the grabber
-    config = FileStreamFrameGrabberConfig(filename=args.video_path)
+    # config = FileStreamFrameGrabberConfig(filename=args.video_path)
+    config = GenericUSBFrameGrabberConfig(serial_number='200901010001', resolution_width=1280, resolution_height=720)
     grabber = FrameGrabber.create_grabber(config)
 
     # Determine the resolution of the video
     test_frame = grabber.grab()
     height, width, _ = test_frame.shape
-    grabber.seek_to_beginning()
 
     # Determine the FPS of the video
-    fps = round(grabber.fps)
+    fps = grabber.get_fps()
+    
+    # Reset to beginning after test frame
+    if hasattr(grabber, 'seek_to_beginning'):
+        grabber.seek_to_beginning()
 
     def get_frame_callback() -> np.ndarray:
         try:
