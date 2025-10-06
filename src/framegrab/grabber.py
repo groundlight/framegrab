@@ -513,7 +513,7 @@ class FrameGrabber(ABC):
         self.config = new_config
 
     @staticmethod
-    def _get_cv2_fps(frame_grabber) -> Optional[float]:
+    def _get_cv2_fps(frame_grabber: "FrameGrabber") -> Optional[float]:
         """Get FPS from OpenCV VideoCapture object.
         
         Args:
@@ -1083,11 +1083,11 @@ class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
             if resulting_fps_node and resulting_fps_node.IsReadable():
                 return round(resulting_fps_node.GetValue(), 2)
             
-            logger.warning(f"Could not read FPS from Basler camera {self._default_name()}. "
+            logger.warning(f"Could not read FPS from Basler camera {self.config.name}. "
                          "AcquisitionFrameRate and ResultingFrameRate nodes are not available or readable.")
             return None
         except Exception as e:
-            logger.warning(f"Failed to detect FPS for Basler camera {self._default_name()}: {e}")
+            logger.warning(f"Failed to detect FPS for Basler camera {self.config.name}: {e}")
             return None
 
     def apply_options(self, options: dict) -> None:
@@ -1188,11 +1188,11 @@ class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
             if fps_value > 0:
                 return float(fps_value)
             else:
-                logger.warning(f"Invalid FPS detected ({fps_value}) for RealSense camera {self._default_name()}. "
+                logger.warning(f"Invalid FPS detected ({fps_value}) for RealSense camera {self.config.name}. "
                              "Camera may not be configured properly.")
                 return None
         except Exception as e:
-            logger.warning(f"Failed to detect FPS for RealSense camera {self._default_name()}: {e}")
+            logger.warning(f"Failed to detect FPS for RealSense camera {self.config.name}: {e}")
             return None
 
     def release(self) -> None:

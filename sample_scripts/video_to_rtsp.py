@@ -15,8 +15,7 @@ def main():
     args = parser.parse_args()
 
     # Connect to the grabber
-    # config = FileStreamFrameGrabberConfig(filename=args.video_path)
-    config = GenericUSBFrameGrabberConfig(serial_number='200901010001', resolution_width=1280, resolution_height=720)
+    config = FileStreamFrameGrabberConfig(filename=args.video_path)
     grabber = FrameGrabber.create_grabber(config)
 
     # Determine the resolution of the video
@@ -27,8 +26,7 @@ def main():
     fps = grabber.get_fps()
     
     # Reset to beginning after test frame
-    if hasattr(grabber, 'seek_to_beginning'):
-        grabber.seek_to_beginning()
+    grabber.seek_to_beginning()
 
     def get_frame_callback() -> np.ndarray:
         try:
