@@ -1,11 +1,11 @@
 import logging
+import platform
 import threading
 import time
 from typing import Callable
 
 import cv2
 import numpy as np
-import platform
 
 from .unavailable_module import UnavailableModuleOrObject
 
@@ -57,8 +57,7 @@ class RTSPServer:
             )
         elif system == "Darwin":  # macOS
             logger.warning(
-                "RTSPServer has limited support on macOS. "
-                "You may need to install GStreamer via Homebrew: "
+                "RTSPServer has limited support on macOS. " "You may need to install GStreamer via Homebrew: "
             )
 
         _ = gi, cv2, GLib, Gst, GstRtspServer
