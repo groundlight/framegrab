@@ -8,18 +8,21 @@ import os
 import re
 from abc import ABC
 from enum import Enum
-from typing import Any, ClassVar, Dict, Optional, Tuple
+from typing import Any, ClassVar, Dict, Generic, Optional, Tuple, TypeVar, Union
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    GetCoreSchemaHandler,
     PrivateAttr,
     computed_field,
     confloat,
     field_validator,
     model_validator,
 )
+from pydantic.fields import FieldInfo
+from pydantic_core import core_schema
 
 from .unavailable_module import UnavailableModuleOrObject
 
@@ -61,14 +64,89 @@ class InputTypes(Enum):
         return output
 
 
+T = TypeVar("T")
+
+
+class OptionsField(FieldInfo, Generic[T]):
+    """
+    Marks a model attribute that belongs under the ``options`` section.
+
+    key: dot-path from ``options`` to the value
+         e.g. "zoom.digital" → {"options": {"zoom": {"digital": 2}}}
+
+    Example:
+        video_stream: OptionsField[bool] = OptionsField(key="video_stream", default=False)
+    """
+
+    def __init__(self, *, key: str, default: T = ..., **kwargs: Any):
+        kwargs.setdefault("json_schema_extra", {})["options_key"] = key
+        kwargs.setdefault("default", default)
+        super().__init__(**kwargs)
+        self.key = key
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, _source, handler: GetCoreSchemaHandler) -> core_schema.CoreSchema:
+        """
+        Delegate validation & schema generation to the inner type `T`.
+        Allows OptionsField[T] to be used anywhere a plain `T` could be.
+        """
+        # `__args__` holds the type parameter, e.g. dict | None
+        inner_type = _source.__args__[0]
+        return handler.generate_schema(inner_type)
+
+
+# Private helpers for nested option dict manipulation
+def _deep_set(target: dict, parts: list[str], val):
+    """Create/update nested dictionaries specified by dot‐path parts."""
+    head, *tail = parts
+    if not tail:
+        target[head] = val
+        return
+    child = target.setdefault(head, {})
+    _deep_set(child, tail, val)
+
+
+def _deep_get(source: dict, parts: list[str]):
+    """Safely fetch nested value addressed by dot‐path parts; returns None if absent."""
+    head, *tail = parts
+    if head not in source:
+        return None
+    if not tail:
+        return source[head]
+    return _deep_get(source[head], tail)
+
+
+def _deep_delete(target: dict, parts: list[str]):
+    """Remove nested value addressed by dot‐path parts."""
+    head, *tail = parts
+    if head not in target:
+        return
+    if not tail:
+        del target[head]
+        return
+    _deep_delete(target[head], tail)
+
+
+def _clean_empty(d: dict):
+    """Remove empty dict values recursively."""
+    for k in list(d.keys()):
+        if isinstance(d[k], dict):
+            _clean_empty(d[k])
+            if not d[k]:
+                del d[k]
+
+
 class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
     """Base configuration class for all frame grabbers."""
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    crop: Optional[Dict[str, Dict[str, float]]] = None
-    digital_zoom: Optional[confloat(ge=1, le=DIGITAL_ZOOM_MAX)] = None
-    num_90_deg_rotations: Optional[int] = 0
+    crop: OptionsField[Optional[dict]] = OptionsField(key="crop", default=None)
+    digital_zoom: OptionsField[Optional[float]] = OptionsField(
+        key="zoom.digital", default=None, ge=1, le=DIGITAL_ZOOM_MAX
+    )
+    num_90_deg_rotations: OptionsField[Optional[int]] = OptionsField(key="rotation.num_90_deg_rotations", default=0)
+
     name: Optional[str] = None
 
     _unnamed_grabber_count: ClassVar[int] = PrivateAttr(default=0)
@@ -199,67 +277,63 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
 
     def to_framegrab_config_dict(self) -> dict:
         """Convert the config to the framegrab standard format."""
-        dictionary_config = super().model_dump()
+        data = super().model_dump()
 
+        # Input type + id handling (unchanged)
         input_type = self.get_input_type()
-        dictionary_config["input_type"] = input_type.value
+        data["input_type"] = input_type.value
 
-        # Structure the id field like this: {"id": {"id_field": "id_value"}}
-        # where id_field is rtsp_url, serial_number, etc.
         id_field, id_value = self.get_id_field_and_value()
         if id_field and id_value:
-            dictionary_config["id"] = {id_field: id_value}
-            del dictionary_config[id_field]
+            data["id"] = {id_field: id_value}
+            data.pop(id_field, None)
 
-        # These go in the options field
-        del dictionary_config["crop"]
-        del dictionary_config["digital_zoom"]
-        del dictionary_config["num_90_deg_rotations"]
+        # Extract all OptionsField-marked attributes into nested options
+        options: dict = {}
+        for fname, mfield in self.__class__.model_fields.items():
+            opt_key = (mfield.json_schema_extra or {}).get("options_key")
+            if not opt_key:
+                continue
+            val = getattr(self, fname)
+            if val is None:
+                continue
+            _deep_set(options, opt_key.split("."), val)
+            data.pop(fname, None)
 
-        options = {}
-        if self.crop:
-            options["crop"] = self.crop
-        if self.digital_zoom:
-            options["zoom"] = {"digital": self.digital_zoom}
-        if self.num_90_deg_rotations:
-            options["rotation"] = {"num_90_deg_rotations": self.num_90_deg_rotations}
-
-        dictionary_config["options"] = options
-        return dictionary_config
+        data["options"] = options
+        return data
 
     @classmethod
-    def get_model_parameters(cls, dictionary_config: dict) -> dict:
-        """
-        Extract the parameters for the pydantic model from the
-        framegrab standard format dictionary config and return them as a dictionary.
-        """
-        dictionary_config = copy.deepcopy(dictionary_config)
-        input_type = cls.get_input_type()
-        id_field_name = cls.get_input_type_to_id_dict()[input_type]
-        id_field_required = False
+    def get_model_parameters(cls, cfg: dict) -> dict:
+        """Inverse of to_framegrab_config_dict: flatten options into kwargs."""
+        cfg = copy.deepcopy(cfg)
+
+        # Unpack id section first
+        id_section = cfg.pop("id", {})
+        id_field_name, id_field_value = next(iter(id_section.items())) if id_section else (None, None)
+
+        options = cfg.pop("options", {})
+
+        # Pull OptionsField values back to top level kwargs
+        for fname, mfield in cls.model_fields.items():
+            opt_key = (mfield.json_schema_extra or {}).get("options_key")
+            if not opt_key:
+                continue
+            val = _deep_get(options, opt_key.split("."))
+            if val is not None:
+                cfg[fname] = val
+                # Remove the consumed option to track unused keys
+                _deep_delete(options, opt_key.split("."))
+
+        _clean_empty(options)
+        if options:
+            raise ValueError(f"Unexpected option keys for {cls.__name__}: {list(options.keys())}")
+
+        # Reattach id field if present
         if id_field_name:
-            id_field_required = cls.model_fields.get(id_field_name).is_required()
+            cfg[id_field_name] = id_field_value
 
-        if id_field_required and "id" not in dictionary_config:
-            raise ValueError("The 'id' field is missing in the configuration dictionary.")
-        else:
-            id = dictionary_config.pop("id", {})
-            id_field_name = list(id.keys())[0] if id else None
-            id_field_value = id[id_field_name] if id_field_name else None
-
-        options = dictionary_config.pop("options", {})
-        crop = options.pop("crop", None)
-        digital_zoom = options.pop("zoom", {}).pop("digital", None)
-        num_90_deg_rotations = options.pop("rotation", {}).pop("num_90_deg_rotations", 0)
-
-        return {
-            "crop": crop,
-            "digital_zoom": digital_zoom,
-            "num_90_deg_rotations": num_90_deg_rotations,
-            **({id_field_name: id_field_value} if id_field_name else {}),
-            **dictionary_config,
-            **options,  # Theoretically this should be empty. But if it's not, we'll send it downstream so the unexpected option params are validated
-        }
+        return cfg
 
     @classmethod
     def from_framegrab_config_dict(cls, dictionary_config: dict) -> "FrameGrabber":
@@ -296,8 +370,8 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
 class WithResolutionMixin(FrameGrabberConfig, ABC):
     """Mixin class to add resolution configuration to FrameGrabberConfig."""
 
-    resolution_width: Optional[int] = None
-    resolution_height: Optional[int] = None
+    resolution_width: OptionsField[Optional[int]] = OptionsField(key="resolution.width", default=None)
+    resolution_height: OptionsField[Optional[int]] = OptionsField(key="resolution.height", default=None)
 
     @field_validator("resolution_height", mode="before")
     def validate_resolution(cls, v: int, info: dict):
@@ -306,106 +380,26 @@ class WithResolutionMixin(FrameGrabberConfig, ABC):
             raise ValueError("resolution_height must be provided if resolution_width is provided")
         return v
 
-    def to_framegrab_config_dict(self) -> dict:
-        """Convert the config to the framegrab standard format."""
-        base_dict = super().to_framegrab_config_dict()
-        del base_dict["resolution_width"]
-        del base_dict["resolution_height"]
-
-        if self.resolution_width is not None and self.resolution_height is not None:
-            base_dict["options"]["resolution"] = {"width": self.resolution_width, "height": self.resolution_height}
-
-        return base_dict
-
-    @classmethod
-    def get_model_parameters(cls, config_dict: dict) -> dict:
-        """Extract model parameters from the framegrab standard format dictionary config."""
-        data = copy.deepcopy(config_dict)
-
-        options = data.get("options", {})
-        if "resolution" in options:
-            resolution = options.pop("resolution")
-            data["resolution_width"] = resolution.get("width")
-            data["resolution_height"] = resolution.get("height")
-
-        return super().get_model_parameters(data)
-
 
 class WithKeepConnectionOpenMixin(ABC, BaseModel):
     """Mixin class to add keep_connection_open configuration to FrameGrabberConfig."""
 
-    keep_connection_open: bool = Field(default=True)
-
-    def update_framegrab_config_dict(self, dictionary_config: dict) -> dict:
-        """Update the framegrab config dictionary with keep_connection_open option."""
-        del dictionary_config["keep_connection_open"]
-        dictionary_config.setdefault("options", {})["keep_connection_open"] = self.keep_connection_open
-        return dictionary_config
-
-    @classmethod
-    def update_model_parameters(cls, model_parameters: dict) -> dict:
-        """Update model parameters with keep_connection_open option."""
-        data = copy.deepcopy(model_parameters)
-        options = data.get("options", {})
-        keep_connection_open = options.pop("keep_connection_open", True)
-        if keep_connection_open is not None:
-            data["keep_connection_open"] = keep_connection_open
-        return data
+    keep_connection_open: OptionsField[bool] = OptionsField(key="keep_connection_open", default=True)
 
 
 class WithMaxFPSMixin(ABC, BaseModel):
     """Mixin class to add max_fps configuration to FrameGrabberConfig."""
 
-    max_fps: Optional[int] = 30
-
-    def update_framegrab_config_dict(self, dictionary_config: dict) -> dict:
-        """Update the framegrab config dictionary with max_fps option."""
-        del dictionary_config["max_fps"]
-        dictionary_config.setdefault("options", {})["max_fps"] = self.max_fps
-        return dictionary_config
-
-    @classmethod
-    def update_model_parameters(cls, model_parameters: dict) -> dict:
-        """Update model parameters with max_fps option."""
-        data = copy.deepcopy(model_parameters)
-        options = data.get("options", {})
-        max_fps = options.pop("max_fps", 30)
-        if max_fps:
-            data["max_fps"] = max_fps
-        return data
+    max_fps: OptionsField[Optional[int]] = OptionsField(key="max_fps", default=30)
 
 
 class GenericUSBFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for Generic USB Frame Grabber."""
 
     serial_number: Optional[str] = None
-    video_stream: Optional[bool] = False
-    fourcc: Optional[str] = None
-    fps: Optional[int] = None
-
-    def to_framegrab_config_dict(self) -> dict:
-        """Convert the config to the framegrab standard format."""
-        base_dict = super().to_framegrab_config_dict()
-        # Move custom options to options section
-        for field_name in ["video_stream", "fourcc", "fps"]:
-            if field_name in base_dict:
-                base_dict["options"][field_name] = base_dict.pop(field_name)
-        return base_dict
-
-    @classmethod
-    def get_model_parameters(cls, config_dict: dict) -> dict:
-        """Extract model parameters from the framegrab standard format dictionary config."""
-        data = copy.deepcopy(config_dict)
-        options = data.get("options", {})
-
-        # Extract custom options using their field defaults
-        for field_name in ["video_stream", "fourcc", "fps"]:
-            default_value = cls.model_fields[field_name].default
-            field_value = options.pop(field_name, default_value)
-            if field_value is not None:
-                data[field_name] = field_value
-
-        return super().get_model_parameters(data)
+    video_stream: OptionsField[bool] = OptionsField(key="video_stream", default=False)
+    fourcc: OptionsField[Optional[str]] = OptionsField(key="fourcc", default=None)
+    fps: OptionsField[Optional[int]] = OptionsField(key="fps", default=None)
 
 
 class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, WithMaxFPSMixin):
@@ -442,71 +436,19 @@ class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, Wi
         placeholder = "{{" + match + "}}"
         return rtsp_url.replace(placeholder, password_env_var)
 
-    def to_framegrab_config_dict(self) -> dict:
-        """Convert the config to the framegrab standard format."""
-        base_dict = super().to_framegrab_config_dict()
-
-        with_options_keep_connection_open = WithKeepConnectionOpenMixin.update_framegrab_config_dict(self, base_dict)
-        with_options_max_fps = WithMaxFPSMixin.update_framegrab_config_dict(self, with_options_keep_connection_open)
-
-        return with_options_max_fps
-
-    @classmethod
-    def get_model_parameters(cls, config_dict: dict) -> dict:
-        """Extract model parameters from the framegrab standard format dictionary config."""
-        model_parameters_with_keep_connection_open = WithKeepConnectionOpenMixin.update_model_parameters(config_dict)
-        model_parameters_with_max_fps = WithMaxFPSMixin.update_model_parameters(
-            model_parameters_with_keep_connection_open
-        )
-        return super().get_model_parameters(model_parameters_with_max_fps)
-
 
 class BaslerFrameGrabberConfig(FrameGrabberConfig):
     """Configuration class for Basler Frame Grabber."""
 
     serial_number: Optional[str] = None
-    basler_options: Optional[dict] = None
-
-    def to_framegrab_config_dict(self) -> dict:
-        """Convert the config to the framegrab standard format."""
-        dictionary_config = super().to_framegrab_config_dict()
-        dictionary_config["options"]["basler_options"] = self.basler_options
-        del dictionary_config["basler_options"]
-        return dictionary_config
-
-    @classmethod
-    def get_model_parameters(cls, config_dict: dict) -> dict:
-        """Extract model parameters from the framegrab standard format dictionary config."""
-        data = copy.deepcopy(config_dict)
-        options = data.get("options", {})
-        basler_options = options.pop("basler_options", {})
-        new_data = {**data, "basler_options": basler_options}
-        return super().get_model_parameters(new_data)
+    basler_options: OptionsField[Optional[dict]] = OptionsField(key="basler_options", default=None)
 
 
 class RealSenseFrameGrabberConfig(WithResolutionMixin):
     """Configuration class for RealSense Frame Grabber."""
 
     serial_number: Optional[str] = None
-    side_by_side_depth: Optional[bool] = None
-
-    def to_framegrab_config_dict(self) -> dict:
-        """Convert the config to the framegrab standard format."""
-        base_dict = super().to_framegrab_config_dict()
-        if self.side_by_side_depth is not None:
-            base_dict["options"]["depth"] = {"side_by_side": self.side_by_side_depth}
-        del base_dict["side_by_side_depth"]
-        return base_dict
-
-    @classmethod
-    def get_model_parameters(cls, config_dict: dict) -> dict:
-        """Extract model parameters from the framegrab standard format dictionary config."""
-        data = copy.deepcopy(config_dict)
-        options = data.get("options", {})
-        side_by_side_depth = options.pop("depth", {}).pop("side_by_side", False)
-        if side_by_side_depth:
-            data["side_by_side_depth"] = side_by_side_depth
-        return super().get_model_parameters(data)
+    side_by_side_depth: OptionsField[Optional[bool]] = OptionsField(key="depth.side_by_side", default=None)
 
 
 class HttpLiveStreamingFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin):

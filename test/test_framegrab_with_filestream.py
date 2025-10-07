@@ -108,8 +108,18 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
         """Test frame grabbing from MP4."""
         config = FrameGrabberConfig.from_framegrab_config_dict(self.base_config_mp4)
         grabber = FileStreamFrameGrabber(config)
-        frame = grabber.grab()
+        
+        frame_number = grabber.get_next_frame_number()
+        self.assertEqual(frame_number, 0)
+        last_frame_number = grabber.get_last_frame_read_number()
+        self.assertIsNone(last_frame_number)
 
+        frame = grabber.grab()
+        frame_number = grabber.get_next_frame_number()
+        self.assertEqual(frame_number, 1)
+        last_frame_number = grabber.get_last_frame_read_number()
+        self.assertEqual(last_frame_number, 0)
+        
         self.assertIsInstance(frame, np.ndarray)
         self.assertEqual(frame.shape, (480, 640, 3))
         grabber.release()
@@ -118,7 +128,17 @@ class TestFileStreamFrameGrabber(unittest.TestCase):
         """Test frame grabbing from MJPEG."""
         config = FrameGrabberConfig.from_framegrab_config_dict(self.base_config_mjpeg)
         grabber = FileStreamFrameGrabber(config)
+
+        frame_number = grabber.get_next_frame_number()
+        self.assertEqual(frame_number, 0)
+        last_frame_number = grabber.get_last_frame_read_number()
+        self.assertIsNone(last_frame_number)
+        
         frame = grabber.grab()
+        frame_number = grabber.get_next_frame_number()
+        self.assertEqual(frame_number, 1)
+        last_frame_number = grabber.get_last_frame_read_number()
+        self.assertEqual(last_frame_number, 0)
 
         self.assertIsInstance(frame, np.ndarray)
         self.assertEqual(frame.shape, (480, 640, 3))
