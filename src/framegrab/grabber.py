@@ -421,7 +421,8 @@ class FrameGrabber(ABC):
 
     @abstractmethod
     def _default_name(self) -> str:
-        raise NotImplementedError
+        """Each FrameGrabber must implement its own default name"""
+        pass
 
     def _crop(self, frame: np.ndarray) -> np.ndarray:
         """Looks at FrameGrabber's options and decides to either crop by pixels or
@@ -511,6 +512,39 @@ class FrameGrabber(ABC):
         new_config = FrameGrabberConfig.from_framegrab_config_dict(framegrab_config_dict)
         self.config = new_config
 
+    @staticmethod
+    def _get_cv2_fps(frame_grabber: "FrameGrabber") -> Optional[float]:
+        """Get FPS from OpenCV VideoCapture object.
+
+        Args:
+            frame_grabber: FrameGrabber instance
+
+        Returns:
+            float: The FPS from OpenCV, or None if cannot be determined
+        """
+        try:
+            fps_raw = frame_grabber.capture.get(cv2.CAP_PROP_FPS)
+            if fps_raw > 0:
+                fps_rounded = round(fps_raw, 2)
+                return fps_rounded
+            else:
+                logger.warning(
+                    f"Invalid FPS detected ({fps_raw}) for {frame_grabber._default_name()}. Camera may not report FPS correctly."
+                )
+                return None
+        except Exception as e:
+            logger.warning(f"Could not detect FPS for {frame_grabber._default_name()}: {e}")
+            return None
+
+    @abstractmethod
+    def get_fps(self) -> Optional[float]:
+        """Get the actual FPS of the image source.
+
+        Returns:
+            float: The actual FPS of the source, or None if FPS cannot be determined
+        """
+        pass
+
     @abstractmethod
     def release() -> None:
         """A cleanup method. Releases/closes the video capture, terminates any related threads, etc."""
@@ -542,6 +576,10 @@ class ROS2FrameGrabber(FrameGrabber):
 
     def _default_name(self) -> str:
         return f"ROS2 Topic {self.config.topic}"
+
+    def get_fps(self) -> Optional[float]:
+        # ROS2 topics don't have a fixed FPS - depends on publisher rate
+        return None
 
     def release(self) -> None:
         self._ros2_client.release()
@@ -869,6 +907,10 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
                 else:
                     logger.warning(message)
 
+    def get_fps(self) -> Optional[float]:
+        """Get FPS from USB camera using OpenCV."""
+        return FrameGrabber._get_cv2_fps(self)
+
 
 class RTSPFrameGrabber(FrameGrabber):
     """Handles RTSP streams.
@@ -942,6 +984,10 @@ class RTSPFrameGrabber(FrameGrabber):
             with self.lock:
                 _ = self.capture.grab()
             time.sleep(self.drain_rate)
+
+    def get_fps(self) -> Optional[float]:
+        """Get FPS from RTSP stream using OpenCV."""
+        return FrameGrabber._get_cv2_fps(self)
 
 
 class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
@@ -1024,6 +1070,29 @@ class BaslerFrameGrabber(FrameGrabberWithSerialNumber):
     def release(self) -> None:
         BaslerFrameGrabber.serial_numbers_in_use.remove(self.config.serial_number)
         self.camera.Close()
+
+    def get_fps(self) -> Optional[float]:
+        """Get the actual FPS of the Basler camera."""
+        try:
+            node_map = self.camera.GetNodeMap()
+            # Try to get the actual frame rate (AcquisitionFrameRate)
+            fps_node = node_map.GetNode("AcquisitionFrameRate")
+            if fps_node and fps_node.IsReadable():
+                return round(fps_node.GetValue(), 2)
+
+            # Fallback: try ResultingFrameRate (computed frame rate)
+            resulting_fps_node = node_map.GetNode("ResultingFrameRate")
+            if resulting_fps_node and resulting_fps_node.IsReadable():
+                return round(resulting_fps_node.GetValue(), 2)
+
+            logger.warning(
+                f"Could not read FPS from Basler camera {self.config.name}. "
+                "AcquisitionFrameRate and ResultingFrameRate nodes are not available or readable."
+            )
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to detect FPS for Basler camera {self.config.name}: {e}")
+            return None
 
     def apply_options(self, options: dict) -> None:
         super().apply_options(options)
@@ -1112,6 +1181,26 @@ class RealSenseFrameGrabber(FrameGrabberWithSerialNumber):
             sidebyside = np.hstack((color_image, depth_colormap))
         return sidebyside
 
+    def get_fps(self) -> Optional[float]:
+        """Get the actual FPS of the RealSense camera."""
+        try:
+            # Get active pipeline profile
+            profile = self.pipeline.get_active_profile()
+            color_stream = profile.get_stream(rs.stream.color)
+            video_stream_profile = color_stream.as_video_stream_profile()
+            fps_value = video_stream_profile.fps()
+            if fps_value > 0:
+                return float(fps_value)
+            else:
+                logger.warning(
+                    f"Invalid FPS detected ({fps_value}) for RealSense camera {self.config.name}. "
+                    "Camera may not be configured properly."
+                )
+                return None
+        except Exception as e:
+            logger.warning(f"Failed to detect FPS for RealSense camera {self.config.name}: {e}")
+            return None
+
     def release(self) -> None:
         self.pipeline.stop()
 
@@ -1164,6 +1253,10 @@ class RaspberryPiCSI2FrameGrabber(FrameGrabberWithSerialNumber):
         frame = cv2.cvtColor(np.asanyarray(frame), cv2.COLOR_BGR2RGB)
 
         return frame
+
+    def get_fps(self) -> Optional[float]:
+        # Raspberry Pi CSI2 cameras don't seem to report a fixed FPS.
+        return None
 
     def release(self) -> None:
         self.camera.close()
@@ -1218,6 +1311,10 @@ class HttpLiveStreamingFrameGrabber(FrameGrabber):
         if not ret:
             logger.error(f"Could not read frame from {self.capture}")
         return frame
+
+    def get_fps(self) -> Optional[float]:
+        """Get FPS from HLS stream using OpenCV."""
+        return FrameGrabber._get_cv2_fps(self)
 
     def release(self) -> None:
         if self.config.keep_connection_open:
@@ -1340,6 +1437,25 @@ class FileStreamFrameGrabber(FrameGrabber):
         else:
             return None
 
+    def seek_to_frame(self, frame_number: int) -> None:
+        """Seek to a specific frame number in the video file.
+
+        Args:
+            frame_number: Frame number to seek to (0-based)
+        """
+        if frame_number < 0:
+            raise ValueError(f"Frame number must be non-negative, got {frame_number}")
+
+        self.capture.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+
+    def seek_to_beginning(self) -> None:
+        """Seek to the beginning of the video file (frame 0)."""
+        self.seek_to_frame(0)
+
+    def get_fps(self) -> Optional[float]:
+        """Get FPS from video file using OpenCV."""
+        return FrameGrabber._get_cv2_fps(self)
+
     def release(self) -> None:
         """Release the video capture resources."""
         if hasattr(self, "capture"):
@@ -1382,6 +1498,10 @@ class MockFrameGrabber(FrameGrabberWithSerialNumber):
         height = self.config.resolution_height or 480
 
         return np.zeros((height, width, 3), dtype=np.uint8)
+
+    def get_fps(self) -> Optional[float]:
+        # Mock cameras return a fixed FPS of 30.
+        return 30.0
 
     def release(self) -> None:
         MockFrameGrabber.serial_numbers_in_use.remove(self.config.serial_number)
