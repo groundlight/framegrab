@@ -47,7 +47,7 @@ class VideoToRTSPSampleApp:
                     return grabber.grab()
                 except RuntimeWarning:
                     last_frame_read_number = grabber.get_last_frame_read_number()
-                    logger.info(f'Got to end of {video_path}. Read {last_frame_read_number + 1} frames. Restarting from the beginning of the video...')
+                    logger.info(f'Reached the end of {video_path}. Read {last_frame_read_number + 1} frames. Restarting from the beginning of the video...')
                     grabber.seek_to_beginning()
                     return grabber.grab()
 
