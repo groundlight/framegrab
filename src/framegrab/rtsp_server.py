@@ -170,7 +170,7 @@ class RTSPServer:
                 super().__init__()
                 self.stream = stream
                 self.rtsp_server = rtsp_server
-                self.set_shared(False)
+                # self.set_shared(False)
 
             def do_create_element(self, url):
                 pipeline = (
@@ -187,8 +187,10 @@ class RTSPServer:
                 appsrc = rtsp_media.get_element().get_child_by_name("source")
                 appsrc.connect("need-data", self.on_need_data)
                 
-                # Connect to cleanup signal to prevent resource leaks
-                rtsp_media.connect("unprepared", self._on_media_unprepared)
+                # Reset frame count for each new client connection.
+                # Without this, new clients inherit accumulated frame count from previous clients,
+                # causing PTS overflow and progressive connection slowdown due to buffer accumulation.
+                self.stream.frame_count = 0
                 
                 # Try to find which client is accessing this stream
                 # This is a bit of a hack since GStreamer doesn't directly provide this info
@@ -201,16 +203,6 @@ class RTSPServer:
                 
                 if client_info:
                     logger.info(f"RTSP Server on port {self.rtsp_server.port}: RTSP client {client_info['ip']} connected to {self.stream.mount_point}")
-
-            def _on_media_unprepared(self, rtsp_media):
-                """Clean up resources when client disconnects to prevent leaks."""
-                element = rtsp_media.get_element()
-                if element:
-                    element.set_state(Gst.State.NULL)
-                    # Force state change to complete
-                    element.get_state(Gst.CLOCK_TIME_NONE)
-                    # Unref to ensure complete cleanup
-                    element.unref()
 
             def on_need_data(self, src, length):
                 try:
