@@ -32,7 +32,7 @@ class VideoToRTSPSampleApp:
             grabber = FrameGrabber.create_grabber(config)
             self.grabbers.append(grabber)
 
-            # Determine the resolution of the full-size stream
+            # Determine the resolution of the video
             test_frame = grabber.grab()
             height, width, _ = test_frame.shape
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     try:
         app.run()
-        logger.info(f'RTSP Server startd on port {app.port}')
+        logger.info(f'RTSP Server started on port {app.port}')
 
         rtsp_urls = app.list_rtsp_urls()
         for url, path in zip(rtsp_urls, app.video_paths):
