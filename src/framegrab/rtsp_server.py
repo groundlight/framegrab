@@ -2,7 +2,7 @@ import logging
 import platform
 import threading
 import time
-from typing import Callable
+from typing import Callable, Dict, List
 
 import cv2
 import numpy as np
@@ -25,29 +25,28 @@ except ImportError as e:
 logger = logging.getLogger(__name__)
 
 
-class RTSPServer:
-    """Simple RTSP server that streams frames via callback."""
+class Stream:
+    """Represents a single RTSP stream."""
+    
+    def __init__(self, callback: Callable[[], np.ndarray], width: int, height: int, 
+                 mount_point: str, fps: int = 30):
+        self.callback = callback
+        self.width = width
+        self.height = height
+        self.mount_point = mount_point
+        self.fps = int(fps)
+        self.frame_count = 0
 
-    def __init__(
-        self,
-        callback: Callable[[], np.ndarray],
-        width: int,
-        height: int,
-        port: int = 8554,
-        mount_point: str = "/stream",
-        fps: int = 30,
-    ):
+
+class RTSPServer:
+    """RTSP server that supports multiple streams."""
+
+    def __init__(self, port: int = 8554):
         """Initialize RTSP server.
 
         Args:
-            callback: Function that returns a frame when called
-            width: Frame width (required)
-            height: Frame height (required)
             port: RTSP server port (default: 8554)
-            mount_point: RTSP mount point (default: /stream)
-            fps: Target FPS for RTSP stream (default: 30)
         """
-
         system = platform.system()
         if system == "Windows":
             raise RuntimeError(
@@ -60,37 +59,62 @@ class RTSPServer:
                 "RTSPServer has limited support on macOS. " "You may need to install GStreamer via Homebrew: "
             )
 
-        _ = gi, cv2, GLib, Gst, GstRtspServer
-
-        self.callback = callback
         self.port = port
-        self.mount_point = mount_point
-        self.fps = int(fps)
-        self.width = width
-        self.height = height
-
-        self.frame_count = 0
-
+        self.streams: Dict[str, Stream] = {}
+        self._client_streams = {}  # Track which streams each client is accessing
+        
         # GStreamer objects
         self._server = None
         self._loop = None
         self._loop_thread = None
         self._running = False
 
-        self.rtsp_url = f"rtsp://localhost:{self.port}{self.mount_point}"
-
     def __str__(self) -> str:
         status = "running" if self._running else "stopped"
-        return f"RTSPServer({status}) - {self.rtsp_url}"
+        stream_count = len(self.streams)
+        return f"RTSPServer({status}) - port:{self.port}, streams:{stream_count}"
 
     def __repr__(self) -> str:
-        status = "running" if self._running else "stopped"
-        return f"RTSPServer({status}) - {self.rtsp_url}"
+        return self.__str__()
+
+    def create_stream(self, callback: Callable[[], np.ndarray], width: int, height: int, 
+                     mount_point: str, fps: int = 30) -> None:
+        """Create a new stream.
+        
+        Args:
+            callback: Function that returns a frame when called
+            width: Frame width
+            height: Frame height  
+            mount_point: RTSP mount point (e.g., '/stream0')
+            fps: Target FPS for stream (default: 30)
+        """
+        if mount_point in self.streams:
+            raise ValueError(f"Stream with mount point '{mount_point}' already exists")
+        
+        self.streams[mount_point] = Stream(callback, width, height, mount_point, fps)
+
+    def list_streams(self) -> List[str]:
+        """List all stream mount points."""
+        return list(self.streams.keys())
+
+    def list_rtsp_urls(self) -> List[str]:
+        """Get a list of RTSP URLs for all streams."""
+        return [f"rtsp://localhost:{self.port}{mount_point}" for mount_point in self.streams.keys()]
+
+    def remove_stream(self, mount_point: str) -> None:
+        """Remove a stream."""
+        if mount_point not in self.streams:
+            raise ValueError(f"Stream with mount point '{mount_point}' does not exist")
+        
+        del self.streams[mount_point]
 
     def start(self) -> None:
         """Start the RTSP server in a background thread."""
         if self._running:
             return
+        
+        if not self.streams:
+            raise RuntimeError("No streams created. Call create_stream() first.")
 
         self._running = True
         self._loop_thread = threading.Thread(target=self._run_server, daemon=True)
@@ -98,8 +122,6 @@ class RTSPServer:
 
         # Give server time to start
         time.sleep(0.5)
-
-        logger.info(f"RTSP server started: {self.rtsp_url}")
 
     def stop(self) -> None:
         """Stop the RTSP server."""
@@ -111,6 +133,8 @@ class RTSPServer:
             self._loop.quit()
         if self._loop_thread:
             self._loop_thread.join(timeout=2.0)
+        
+        self.streams.clear()
 
     def _run_server(self) -> None:
         """Run the GStreamer RTSP server main loop."""
@@ -119,11 +143,16 @@ class RTSPServer:
         self._server = GstRtspServer.RTSPServer()
         self._server.set_service(str(self.port))
 
-        factory = self._create_media_factory()
-        factory.set_shared(True)
+        # Set up client connection callback
+        self._server.connect("client-connected", self._on_client_connected)
 
         mount_points = self._server.get_mount_points()
-        mount_points.add_factory(self.mount_point, factory)
+        
+        # Create a factory for each stream
+        for stream in self.streams.values():
+            factory = self._create_media_factory(stream)
+            factory.set_shared(True)
+            mount_points.add_factory(stream.mount_point, factory)
 
         self._server.attach(None)
 
@@ -133,19 +162,21 @@ class RTSPServer:
         finally:
             self._running = False
 
-    def _create_media_factory(self):
-        """Create the GStreamer media factory."""
+    def _create_media_factory(self, stream: Stream):
+        """Create the GStreamer media factory for a specific stream."""
 
         class RTSPMediaFactory(GstRtspServer.RTSPMediaFactory):
-            def __init__(self, rtsp_server):
+            def __init__(self, stream, rtsp_server):
                 super().__init__()
+                self.stream = stream
                 self.rtsp_server = rtsp_server
+                self.set_shared(False)
 
             def do_create_element(self, url):
                 pipeline = (
                     f"appsrc name=source is-live=true format=GST_FORMAT_TIME "
-                    f"caps=video/x-raw,format=RGB,width={self.rtsp_server.width},"
-                    f"height={self.rtsp_server.height},framerate={self.rtsp_server.fps}/1 "
+                    f"caps=video/x-raw,format=RGB,width={self.stream.width},"
+                    f"height={self.stream.height},framerate={self.stream.fps}/1 "
                     f"! videoconvert ! video/x-raw,format=I420 "
                     f"! x264enc speed-preset=ultrafast tune=zerolatency "
                     f"! rtph264pay name=pay0 pt=96"
@@ -155,21 +186,75 @@ class RTSPServer:
             def do_configure(self, rtsp_media):
                 appsrc = rtsp_media.get_element().get_child_by_name("source")
                 appsrc.connect("need-data", self.on_need_data)
+                
+                # Connect to cleanup signal to prevent resource leaks
+                rtsp_media.connect("unprepared", self._on_media_unprepared)
+                
+                # Try to find which client is accessing this stream
+                # This is a bit of a hack since GStreamer doesn't directly provide this info
+                client_info = None
+                for _, info in self.rtsp_server._client_streams.items():
+                    if not info['streams']:  # This client hasn't accessed any streams yet
+                        client_info = info
+                        info['streams'].add(self.stream.mount_point)
+                        break
+                
+                if client_info:
+                    logger.info(f"RTSP Server on port {self.rtsp_server.port}: RTSP client {client_info['ip']} connected to {self.stream.mount_point}")
+
+            def _on_media_unprepared(self, rtsp_media):
+                """Clean up resources when client disconnects to prevent leaks."""
+                element = rtsp_media.get_element()
+                if element:
+                    element.set_state(Gst.State.NULL)
+                    # Force state change to complete
+                    element.get_state(Gst.CLOCK_TIME_NONE)
+                    # Unref to ensure complete cleanup
+                    element.unref()
 
             def on_need_data(self, src, length):
-                frame = self.rtsp_server.callback()
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                try:
+                    frame = self.stream.callback()
+                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-                # Convert to GStreamer buffer
-                buf = Gst.Buffer.new_allocate(None, frame.nbytes, None)
-                buf.fill(0, frame.tobytes())
-                buf.duration = Gst.SECOND // self.rtsp_server.fps
-                buf.pts = self.rtsp_server.frame_count * buf.duration
+                    # Convert to GStreamer buffer
+                    buf = Gst.Buffer.new_allocate(None, frame.nbytes, None)
+                    buf.fill(0, frame.tobytes())
+                    buf.duration = Gst.SECOND // self.stream.fps
+                    buf.pts = self.stream.frame_count * buf.duration
+                    self.stream.frame_count += 1
+                    src.emit("push-buffer", buf)
+                except Exception as e:
+                    logger.error(f"Error in RTSP callback for {self.stream.mount_point}: {e}")
+                    # Push an empty buffer to keep the stream alive
+                    buf = Gst.Buffer.new_allocate(None, 0, None)
+                    src.emit("push-buffer", buf)
 
-                self.rtsp_server.frame_count += 1
-                src.emit("push-buffer", buf)
+        return RTSPMediaFactory(stream, self)
 
-        return RTSPMediaFactory(self)
+    def _on_client_connected(self, server, client):
+        """Callback when a client connects to the RTSP server."""
+        connection = client.get_connection()
+        client_ip = connection.get_ip()
+        
+        # Track this client and their streams
+        self._client_streams[client] = {
+            'ip': client_ip,
+            'streams': set()
+        }
+        
+        # Connect to the client's 'closed' signal to detect disconnection
+        client.connect("closed", self._on_client_disconnected)
+
+    def _on_client_disconnected(self, client):
+        """Callback when a client disconnects from the RTSP server."""
+        client_info = self._client_streams.pop(client, None)
+        if client_info is None:
+            logger.warning(f"RTSP Server on port {self.port}: Client disconnected but was not tracked")
+            return
+            
+        streams_str = ', '.join(sorted(client_info['streams'])) if client_info['streams'] else 'no streams'
+        logger.info(f"RTSP Server on port {self.port}: RTSP client {client_info['ip']} disconnected from {streams_str}")
 
     def __enter__(self):
         """Context manager entry."""
