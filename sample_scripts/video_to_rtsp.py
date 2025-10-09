@@ -8,8 +8,6 @@ from framegrab.rtsp_server import RTSPServer
 
 import numpy as np
 
-import threading
-
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s - %(message)s')
 
@@ -38,15 +36,11 @@ class VideoToRTSPSampleApp:
 
             # Determine the FPS of the video
             fps = grabber.get_fps()
-            print(fps)
             
             # Reset to beginning after test frame so that streaming starts from the beginning of the video
             grabber.seek_to_beginning()
 
-            # frame_cache = TTLCache(maxsize=1, ttl=1/fps * 0.9)
-            # print(1/fps)
             start_time = None
-            # @cached(frame_cache)    
             def get_frame_callback(
                 grabber: FileStreamFrameGrabber = grabber, 
                 video_path: str = video_path,
