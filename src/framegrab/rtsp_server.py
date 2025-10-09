@@ -35,6 +35,7 @@ class Stream:
         self.mount_point = mount_point
         self.fps = int(fps)
 
+
 class RTSPServer:
     """RTSP server that supports multiple streams."""
 
@@ -191,7 +192,7 @@ class RTSPServer:
                         client_info = info
                         info["streams"].add(self.stream.mount_point)
                         break
-                
+
                 if client_info:
                     logger.info(
                         f"RTSP Server on port {self.rtsp_server.port}: RTSP client {client_info['ip']} connected to {self.stream.mount_point}"
