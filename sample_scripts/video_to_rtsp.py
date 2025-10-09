@@ -10,8 +10,6 @@ import numpy as np
 
 import threading
 
-from cachetools import TTLCache, cached
-
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s - %(message)s')
 
