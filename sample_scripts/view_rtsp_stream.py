@@ -59,11 +59,12 @@ def main():
     print(f"Streaming from: {args.rtsp_url}")
     print("Press 'q' to quit")
 
+    start_time = time.time()
     try:
         while True:
             frame = grabber.grab()
-            resized_frame = resize_frame(frame, 640, 480)
-            cv2.imshow(f'Streaming {args.rtsp_url}', resized_frame)
+            resized_frame = resize_frame(frame, 640, 480) # get a smaller frame so it's easier to view
+            cv2.imshow(f'Streaming {args.rtsp_url} {start_time}', resized_frame)
             key = cv2.waitKey(30)
             if key == ord('q'):
                 break
