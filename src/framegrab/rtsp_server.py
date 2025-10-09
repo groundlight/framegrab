@@ -2,7 +2,7 @@ import logging
 import platform
 import threading
 import time
-from typing import Callable, Dict, List, Tu ple
+from typing import Callable, Dict, List, Tu, ple
 
 import cv2
 import numpy as np
@@ -227,7 +227,7 @@ class RTSPServer:
         # TODO log info about the client that connected
 
         self._client_streams[client] = {"ip": ip, "streams": set()}
-        
+
         client.connect("closed", self._on_client_disconnected)
 
     def _on_client_disconnected(self, client):
