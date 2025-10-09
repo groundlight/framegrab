@@ -8,7 +8,6 @@ from framegrab.rtsp_server import RTSPServer
 
 import numpy as np
 
-
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s - %(message)s')
 
 logger = logging.getLogger(__name__)
@@ -40,21 +39,15 @@ class VideoToRTSPSampleApp:
             # Reset to beginning after test frame so that streaming starts from the beginning of the video
             grabber.seek_to_beginning()
 
-            start_time = None
             def get_frame_callback(
                 grabber: FileStreamFrameGrabber = grabber, 
                 video_path: str = video_path,
                 ) -> np.ndarray:
-                nonlocal start_time
-                if start_time is None:
-                    start_time = time.time()
                 try:
                     return grabber.grab()
                 except RuntimeWarning:
-                    elapsed_time = time.time() - start_time
                     last_frame_read_number = grabber.get_last_frame_read_number()
-                    logger.info(f'Reached the end of {video_path}. Read {last_frame_read_number + 1} frames in {elapsed_time:.2f} seconds. Restarting from the beginning of the video...')
-                    start_time = time.time()
+                    logger.info(f'Reached the end of {video_path}. Read {last_frame_read_number + 1} frames. Restarting from the beginning of the video...')
                     grabber.seek_to_beginning()
                     return grabber.grab()
 

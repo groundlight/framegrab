@@ -5,8 +5,6 @@ from framegrab.config import RTSPFrameGrabberConfig
 import cv2
 import numpy as np
 
-import time
-
 def resize_frame(frame: np.ndarray, max_width: int = None, max_height: int = None) -> np.ndarray:
     """
     Resizes an image to fit within a given height and/or width, without changing the aspect ratio.
@@ -50,21 +48,16 @@ def main():
     args = parser.parse_args()
 
     config = RTSPFrameGrabberConfig(rtsp_url=args.rtsp_url)
-    t1 = time.time()
     grabber = FrameGrabber.create_grabber(config)
-    t2 = time.time()
-    elapsed_time = t2 - t1
-    print(f'Created grabber in {elapsed_time:.2f} seconds.')
 
     print(f"Streaming from: {args.rtsp_url}")
     print("Press 'q' to quit")
 
-    start_time = time.time()
     try:
         while True:
             frame = grabber.grab()
             resized_frame = resize_frame(frame, 640, 480) # get a smaller frame so it's easier to view
-            cv2.imshow(f'Streaming {args.rtsp_url} {start_time}', resized_frame)
+            cv2.imshow(f'Streaming {args.rtsp_url}', resized_frame)
             key = cv2.waitKey(30)
             if key == ord('q'):
                 break
