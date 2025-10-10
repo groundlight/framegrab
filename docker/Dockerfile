@@ -20,12 +20,12 @@ RUN pip install poetry
 # Set working directory
 WORKDIR /app
 
-# Copy dependency files
-COPY pyproject.toml poetry.lock ./
+# Copy dependency files and README (needed for Poetry)
+COPY pyproject.toml poetry.lock README.md ./
 
 # Install Python dependencies
 RUN poetry config virtualenvs.create false && \
-    poetry install --extras youtube --no-root
+    poetry install --extras youtube
 
 # Copy source code
 COPY . .
