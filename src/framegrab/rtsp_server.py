@@ -171,7 +171,7 @@ class RTSPServer:
         self._running = True
         self._loop_thread = threading.Thread(target=self._run_server, daemon=True)
         self._loop_thread.start()
-        
+
         # Wait for server to be ready
         self._wait_for_server_ready()
 
@@ -181,16 +181,16 @@ class RTSPServer:
         while time.time() - start_time < timeout:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(0.1)
-            result = sock.connect_ex(('127.0.0.1', self.port))
+            result = sock.connect_ex(("127.0.0.1", self.port))
             sock.close()
-            
+
             if result == 0:  # Port is open
                 server_ready_time = time.time() - start_time
-                logger.debug(f'Server ready in {server_ready_time:.2f} seconds.')
+                logger.debug(f"Server ready in {server_ready_time:.2f} seconds.")
                 return
             else:
                 time.sleep(0.01)
-        
+
         raise RuntimeError(f"RTSP server failed to start within {timeout} seconds")
 
     def stop(self):
