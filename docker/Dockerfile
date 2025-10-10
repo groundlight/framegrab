@@ -23,6 +23,9 @@ WORKDIR /app
 # Copy everything
 COPY . .
 
-# Install Python dependencies and project
+# Install Python dependencies only
 RUN poetry config virtualenvs.create false && \
-    poetry install --extras youtube
+    poetry install --extras youtube --no-root
+
+# Install the project
+RUN pip install .
