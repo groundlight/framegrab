@@ -31,6 +31,7 @@ class TestRTSP(unittest.TestCase):
         TEST_FRAME_WIDTH = 640
         TEST_FRAME_HEIGHT = 480
         FPS = 15.0
+        MOUNT_POINT = '/test'
         
         # Create RTSP server with static frame callback
         def frame_callback():
@@ -42,16 +43,16 @@ class TestRTSP(unittest.TestCase):
             width=TEST_FRAME_WIDTH,
             height=TEST_FRAME_HEIGHT,
             fps=FPS,
-            mount_point="/test"
+            mount_point=MOUNT_POINT
         )
         self.server.start()
+        time.sleep(5)
         
         # Create RTSP grabber to connect to the server
-        rtsp_url = f"rtsp://127.0.0.1:{self.port}/test"
+        rtsp_url = f"rtsp://localhost:{self.port}{MOUNT_POINT}"
         config = RTSPFrameGrabberConfig(
             rtsp_url=rtsp_url,
             keep_connection_open=True,
-            name="test_rtsp_grabber"
         )
         self.grabber = RTSPFrameGrabber(config)
         
