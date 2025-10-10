@@ -46,7 +46,6 @@ class TestRTSP(unittest.TestCase):
             mount_point=MOUNT_POINT
         )
         self.server.start()
-        time.sleep(5)
         
         # Create RTSP grabber to connect to the server
         rtsp_url = f"rtsp://localhost:{self.port}{MOUNT_POINT}"
@@ -59,7 +58,6 @@ class TestRTSP(unittest.TestCase):
         # Grab a frame and validate it
         frame = self.grabber.grab()
 
-        
         # Assertions
         self.assertIsInstance(frame, np.ndarray)
 

@@ -1,5 +1,6 @@
 import logging
 import platform
+import socket
 import threading
 import time
 from dataclasses import dataclass, field
@@ -170,7 +171,27 @@ class RTSPServer:
         self._running = True
         self._loop_thread = threading.Thread(target=self._run_server, daemon=True)
         self._loop_thread.start()
-        time.sleep(0.2)
+        
+        # Wait for server to be ready
+        self._wait_for_server_ready()
+
+    def _wait_for_server_ready(self, timeout: float = 10.0) -> None:
+        """Wait for the RTSP server to be ready by checking if the port is bound."""
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(0.1)
+            result = sock.connect_ex(('127.0.0.1', self.port))
+            sock.close()
+            
+            if result == 0:  # Port is open
+                server_ready_time = time.time() - start_time
+                logger.debug(f'Server ready in {server_ready_time:.2f} seconds.')
+                return
+            else:
+                time.sleep(0.01)
+        
+        raise RuntimeError(f"RTSP server failed to start within {timeout} seconds")
 
     def stop(self):
         if not self._running:
