@@ -172,7 +172,6 @@ class RTSPServer:
         self._loop_thread = threading.Thread(target=self._run_server, daemon=True)
         self._loop_thread.start()
 
-        # Wait for server to be ready
         self._wait_for_server_ready()
 
     def _wait_for_server_ready(self, timeout: float = 10.0) -> None:
