@@ -35,5 +35,7 @@ jobs:
           pip install -U pip
           pip install poetry
           poetry install --extras youtube
-      - name: run tests
-        run: poetry run pytest
+      - name: Build Docker image with dependencies
+        run: docker build -f docker/Dockerfile -t framegrab-test .
+      - name: Run tests in Docker
+        run: docker run --rm framegrab-test poetry run pytest
