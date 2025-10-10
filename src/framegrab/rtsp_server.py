@@ -270,18 +270,13 @@ class RTSPServer:
         if app is None:
             return
 
-        try:
-            buf = Gst.Buffer.new_allocate(None, len(frame_bytes), None)
-            buf.fill(0, frame_bytes)
-            fc = client_entry.frame_count
-            buf.pts = int(fc * duration_ns)
-            buf.duration = int(duration_ns)
-            client_entry.frame_count = fc + 1
-            app.emit("push-buffer", buf)
-        except Exception:
-            logger.exception("push failed; removing client")
-            # Use the existing _remove_client method
-            self._remove_client(mount, client_entry)
+        buf = Gst.Buffer.new_allocate(None, len(frame_bytes), None)
+        buf.fill(0, frame_bytes)
+        fc = client_entry.frame_count
+        buf.pts = int(fc * duration_ns)
+        buf.duration = int(duration_ns)
+        client_entry.frame_count = fc + 1
+        app.emit("push-buffer", buf)
 
     def _remove_client(self, mount: MountState, client: ClientEntry):
         """Remove a client from a mount and stop the producer if no clients remain.
