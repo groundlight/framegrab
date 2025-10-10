@@ -55,10 +55,11 @@ class MountState:
 @dataclass
 class Stream:
     """Configuration for a single RTSP stream.
-    
+
     Contains the callback function to generate frames and the stream parameters
     like dimensions, mount point, and frame rate.
     """
+
     callback: Callable[[], np.ndarray]
     width: int
     height: int
@@ -68,12 +69,12 @@ class Stream:
 
 class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
     """GStreamer RTSP Media Factory for handling individual stream mount points.
-    
+
     This factory creates and configures the GStreamer pipeline for each RTSP stream,
     manages client connections, and coordinates with the RTSPServer for frame production.
     """
-    
-    def __init__(self, stream: Stream, server: 'RTSPServer'):
+
+    def __init__(self, stream: Stream, server: "RTSPServer"):
         super().__init__()
         self.stream = stream
         self.server = server
@@ -109,10 +110,10 @@ class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
             stop_evt = threading.Event()
 
             thr = threading.Thread(
-                target=self.server._producer_worker, 
+                target=self.server._producer_worker,
                 args=(self.stream, mount, stop_evt, duration),
-                daemon=True, 
-                name=f"prod-{self.stream.mount_point}"
+                daemon=True,
+                name=f"prod-{self.stream.mount_point}",
             )
             mount.producer = (thr, stop_evt)
             thr.start()
@@ -207,7 +208,6 @@ class RTSPServer:
         finally:
             self._running = False
 
-
     def _on_client_connected(self, server, client):
         conn = client.get_connection()
         ip = conn.get_ip()
@@ -220,10 +220,9 @@ class RTSPServer:
         ip = conn.get_ip()
         logger.info(f"RTSP client disconnected: ip={ip}")
 
-    def _producer_worker(self, stream: Stream, mount: MountState, stop_evt: threading.Event, 
-                        duration: int):
+    def _producer_worker(self, stream: Stream, mount: MountState, stop_evt: threading.Event, duration: int):
         """Worker function that produces frames for a stream at the target FPS.
-        
+
         Args:
             stream: The stream configuration (callback, fps, etc.)
             mount: The mount state containing client list and locks
@@ -232,7 +231,7 @@ class RTSPServer:
         """
         period = 1.0 / float(stream.fps)
         next_t = time.monotonic()
-        
+
         while not stop_evt.is_set():
             now = time.monotonic()
             s = next_t - now
@@ -242,7 +241,7 @@ class RTSPServer:
 
             try:
                 frame = stream.callback()
-                print(f'got a frame for {stream.mount_point}')
+                print(f"got a frame for {stream.mount_point}")
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 fb = frame.tobytes()
             except Exception:
@@ -261,7 +260,7 @@ class RTSPServer:
 
     def _push_to_client(self, client_entry: ClientEntry, frame_bytes: bytes, duration_ns: int, mount: MountState):
         """Push a frame buffer to a specific client.
-        
+
         Args:
             client_entry: The client to push the frame to
             frame_bytes: The frame data as bytes
@@ -287,7 +286,7 @@ class RTSPServer:
 
     def _remove_client(self, mount: MountState, client: ClientEntry):
         """Remove a client from a mount and stop the producer if no clients remain.
-        
+
         Args:
             mount: The mount state containing the client list and producer
             client: The client entry to remove
