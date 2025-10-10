@@ -12,8 +12,7 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s - %(mes
 
 logger = logging.getLogger(__name__)
 
-class VideoToRTSPSampleApp:
-    frame_cache = {}
+class VideoToRtspSampleApp:
     def __init__(self, video_paths: list[str], port: int):
 
         self.video_paths = video_paths
