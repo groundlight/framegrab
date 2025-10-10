@@ -69,7 +69,7 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, default=8554, help='RTSP server port')
     args = parser.parse_args()
 
-    app = VideoToRTSPSampleApp(args.video_paths, args.port)
+    app = VideoToRtspSampleApp(args.video_paths, args.port)
 
     try:
         app.run()
