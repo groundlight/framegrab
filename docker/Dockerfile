@@ -25,9 +25,7 @@ COPY pyproject.toml poetry.lock ./
 
 # Install Python dependencies
 RUN poetry config virtualenvs.create false && \
-    poetry install --extras youtube
+    poetry install --extras youtube --no-root
 
 # Copy source code
 COPY . .
-
-# No CMD or ENTRYPOINT - let the caller decide what to run
