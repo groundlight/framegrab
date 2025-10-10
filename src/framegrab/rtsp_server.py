@@ -2,8 +2,8 @@ import logging
 import platform
 import threading
 import time
-from typing import Callable, Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -25,7 +25,6 @@ except ImportError as e:
 logger = logging.getLogger(__name__)
 
 
-
 @dataclass
 class ClientEntry:
     """Per-client state for a single RTSP consumer.
@@ -33,6 +32,7 @@ class ClientEntry:
     Holds the per-connection `appsrc` element and a monotonically
     increasing `frame_count` used to compute buffer PTS/duration.
     """
+
     appsrc: Any
     frame_count: int = 0
 
@@ -45,6 +45,7 @@ class MountState:
     - `clients_lock`: guards access to `clients` and `producer`
     - `producer`: (thread, stop_event) driving frames for this mount, or None
     """
+
     clients: List[ClientEntry] = field(default_factory=list)
     clients_lock: threading.Lock = field(default_factory=threading.Lock)
     # (thread, stop_event) when a producer is running, else None
@@ -76,7 +77,7 @@ class RTSPServer:
 
         self.port = int(port)
         self.streams: Dict[str, Stream] = {}
-        
+
         # mount_point -> MountState
         self._mounts: Dict[str, MountState] = {}
         self._server = None
@@ -86,7 +87,9 @@ class RTSPServer:
 
     def create_stream(self, callback: Callable[[], np.ndarray], width: int, height: int, mount_point: str, fps: float):
         if self._running:
-            raise RuntimeError("RTSPServer has already started. Streams can only be created prior to starting the server.")
+            raise RuntimeError(
+                "RTSPServer has already started. Streams can only be created prior to starting the server."
+            )
 
         if mount_point in self.streams:
             raise ValueError(f"Stream '{mount_point}' exists")
@@ -102,7 +105,7 @@ class RTSPServer:
 
         if not self.streams:
             raise RuntimeError("No streams created. Please call `create_stream` first.")
-            
+
         self._running = True
         self._loop_thread = threading.Thread(target=self._run_server, daemon=True)
         self._loop_thread.start()
@@ -152,7 +155,7 @@ class RTSPServer:
                 self.server = server
 
             def do_create_element(self, url):
-                fps_int = int(round(self.stream.fps, 0)) # Gstreamer wants an int here
+                fps_int = int(round(self.stream.fps, 0))  # Gstreamer wants an int here
                 pipeline = (
                     f"appsrc name=source is-live=true format=GST_FORMAT_TIME "
                     f"caps=video/x-raw,format=RGB,width={self.stream.width},"
@@ -257,7 +260,7 @@ class RTSPServer:
         conn = client.get_connection()
         ip = conn.get_ip()
         logger.info(f"RTSP client connected: ip={ip}")
-        
+
         client.connect("closed", self._on_client_disconnected)
 
     def _on_client_disconnected(self, client):
