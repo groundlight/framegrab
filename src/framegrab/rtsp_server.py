@@ -242,7 +242,6 @@ class RTSPServer:
 
             try:
                 frame = stream.callback()
-                print(f'got a frame for {stream.mount_point}')
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 fb = frame.tobytes()
             except Exception:
