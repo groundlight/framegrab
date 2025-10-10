@@ -20,7 +20,6 @@ class VideoToRTSPSampleApp:
         self.port = port
 
         self.server = RTSPServer(port=port)
-
         
         self.grabbers = []
         for n, video_path in enumerate(video_paths):
@@ -39,20 +38,19 @@ class VideoToRTSPSampleApp:
             # Reset to beginning after test frame so that streaming starts from the beginning of the video
             grabber.seek_to_beginning()
 
-            def get_frame_callback(
-                grabber: FileStreamFrameGrabber = grabber, 
-                video_path: str = video_path,
-                ) -> np.ndarray:
-                try:
-                    return grabber.grab()
-                except RuntimeWarning:
-                    last_frame_read_number = grabber.get_last_frame_read_number()
-                    logger.info(f'Reached the end of {video_path}. Read {last_frame_read_number + 1} frames. Restarting from the beginning of the video...')
-                    grabber.seek_to_beginning()
-                    return grabber.grab()
-
+            callback = lambda g=grabber: self.get_frame_callback(g) 
             mount_point = f'/stream{n}'
-            self.server.create_stream(get_frame_callback, width=width, height=height, fps=fps, mount_point=mount_point)
+            self.server.create_stream(callback, width=width, height=height, fps=fps, mount_point=mount_point)
+
+    def get_frame_callback(self, grabber: FileStreamFrameGrabber) -> np.ndarray:
+        try:
+            return grabber.grab()
+        except RuntimeWarning:
+            last_frame_read_number = grabber.get_last_frame_read_number()
+            video_path = grabber.config.filename
+            logger.info(f'Reached the end of {video_path}. Read {last_frame_read_number + 1} frames. Restarting from the beginning of the video...')
+            grabber.seek_to_beginning()
+            return grabber.grab()
 
     def list_rtsp_urls(self) -> list[str]:
         return self.server.list_rtsp_urls()
@@ -88,6 +86,8 @@ if __name__ == "__main__":
             time.sleep(1)
             
     except KeyboardInterrupt:
-        logger.info("Shutting down gracefully...")
+        logger.info("Keyboard interrupt detected.")
     finally:
+        logger.info("Stopping RTSP server...")
         app.stop()
+        logger.info(f'RTSP server stopped.')

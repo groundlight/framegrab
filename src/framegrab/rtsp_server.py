@@ -26,14 +26,14 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ClientEntry:
+class ClientState:
     """Per-client state for a single RTSP consumer.
 
     Holds the per-connection `appsrc` element and a monotonically
     increasing `frame_count` used to compute buffer PTS/duration.
     """
 
-    appsrc: Any
+    appsrc: Any  # Gst.Element
     frame_count: int = 0
 
 
@@ -46,7 +46,7 @@ class MountState:
     - `producer`: (thread, stop_event) driving frames for this mount, or None
     """
 
-    clients: List[ClientEntry] = field(default_factory=list)
+    clients: List[ClientState] = field(default_factory=list)
     clients_lock: threading.Lock = field(default_factory=threading.Lock)
     # (thread, stop_event) when a producer is running, else None
     producer: Optional[Tuple[threading.Thread, threading.Event]] = None
@@ -101,7 +101,7 @@ class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
         mount = self.server._mounts[self.stream.mount_point]
         duration = int(Gst.SECOND / float(self.stream.fps))
 
-        client = ClientEntry(appsrc=appsrc)
+        client = ClientState(appsrc=appsrc)
         with mount.clients_lock:
             mount.clients.append(client)
 
@@ -257,7 +257,7 @@ class RTSPServer:
                 if not mount.clients:
                     break
 
-    def _push_to_client(self, client_entry: ClientEntry, frame_bytes: bytes, duration_ns: int, mount: MountState):
+    def _push_to_client(self, client_entry: ClientState, frame_bytes: bytes, duration_ns: int, mount: MountState):
         """Push a frame buffer to a specific client.
 
         Args:
@@ -278,7 +278,7 @@ class RTSPServer:
         client_entry.frame_count = fc + 1
         app.emit("push-buffer", buf)
 
-    def _remove_client(self, mount: MountState, client: ClientEntry):
+    def _remove_client(self, mount: MountState, client: ClientState):
         """Remove a client from a mount and stop the producer if no clients remain.
 
         Args:
