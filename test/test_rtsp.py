@@ -47,7 +47,7 @@ class TestRTSP(unittest.TestCase):
         self.server.start()
         
         # Create RTSP grabber to connect to the server
-        rtsp_url = f"rtsp://localhost:{self.port}/test"
+        rtsp_url = f"rtsp://127.0.0.1:{self.port}/test"
         config = RTSPFrameGrabberConfig(
             rtsp_url=rtsp_url,
             keep_connection_open=True,
