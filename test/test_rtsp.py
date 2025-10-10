@@ -8,7 +8,7 @@ from framegrab.config import RTSPFrameGrabberConfig
 
 import time
 
-def generate_static_frame(width: int, height: int) -> np.ndarray:
+def generate_noise_frame(width: int, height: int) -> np.ndarray:
     return np.random.randint(0, 255, (height, width, 3), dtype=np.uint8)
     
 class TestRTSP(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestRTSP(unittest.TestCase):
         
         # Create RTSP server with static frame callback
         def frame_callback():
-            return generate_static_frame(TEST_FRAME_WIDTH, TEST_FRAME_HEIGHT)
+            return generate_noise_frame(TEST_FRAME_WIDTH, TEST_FRAME_HEIGHT)
         
         self.server = RTSPServer(port=self.port)
         self.server.create_stream(

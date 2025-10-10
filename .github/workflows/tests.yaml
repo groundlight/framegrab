@@ -30,11 +30,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
-      - name: install poetry and build poetry environment
-        run: |
-          pip install -U pip
-          pip install poetry
-          poetry install --extras youtube
       - name: Build Docker image with dependencies
         run: docker build -f docker/Dockerfile -t framegrab-test .
       - name: Run tests in Docker
