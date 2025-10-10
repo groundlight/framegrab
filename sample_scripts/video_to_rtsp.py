@@ -8,8 +8,6 @@ from framegrab.rtsp_server import RTSPServer
 
 import numpy as np
 
-import random
-
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s - %(message)s')
 
 logger = logging.getLogger(__name__)
