@@ -1382,7 +1382,7 @@ class FileStreamFrameGrabber(FrameGrabber):
             raise ValueError(f"Could not read first frame of file {self.config.filename}. Is it a valid video file?")
 
         # Reset frame position back to the first frame after validation
-        self.capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        self.seek_to_beginning()
 
         self.fps_source = round(self.capture.get(cv2.CAP_PROP_FPS), 2)
         if self.fps_source <= 0.1:
@@ -1444,6 +1444,7 @@ class FileStreamFrameGrabber(FrameGrabber):
             frame_number: Frame number to seek to (0-based)
         """
         if frame_number < 0:
+            # OpenCV fails silently when you try this, so we raise an exception
             raise ValueError(f"Frame number must be non-negative, got {frame_number}")
 
         self.capture.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
