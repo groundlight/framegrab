@@ -223,49 +223,12 @@ for grabber in grabbers.values():
     grabber.release()
 ```
 ### Configurations
-#### Dictionary or YamlFormat
-The table below shows all available configurations and the cameras to which they apply. This is the format used when creating grabbers from dictionaries or yaml strings. If you want to use the python FrameGrabberConfig object, the format is slightly different to optimize for python readability (see format and examples). We use the python pydantic model to validate the dictionary and yaml format
-so if you want to know the correct format of your parameters, you can read more in config.py, or 
-use the python pydantic model to validate your configuration.
 
-
-| Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense | Raspberry Pi CSI2 | HLS | YouTube Live | File Stream |
-|----------------------------|-----------------|------------|-----------|-----------|-----------|-----------|-----------|-----------|-------------|
-| name                       | On Robot Arm    | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| input_type                 | generic_usb    | required   | required  | required  | required  | required  | required | required | required |
-| id.serial_number           | 23458234       | optional   | -         | optional  | optional  | -  | - | - | - |
-| id.rtsp_url                | rtsp://…        | -          | required  | -         | -         | -         | - | - | - |
-| id.hls_url                 | https://.../*.m3u8     | -          | -         | -         | -         | -         | required | - | - |
-| id.youtube_url             | https://www.youtube.com/watch?v=...     | -          | -         | -         | -         | -         | - | required | - |
-| id.filename               | http://.../*.mp4 | -          | -         | -         | -         | -         | - | - | required |
-| options.resolution.height  | 480            | optional   | -         | -         | optional  | -  | - | - | - |
-| options.resolution.width   | 640            | optional   | -         | -         | optional  | -  | - | - | - |
-| options.zoom.digital       | 1.3            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.pixels.top    | 100            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.pixels.bottom | 400            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.pixels.left   | 100            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.pixels.right  | 400            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.relative.top  | 0.1            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.relative.bottom | 0.9          | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.relative.left | 0.1            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.relative.right | 0.9            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.depth.side_by_side | 1              | -          | -         | -         | optional  | -  | - | - | - |
-| options.num_90_deg_rotations | 2              | optional          | optional         | optional         | optional  | optional  | optional | optional | optional |
-| options.keep_connection_open | True              | -          | optional         | -         | -  | - | optional | optional | - |
-| options.max_fps | 30              | -          | optional         | -         | -  | - | - | - | optional |
-
-
-In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
-
-#### python FrameGrabberConfig format
-You can also specify a configuration using the python FrameGrabberConfig object. This is useful if 
-you want quick validation of your configuration and your framegrab data stored under a validated, centralized object.
-
+The table below shows configuration options for each grabber type.
 
 <!-- start configuration table -->
 
-
-<p>config should be here<>
+<p>config should be here<p>
 
 <!-- end configuration table -->
 
