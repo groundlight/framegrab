@@ -262,537 +262,316 @@ You can also specify a configuration using the python FrameGrabberConfig object.
 you want quick validation of your configuration and your framegrab data stored under a validated, centralized object.
 
 ##### Config Schema
-```yaml
-GenericUSBFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for Generic USB Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    fourcc:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      options_key: fourcc
-      title: Fourcc
-    fps:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: fps
-      title: Fps
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    resolution_height:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.height
-      title: Resolution Height
-    resolution_width:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.width
-      title: Resolution Width
-    serial_number:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Serial Number
-    video_stream:
-      default: false
-      options_key: video_stream
-      title: Video Stream
-      type: boolean
-  title: GenericUSBFrameGrabberConfig
-  type: object
 
-RTSPFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for RTSP Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    keep_connection_open:
-      default: true
-      options_key: keep_connection_open
-      title: Keep Connection Open
-      type: boolean
-    max_fps:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 30
-      options_key: max_fps
-      title: Max Fps
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    rtsp_url:
-      pattern: ^rtsp://
-      title: Rtsp Url
-      type: string
-  required:
-  - rtsp_url
-  title: RTSPFrameGrabberConfig
-  type: object
 
-RealSenseFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for RealSense Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    resolution_height:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.height
-      title: Resolution Height
-    resolution_width:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.width
-      title: Resolution Width
-    serial_number:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Serial Number
-    side_by_side_depth:
-      anyOf:
-      - type: boolean
-      - type: 'null'
-      default: null
-      options_key: depth.side_by_side
-      title: Side By Side Depth
-  title: RealSenseFrameGrabberConfig
-  type: object
+<div style="overflow-x: auto;">
 
-BaslerFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for Basler Frame Grabber.
-  properties:
-    basler_options:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: basler_options
-      title: Basler Options
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    serial_number:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Serial Number
-  title: BaslerFrameGrabberConfig
-  type: object
+<table>
+  <thead>
+    <tr>
+      <th>Grabber Type</th>
+      <th>Feature 1</th>
+      <th>Feature 2</th>
+      <th>Feature 3</th>
+      <th>Feature 4</th>
+      <th>Feature 5</th>
+      <th>Feature 6</th>
+      <th>Feature 7</th>
+      <th>Feature 8</th>
+      <th>Feature 9</th>
+      <th>Feature 10</th>
+      <th>Feature 11</th>
+      <th>Feature 12</th>
+      <th>Feature 13</th>
+      <th>Feature 14</th>
+      <th>Feature 15</th>
+      <th>Feature 16</th>
+      <th>Feature 17</th>
+      <th>Feature 18</th>
+      <th>Feature 19</th>
+      <th>Feature 20</th>
+      <th>Feature 21</th>
+      <th>Feature 22</th>
+      <th>Feature 23</th>
+      <th>Feature 24</th>
+      <th>Feature 25</th>
+      <th>Feature 26</th>
+      <th>Feature 27</th>
+      <th>Feature 28</th>
+      <th>Feature 29</th>
+      <th>Feature 30</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>generic_usb</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+    </tr>
+    <tr>
+      <td>rtsp</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+    </tr>
+    <tr>
+      <td>basler</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>realsense</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+    </tr>
+    <tr>
+      <td>rpi_csi2</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+    </tr>
+    <tr>
+      <td>hls</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>youtube_live</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+    </tr>
+    <tr>
+      <td>file_stream</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>-</td>
+      <td>✓</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
 
-RaspberryPiCSI2FrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for Raspberry Pi CSI-2 Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-  title: RaspberryPiCSI2FrameGrabberConfig
-  type: object
+</div>
 
-HttpLiveStreamingFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for HTTP Live Streaming Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    hls_url:
-      pattern: ^https?://
-      title: Hls Url
-      type: string
-    keep_connection_open:
-      default: true
-      options_key: keep_connection_open
-      title: Keep Connection Open
-      type: boolean
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-  required:
-  - hls_url
-  title: HttpLiveStreamingFrameGrabberConfig
-  type: object
-
-YouTubeLiveFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for YouTube Live Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    keep_connection_open:
-      default: true
-      options_key: keep_connection_open
-      title: Keep Connection Open
-      type: boolean
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    youtube_url:
-      pattern: ^https?://
-      title: Youtube Url
-      type: string
-  required:
-  - youtube_url
-  title: YouTubeLiveFrameGrabberConfig
-  type: object
-
-FileStreamFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for File Stream Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    filename:
-      pattern: (?i)^.*\.(mp4|mov|mjpeg|avi|mkv|webm)$
-      title: Filename
-      type: string
-    max_fps:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 30
-      options_key: max_fps
-      title: Max Fps
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-  required:
-  - filename
-  title: FileStreamFrameGrabberConfig
-  type: object
-
-MockFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for Mock Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    resolution_height:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.height
-      title: Resolution Height
-    resolution_width:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.width
-      title: Resolution Width
-    serial_number:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Serial Number
-  title: MockFrameGrabberConfig
-  type: object
-
-ROS2GrabberConfig:
-  additionalProperties: false
-  description: Configuration class for ROS 2 Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    topic:
-      pattern: ^(~|/)?([A-Za-z_][A-Za-z0-9_]*)(/[A-Za-z_][A-Za-z0-9_]*)*$
-      title: Topic
-      type: string
-  required:
-  - topic
-  title: ROS2GrabberConfig
-  type: object
-
-```
 
 ### Autodiscovery
 Autodiscovery automatically connects to cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense`, `basler`, and ONVIF supported `rtsp` cameras. Note that `rpi_csi2` cameras are not yet supported by autodiscover. Default configurations will be loaded for each camera. Note that discovery of RTSP cameras will be disabled by default but can be enabled by setting `rtsp_discover_mode`. Refer to [RTSP Discovery](#rtsp-discovery) section for different options.
