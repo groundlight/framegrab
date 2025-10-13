@@ -233,7 +233,7 @@ The table below shows configuration options for each grabber type.
 <table>
   <thead>
     <tr>
-      <th>Configuration Name</th>
+      <th style="position: sticky; left: 0; background: white; z-index: 1;">Configuration Name</th>
       <th>Type</th>
       <th>generic_usb</th>
       <th>rtsp</th>
@@ -249,7 +249,7 @@ The table below shows configuration options for each grabber type.
   </thead>
   <tbody>
     <tr>
-      <td>id.filename</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">id.filename</td>
       <td>string</td>
       <td>-</td>
       <td>-</td>
@@ -263,7 +263,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>id.hls_url</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">id.hls_url</td>
       <td>string</td>
       <td>-</td>
       <td>-</td>
@@ -277,7 +277,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>id.rtsp_url</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">id.rtsp_url</td>
       <td>string</td>
       <td>-</td>
       <td><strong>req</strong></td>
@@ -291,7 +291,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>id.serial_number</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">id.serial_number</td>
       <td>string</td>
       <td>opt</td>
       <td>-</td>
@@ -305,7 +305,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>id.topic</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">id.topic</td>
       <td>string</td>
       <td>-</td>
       <td>-</td>
@@ -319,7 +319,7 @@ The table below shows configuration options for each grabber type.
       <td>opt</td>
     </tr>
     <tr>
-      <td>id.youtube_url</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">id.youtube_url</td>
       <td>string</td>
       <td>-</td>
       <td>-</td>
@@ -333,7 +333,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>input_type</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">input_type</td>
       <td>string</td>
       <td><strong>req</strong></td>
       <td><strong>req</strong></td>
@@ -347,7 +347,7 @@ The table below shows configuration options for each grabber type.
       <td><strong>req</strong></td>
     </tr>
     <tr>
-      <td>name</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">name</td>
       <td>string</td>
       <td>opt</td>
       <td>opt</td>
@@ -361,7 +361,7 @@ The table below shows configuration options for each grabber type.
       <td>opt</td>
     </tr>
     <tr>
-      <td>options.basler_options</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.basler_options</td>
       <td>dict</td>
       <td>-</td>
       <td>-</td>
@@ -375,7 +375,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>options.crop</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.crop</td>
       <td>dict</td>
       <td>opt</td>
       <td>opt</td>
@@ -389,7 +389,7 @@ The table below shows configuration options for each grabber type.
       <td>opt</td>
     </tr>
     <tr>
-      <td>options.depth.side_by_side</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.depth.side_by_side</td>
       <td>bool</td>
       <td>-</td>
       <td>-</td>
@@ -403,7 +403,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>options.fourcc</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.fourcc</td>
       <td>string</td>
       <td>opt</td>
       <td>-</td>
@@ -417,7 +417,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>options.fps</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.fps</td>
       <td>int</td>
       <td>opt</td>
       <td>-</td>
@@ -431,7 +431,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>options.keep_connection_open</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.keep_connection_open</td>
       <td>bool</td>
       <td>-</td>
       <td>opt</td>
@@ -445,7 +445,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>options.max_fps</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.max_fps</td>
       <td>int</td>
       <td>-</td>
       <td>opt</td>
@@ -459,7 +459,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>options.resolution.height</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.resolution.height</td>
       <td>int</td>
       <td>opt</td>
       <td>-</td>
@@ -473,7 +473,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>options.resolution.width</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.resolution.width</td>
       <td>int</td>
       <td>opt</td>
       <td>-</td>
@@ -487,7 +487,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>options.rotation.num_90_deg_rotations</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.rotation.num_90_deg_rotations</td>
       <td>int</td>
       <td>opt</td>
       <td>opt</td>
@@ -501,21 +501,7 @@ The table below shows configuration options for each grabber type.
       <td>opt</td>
     </tr>
     <tr>
-      <td>options.target_fps</td>
-      <td>float</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-    </tr>
-    <tr>
-      <td>options.video_stream</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.video_stream</td>
       <td>bool</td>
       <td>opt</td>
       <td>-</td>
@@ -529,7 +515,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
     </tr>
     <tr>
-      <td>options.zoom.digital</td>
+      <td style="position: sticky; left: 0; background: white; z-index: 1;">options.zoom.digital</td>
       <td>float</td>
       <td>opt</td>
       <td>opt</td>
@@ -547,7 +533,14 @@ The table below shows configuration options for each grabber type.
 
 </div>
 
-**Legend:** <strong>req</strong> = required, opt = optional, - = not applicable
+<table>
+  <tr>
+    <td><strong>Legend:</strong></td>
+    <td><strong>req</strong> = required</td>
+    <td>opt = optional</td>
+    <td>- = not applicable</td>
+  </tr>
+</table>
 
 <!-- end configuration table -->
 
