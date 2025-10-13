@@ -265,11 +265,6 @@ you want quick validation of your configuration and your framegrab data stored u
 
 <div style="overflow-x: auto;">
 
-<style>
-  .config-required { color: #22c55e; font-weight: bold; }
-  .config-optional { color: #6b7280; }
-</style>
-
 <table>
   <thead>
     <tr>
@@ -298,7 +293,7 @@ you want quick validation of your configuration and your framegrab data stored u
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><span class="config-required">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
       <td>-</td>
       <td>-</td>
     </tr>
@@ -310,7 +305,7 @@ you want quick validation of your configuration and your framegrab data stored u
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><span class="config-required">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -320,7 +315,7 @@ you want quick validation of your configuration and your framegrab data stored u
       <td>id.rtsp_url</td>
       <td>string</td>
       <td>-</td>
-      <td><span class="config-required">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -333,15 +328,15 @@ you want quick validation of your configuration and your framegrab data stored u
     <tr>
       <td>id.serial_number</td>
       <td>string</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td>-</td>
-      <td>-</td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
+      <td>-</td>
+      <td>-</td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
     </tr>
     <tr>
@@ -356,7 +351,7 @@ you want quick validation of your configuration and your framegrab data stored u
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
     </tr>
     <tr>
       <td>id.youtube_url</td>
@@ -367,7 +362,7 @@ you want quick validation of your configuration and your framegrab data stored u
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><span class="config-required">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -375,30 +370,30 @@ you want quick validation of your configuration and your framegrab data stored u
     <tr>
       <td>input_type</td>
       <td>string</td>
-      <td><span class="config-required">required</span></td>
-      <td><span class="config-required">required</span></td>
-      <td><span class="config-required">required</span></td>
-      <td><span class="config-required">required</span></td>
-      <td><span class="config-required">required</span></td>
-      <td><span class="config-required">required</span></td>
-      <td><span class="config-required">required</span></td>
-      <td><span class="config-required">required</span></td>
-      <td><span class="config-required">required</span></td>
-      <td><span class="config-required">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
+      <td><span style="color: #22c55e; font-weight: bold;">required</span></td>
     </tr>
     <tr>
       <td>name</td>
       <td>string</td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
     </tr>
     <tr>
       <td>options.basler_options</td>
@@ -406,7 +401,7 @@ you want quick validation of your configuration and your framegrab data stored u
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -417,23 +412,23 @@ you want quick validation of your configuration and your framegrab data stored u
     <tr>
       <td>options.crop</td>
       <td>dict</td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
     </tr>
     <tr>
       <td>options.depth.side_by_side</td>
       <td>bool</td>
       <td>-</td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -445,7 +440,7 @@ you want quick validation of your configuration and your framegrab data stored u
     <tr>
       <td>options.fourcc</td>
       <td>string</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -459,7 +454,7 @@ you want quick validation of your configuration and your framegrab data stored u
     <tr>
       <td>options.fps</td>
       <td>int</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -474,12 +469,12 @@ you want quick validation of your configuration and your framegrab data stored u
       <td>options.keep_connection_open</td>
       <td>bool</td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -488,62 +483,62 @@ you want quick validation of your configuration and your framegrab data stored u
       <td>options.max_fps</td>
       <td>int</td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
     </tr>
     <tr>
       <td>options.resolution.height</td>
       <td>int</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
-      <td>-</td>
-      <td>-</td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
+      <td>-</td>
+      <td>-</td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
     </tr>
     <tr>
       <td>options.resolution.width</td>
       <td>int</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
-      <td>-</td>
-      <td>-</td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><span class="config-optional">optional</span></td>
+      <td>-</td>
+      <td>-</td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
     </tr>
     <tr>
       <td>options.rotation.num_90_deg_rotations</td>
       <td>int</td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
     </tr>
     <tr>
       <td>options.video_stream</td>
       <td>bool</td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -557,218 +552,19 @@ you want quick validation of your configuration and your framegrab data stored u
     <tr>
       <td>options.zoom.digital</td>
       <td>float</td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
-      <td><span class="config-optional">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
+      <td><span style="color: #6b7280;">optional</span></td>
     </tr>
   </tbody>
 </table>
 
 </div>
 
-
-
-### Autodiscovery
-Autodiscovery automatically connects to cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense`, `basler`, and ONVIF supported `rtsp` cameras. Note that `rpi_csi2` cameras are not yet supported by autodiscover. Default configurations will be loaded for each camera. Note that discovery of RTSP cameras will be disabled by default but can be enabled by setting `rtsp_discover_mode`. Refer to [RTSP Discovery](#rtsp-discovery) section for different options.
-
-Autodiscovery is great for simple applications where you don't need to set any special options on your cameras. It's also a convenient method for finding the serial numbers of your cameras (if the serial number isn't printed on the camera).
-```python
-grabbers = FrameGrabber.autodiscover()
-
-# Print some information about the discovered cameras
-for grabber in grabbers.values():
-    print(grabber.config)
-
-    grabber.release()
-```
-
-#### RTSP Discovery
-RTSP cameras with support for ONVIF can be discovered on your local network in the following way:
-
-```python
-from framegrab import RTSPDiscovery, ONVIFDeviceInfo
-
-devices = RTSPDiscovery.discover_onvif_devices()
-```
-
-The `discover_onvif_devices()` will provide a list of devices that it finds in the `ONVIFDeviceInfo` format. An optional mode `auto_discover_mode` can be used to try different default credentials to fetch RTSP URLs:
-
-- off: No discovery.
-- ip_only: Only discover the IP address of the camera.
-- light: Only try first two usernames and passwords ("admin:admin" and no username/password).
-- complete_fast: Try the entire DEFAULT_CREDENTIALS without delays in between.
-- complete_slow: Try the entire DEFAULT_CREDENTIALS with a delay of 1 seconds in between.
-
-
-After getting the list and enter the username and password of the camera. Use `generate_rtsp_urls()` to generate RTSP URLs for each devices.
-
-```python
-for device in devices:
-    RTSPDiscovery.generate_rtsp_urls(device=device)
-```
-
-This will generate all the available RTSP URLs and can be used when creating `FrameGrabber.create_grabbers` to grab frames.
-
-```python
-config = f"""
-name: Front Door Camera
-input_type: rtsp
-id:
-  rtsp_url: {device.rtsp_urls[0]}
-"""
-
-grabber = FrameGrabber.create_grabber_yaml(config)
-```
-
-### Motion Detection
-
-To use the built-in motion detection functionality, first create a `MotionDetector` object, specifying the percentage threshold for motion detection:
-
-```python
-from framegrab import MotionDetector
-
-motion_threshold = 1.0
-m = MotionDetector(pct_threshold=motion_threshold)
-```
-
-The motion threshold is defined as the detection threshold for motion detection, in terms of the percentage of changed pixels. The default value is 1.0 (which means 1%).
-
-Then, use the `motion_detected()` method with a captured frame to check if motion has been detected:
-
-```python
-if m.motion_detected(frame):
-    print("Motion detected!")
-```
-
-### RTSP Server
-Framegrab provides tools for RTSP stream generation, which can be useful for testing applications.
-
-Basic usage looks like this:
-```
-server = RTSPServer(port=port)
-server.create_stream(get_frame_callback1, width, height, fps, mount_point='/stream0')
-server.create_stream(get_frame_callback2, width, height, fps, mount_point='/stream1')
-server.start()
-time.sleep(n) # keep the server up 
-server.stop()
-```
-
-Using these tools requires a number of system dependencies, which are listed below:
-
-```
-gstreamer1.0-tools
-gstreamer1.0-rtsp
-gstreamer1.0-plugins-base
-gstreamer1.0-plugins-good
-gstreamer1.0-plugins-bad
-gstreamer1.0-plugins-ugly
-libgstreamer1.0-dev
-libgirepository1.0-dev
-gir1.2-gst-rtsp-server-1.0
-gir1.2-gstreamer-1.0
-```
-We test RTSP server functionality on Ubuntu. It may also work on Mac. It will _not_ work on Windows natively, but you may be able to get it to work with Docker or WSL.
-
-We provide a [Dockerfile](docker/Dockerfile) that contains the necessary packages. 
-
-For inspiration on how to implement an RTSP server, see [sample_scripts/video_to_rtsp.py](sample_scripts/video_to_rtsp.py), which shows can you can convert multiple videos into RTSP streams with a single RTSP server. 
-
-
-## Examples
-
-### Generic USB
-Here's an example of using the FrameGrab library to continuously capture frames and detect motion from a video stream:
-
-```python
-from framegrab import FrameGrabber, MotionDetector
-
-motion_threshold = 1.0
-m = MotionDetector(pct_threshold=motion_threshold)
-
-config = {
-    'input_type': 'generic_usb',
-}
-
-with FrameGrabber.create_grabber(config) as grabber:
-    while True:
-        frame = grabber.grab()
-        if frame is None:
-            print("No frame captured!")
-            continue
-
-        if m.motion_detected(frame):
-            print("Motion detected!")
-```
-
-### YouTube Live
-Here's an example of using FrameGrab to capture frames from a YouTube Live stream:
-
-```python
-from framegrab import FrameGrabber
-import cv2
-
-config = {
-    'input_type': 'youtube_live',
-    'id': {
-        'youtube_url': 'https://www.youtube.com/watch?v=your_video_id'
-    }
-}
-
-with FrameGrabber.create_grabber(config) as grabber:
-    frame = grabber.grab()
-    if frame is None:
-        raise Exception("No frame captured")
-
-    # Process the frame as needed
-    # For example, display it using cv2.imshow()
-    # For example, save it to a file
-    cv2.imwrite('youtube_frame.jpg', frame)
-```
-
-### File Stream
-Here's an example of using FrameGrab to capture frames from a video file:
-
-```python
-from framegrab import FrameGrabber
-import cv2
-
-config = {
-    'input_type': 'file_stream',
-    'id': {
-        'filename': 'path/to/your/video.mjpeg'  # or .mp4, .avi, .mov, etc.
-    },
-    'options': {
-        'max_fps': 2,  # if a lower FPS than the original video's FPS is specified, Framegrab will skip extra frames as needed.
-    }
-}
-
-with FrameGrabber.create_grabber(config) as grabber:
-  frame = grabber.grab()
-  if frame is None:
-      raise Exception("No frame captured")
-
-  # Process the frame as needed
-  # For example, display it using cv2.imshow()
-  # For example, save it to a file
-  cv2.imwrite('file_stream_frame.jpg', frame)
-```
-
-## Contributing
-
-We welcome contributions to FrameGrab! If you would like to contribute, please follow these steps:
-
-1. Fork the repository
-2. Create a new branch for your changes
-3. Commit your changes to the branch
-4. Open a pull request
-
-## License
-
-FrameGrab is released under the MIT License. For more information, please refer to the [LICENSE.txt](https://github.com/groundlight/framegrab/blob/main/LICENSE.txt) file.
