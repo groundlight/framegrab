@@ -879,7 +879,7 @@ time.sleep(n) # keep the server up
 server.stop()
 ```
 
-Using these tools requires a number of system dependencies. which are listed below:
+Using these tools requires a number of system dependencies, which are listed below:
 
 ```
 gstreamer1.0-tools
