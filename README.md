@@ -866,6 +866,40 @@ if m.motion_detected(frame):
     print("Motion detected!")
 ```
 
+### RTSP Server
+Framegrab provides tools for RTSP stream generation, which can be useful for testing applications.
+
+Basic usage looks like this:
+```
+server = RTSPServer(port=port)
+server.create_stream(get_frame_callback1, width, height, fps, mount_point='/stream0')
+server.create_stream(get_frame_callback2, width, height, fps, mount_point='/stream1')
+server.start()
+time.sleep(n) # keep the server up 
+server.stop()
+```
+
+Using these tools requires a number of system dependencies, which are listed below:
+
+```
+gstreamer1.0-tools
+gstreamer1.0-rtsp
+gstreamer1.0-plugins-base
+gstreamer1.0-plugins-good
+gstreamer1.0-plugins-bad
+gstreamer1.0-plugins-ugly
+libgstreamer1.0-dev
+libgirepository1.0-dev
+gir1.2-gst-rtsp-server-1.0
+gir1.2-gstreamer-1.0
+```
+We test RTSP server functionality on Ubuntu. It may also work on Mac. It will _not_ work on Windows natively, but you may be able to get it to work with Docker or WSL.
+
+We provide a [Dockerfile](docker/Dockerfile) that contains the necessary packages. 
+
+For inspiration on how to implement an RTSP server, see [sample_scripts/video_to_rtsp.py](sample_scripts/video_to_rtsp.py), which shows can you can convert multiple videos into RTSP streams with a single RTSP server. 
+
+
 ## Examples
 
 ### Generic USB
