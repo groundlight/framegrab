@@ -96,6 +96,15 @@ def generate_html_table(models: list[type[FrameGrabberConfig]]) -> str:
         row = '\n'.join(f'      <td>{cell}</td>' for cell in cells)
         rows.append(f'    <tr>\n{row}\n    </tr>')
     
+    legend = """<table>
+  <tr>
+    <td><strong>Legend:</strong></td>
+    <td><strong>req</strong> = required</td>
+    <td>opt = optional</td>
+    <td>- = not applicable</td>
+  </tr>
+</table>"""
+    
     return f"""<div style="overflow-x: auto;">
 
 <table>
@@ -111,8 +120,7 @@ def generate_html_table(models: list[type[FrameGrabberConfig]]) -> str:
 
 </div>
 
-**Legend:** <strong>req</strong> = required, opt = optional, - = not applicable"""
-
+{legend}"""
 
 def write_schema_to_readme(models: list[type[FrameGrabberConfig]], readme_file: str) -> None:
     """Replace the config schema section in README with HTML table."""
