@@ -183,6 +183,18 @@ framegrab preview 35432343252 -i basler                         # Basler camera
 framegrab autodiscover                                          # Find all cameras
 ```
 
+```bash
+# Autodiscover cameras and save their config to a file
+framegrab autodiscover -o none > framegrab_config.yaml
+
+# Preview cameras with the CLI
+framegrab preview framegrab_config.yaml 
+
+# Edit the file as need, and pass the configuration file as 
+# input to your program, e.g. grabbers = FrameGrabber.from_yaml('framegrab_config.yaml')
+```
+
+
 **Output formats:**
 The CLI supports different ways to display camera frames using the `-o/--output` option:
 
@@ -230,6 +242,20 @@ The table below shows configuration options for each grabber type.
   </thead>
   <tbody>
     <tr>
+      <td>input_type</td>
+      <td>string</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+    </tr>
+    <tr>
       <td>id.filename</td>
       <td>string</td>
       <td>-</td>
@@ -239,7 +265,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><strong>req</strong></td>
+      <td>🔴</td>
       <td>-</td>
       <td>-</td>
     </tr>
@@ -251,7 +277,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><strong>req</strong></td>
+      <td>🔴</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -261,7 +287,7 @@ The table below shows configuration options for each grabber type.
       <td>id.rtsp_url</td>
       <td>string</td>
       <td>-</td>
-      <td><strong>req</strong></td>
+      <td>🔴</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -274,15 +300,15 @@ The table below shows configuration options for each grabber type.
     <tr>
       <td>id.serial_number</td>
       <td>string</td>
-      <td>opt</td>
+      <td>✅</td>
       <td>-</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>-</td>
-      <td>-</td>
+      <td>✅</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
-      <td>opt</td>
+      <td>-</td>
+      <td>-</td>
+      <td>✅</td>
       <td>-</td>
     </tr>
     <tr>
@@ -297,7 +323,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td>opt</td>
+      <td>✅</td>
     </tr>
     <tr>
       <td>id.youtube_url</td>
@@ -308,38 +334,24 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td><strong>req</strong></td>
+      <td>🔴</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
-    </tr>
-    <tr>
-      <td>input_type</td>
-      <td>string</td>
-      <td><strong>req</strong></td>
-      <td><strong>req</strong></td>
-      <td><strong>req</strong></td>
-      <td><strong>req</strong></td>
-      <td><strong>req</strong></td>
-      <td><strong>req</strong></td>
-      <td><strong>req</strong></td>
-      <td><strong>req</strong></td>
-      <td><strong>req</strong></td>
-      <td><strong>req</strong></td>
     </tr>
     <tr>
       <td>name</td>
       <td>string</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
     </tr>
     <tr>
       <td>options.basler_options</td>
@@ -347,7 +359,7 @@ The table below shows configuration options for each grabber type.
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td>opt</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -358,23 +370,23 @@ The table below shows configuration options for each grabber type.
     <tr>
       <td>options.crop</td>
       <td>dict</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
     </tr>
     <tr>
       <td>options.depth.side_by_side</td>
       <td>bool</td>
       <td>-</td>
       <td>-</td>
-      <td>opt</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -386,7 +398,7 @@ The table below shows configuration options for each grabber type.
     <tr>
       <td>options.fourcc</td>
       <td>string</td>
-      <td>opt</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -400,7 +412,7 @@ The table below shows configuration options for each grabber type.
     <tr>
       <td>options.fps</td>
       <td>int</td>
-      <td>opt</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -415,12 +427,12 @@ The table below shows configuration options for each grabber type.
       <td>options.keep_connection_open</td>
       <td>bool</td>
       <td>-</td>
-      <td>opt</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td>opt</td>
-      <td>opt</td>
+      <td>✅</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -429,62 +441,62 @@ The table below shows configuration options for each grabber type.
       <td>options.max_fps</td>
       <td>int</td>
       <td>-</td>
-      <td>opt</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td>opt</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
     </tr>
     <tr>
       <td>options.resolution.height</td>
       <td>int</td>
-      <td>opt</td>
+      <td>✅</td>
       <td>-</td>
-      <td>opt</td>
-      <td>-</td>
-      <td>-</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td>opt</td>
+      <td>-</td>
+      <td>-</td>
+      <td>✅</td>
       <td>-</td>
     </tr>
     <tr>
       <td>options.resolution.width</td>
       <td>int</td>
-      <td>opt</td>
+      <td>✅</td>
       <td>-</td>
-      <td>opt</td>
-      <td>-</td>
-      <td>-</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
-      <td>opt</td>
+      <td>-</td>
+      <td>-</td>
+      <td>✅</td>
       <td>-</td>
     </tr>
     <tr>
       <td>options.rotation.num_90_deg_rotations</td>
       <td>int</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
     </tr>
     <tr>
       <td>options.video_stream</td>
       <td>bool</td>
-      <td>opt</td>
+      <td>✅</td>
       <td>-</td>
       <td>-</td>
       <td>-</td>
@@ -498,16 +510,16 @@ The table below shows configuration options for each grabber type.
     <tr>
       <td>options.zoom.digital</td>
       <td>float</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
-      <td>opt</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
     </tr>
   </tbody>
 </table>
@@ -517,9 +529,9 @@ The table below shows configuration options for each grabber type.
 <table>
   <tr>
     <td><strong>Legend:</strong></td>
-    <td><strong>req</strong> = required</td>
-    <td>opt = optional</td>
-    <td>- = not applicable</td>
+    <td>🔴 = required</td>
+    <td>✅ = optional</td>
+    <td>- = not supported</td>
   </tr>
 </table>
 
@@ -601,7 +613,7 @@ if m.motion_detected(frame):
 Framegrab provides tools for RTSP stream generation, which can be useful for testing applications.
 
 Basic usage looks like this:
-```
+```python
 server = RTSPServer(port=port)
 server.create_stream(get_frame_callback1, width, height, fps, mount_point='/stream0')
 server.create_stream(get_frame_callback2, width, height, fps, mount_point='/stream1')

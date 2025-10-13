@@ -11,6 +11,11 @@ from framegrab.config import InputTypes, FrameGrabberConfig
 CONFIG_TABLE_START = "<!-- start configuration table -->"
 CONFIG_TABLE_END = "<!-- end configuration table -->"
 
+# Table cell symbols
+REQUIRED_SYMBOL = "🔴"
+OPTIONAL_SYMBOL = "✅"
+NOT_SUPPORTED_SYMBOL = "-"
+
 def get_python_type(field_info: FieldInfo) -> str:
     """Extract Python type from pydantic field, unwrapping nested generics."""
     annotation = field_info.annotation
@@ -66,16 +71,21 @@ def get_config_rows(models: list[type[FrameGrabberConfig]]) -> list[tuple[str, d
                 datatype = get_python_type(field_info)
                 add_config_field(config_map, path, input_type, availability, datatype)
     
-    return sorted(config_map.items())
+    # Sort all items, but put input_type first
+    sorted_items = sorted(config_map.items())
+    input_type_item = next((item for item in sorted_items if item[0] == "input_type"), None)
+    other_items = [item for item in sorted_items if item[0] != "input_type"]
+    
+    return [input_type_item] + other_items if input_type_item else other_items
 
 
 def format_cell(value: str) -> str:
     """Format a table cell value with appropriate styling."""
     if value == "required":
-        return '<strong>req</strong>'
+        return REQUIRED_SYMBOL
     elif value == "optional":
-        return 'opt'
-    return value
+        return OPTIONAL_SYMBOL
+    return NOT_SUPPORTED_SYMBOL
 
 
 def generate_html_table(models: list[type[FrameGrabberConfig]]) -> str:
@@ -96,12 +106,12 @@ def generate_html_table(models: list[type[FrameGrabberConfig]]) -> str:
         row = '\n'.join(f'      <td>{cell}</td>' for cell in cells)
         rows.append(f'    <tr>\n{row}\n    </tr>')
     
-    legend = """<table>
+    legend = f"""<table>
   <tr>
     <td><strong>Legend:</strong></td>
-    <td><strong>req</strong> = required</td>
-    <td>opt = optional</td>
-    <td>- = not applicable</td>
+    <td>{REQUIRED_SYMBOL} = required</td>
+    <td>{OPTIONAL_SYMBOL} = optional</td>
+    <td>{NOT_SUPPORTED_SYMBOL} = not supported</td>
   </tr>
 </table>"""
     
