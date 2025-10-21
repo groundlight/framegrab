@@ -132,12 +132,10 @@ def generate_html_table(models: list[type[FrameGrabberConfig]]) -> str:
 
 {legend}"""
 
-def write_schema_to_readme(models: list[type[FrameGrabberConfig]], readme_file: str) -> None:
+def write_schema_to_readme(content: str, readme_file: str, start_delimiter: str, ) -> None:
     """Replace the config schema section in README with HTML table."""
     with open(readme_file, "r") as f:
         lines = f.readlines()
-    
-    html_table = generate_html_table(models)
     
     with open(readme_file, "w") as f:
         in_section = False
@@ -146,7 +144,7 @@ def write_schema_to_readme(models: list[type[FrameGrabberConfig]], readme_file: 
                 in_section = True
                 f.write(line)
                 f.write("\n")
-                f.write(html_table)
+                f.write(content)
                 f.write("\n\n")
             elif in_section and CONFIG_TABLE_END in line:
                 in_section = False
@@ -157,5 +155,9 @@ def write_schema_to_readme(models: list[type[FrameGrabberConfig]], readme_file: 
 
 if __name__ == "__main__":
     models = [FrameGrabberConfig.get_class_for_input_type(input_type) for input_type in InputTypes]
-    write_schema_to_readme(models, "README.md")
+
+    # Method
+    html_table = generate_html_table(models)
+    write_schema_to_readme(html_table, "README.md")
+
     print("Schema written to README.md")
