@@ -58,7 +58,5 @@ def autodiscover(output: str, rtsp_discover_mode: str = "off"):
             click.echo(traceback.format_exc(), err=True)
 
     # render the yaml config dict as yaml and print it
-    click.echo("Rendering sample configuration file as YAML:\n", err=True)
-    print("---")
     print(f"# Auto-discovered {len(grabbers)} camera(s).")
     print(yaml.dump(yaml_config))
