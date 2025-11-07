@@ -331,6 +331,13 @@ GenericUSBFrameGrabberConfig:
       - type: 'null'
       default: null
       title: Serial Number
+    target_fps:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: null
+      options_key: target_fps
+      title: Target Fps
     video_stream:
       default: false
       options_key: video_stream
@@ -389,6 +396,13 @@ RTSPFrameGrabberConfig:
       pattern: ^rtsp://
       title: Rtsp Url
       type: string
+    target_fps:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: null
+      options_key: target_fps
+      title: Target Fps
   required:
   - rtsp_url
   title: RTSPFrameGrabberConfig
@@ -455,6 +469,13 @@ RealSenseFrameGrabberConfig:
       default: null
       options_key: depth.side_by_side
       title: Side By Side Depth
+    target_fps:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: null
+      options_key: target_fps
+      title: Target Fps
   title: RealSenseFrameGrabberConfig
   type: object
 
@@ -506,6 +527,13 @@ BaslerFrameGrabberConfig:
       - type: 'null'
       default: null
       title: Serial Number
+    target_fps:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: null
+      options_key: target_fps
+      title: Target Fps
   title: BaslerFrameGrabberConfig
   type: object
 
@@ -543,6 +571,13 @@ RaspberryPiCSI2FrameGrabberConfig:
       default: 0
       options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
+    target_fps:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: null
+      options_key: target_fps
+      title: Target Fps
   title: RaspberryPiCSI2FrameGrabberConfig
   type: object
 
@@ -589,6 +624,13 @@ HttpLiveStreamingFrameGrabberConfig:
       default: 0
       options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
+    target_fps:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: null
+      options_key: target_fps
+      title: Target Fps
   required:
   - hls_url
   title: HttpLiveStreamingFrameGrabberConfig
@@ -633,6 +675,13 @@ YouTubeLiveFrameGrabberConfig:
       default: 0
       options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
+    target_fps:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: null
+      options_key: target_fps
+      title: Target Fps
     youtube_url:
       pattern: ^https?://
       title: Youtube Url
@@ -687,6 +736,13 @@ FileStreamFrameGrabberConfig:
       default: 0
       options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
+    target_fps:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: null
+      options_key: target_fps
+      title: Target Fps
   required:
   - filename
   title: FileStreamFrameGrabberConfig
@@ -746,6 +802,13 @@ MockFrameGrabberConfig:
       - type: 'null'
       default: null
       title: Serial Number
+    target_fps:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: null
+      options_key: target_fps
+      title: Target Fps
   title: MockFrameGrabberConfig
   type: object
 
@@ -783,6 +846,13 @@ ROS2GrabberConfig:
       default: 0
       options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
+    target_fps:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: null
+      options_key: target_fps
+      title: Target Fps
     topic:
       pattern: ^(~|/)?([A-Za-z_][A-Za-z0-9_]*)(/[A-Za-z_][A-Za-z0-9_]*)*$
       title: Topic
