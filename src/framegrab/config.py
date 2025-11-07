@@ -146,6 +146,7 @@ class FrameGrabberConfig(ABC, BaseModel, validate_assignment=True):
         key="zoom.digital", default=None, ge=1, le=DIGITAL_ZOOM_MAX
     )
     num_90_deg_rotations: OptionsField[Optional[int]] = OptionsField(key="rotation.num_90_deg_rotations", default=0)
+    target_fps: OptionsField[Optional[float]] = OptionsField(key="target_fps", default=None)
 
     name: Optional[str] = None
 

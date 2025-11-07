@@ -99,6 +99,10 @@ class FrameGrabber(ABC):
         options = config.to_framegrab_config_dict()["options"]
         self.apply_options(options)
 
+        self._last_grab_time = 0.0
+        target_fps = self.config.target_fps
+        self._target_period = None if target_fps is None else 1 / target_fps
+
     @abstractmethod
     def _initialize_grabber_implementation(self):
         """Each FrameGrabber must implement its own method of initializing the grabber"""
@@ -406,7 +410,24 @@ class FrameGrabber(ABC):
         """Read a frame from the camera and perform post processing operations such as zoom, crop and rotation if necessary.
         Returns a frame.
         """
+        if self._target_period is not None:
+            time_since_last_grab = time.perf_counter() - self._last_grab_time
+            remaining_time_to_sleep = self._target_period - time_since_last_grab
+            if remaining_time_to_sleep > 0.0:
+                time.sleep(remaining_time_to_sleep)
+            else:
+                behind_by_sec = -remaining_time_to_sleep
+                target_fps = self.config.target_fps
+                logger.warning(
+                    f'Unable to maintain target FPS of {target_fps}. '
+                    f'Fell behind by {behind_by_sec} seconds. '
+                )
+
         frame = self._grab_implementation()
+        
+        # Update the timestamp after grabbing
+        if self._target_period is not None:
+            self._last_grab_time = time.perf_counter()
 
         if frame is None:
             name = self.config.name  # all grabbers should have a name, either user-provided or generated
@@ -417,6 +438,7 @@ class FrameGrabber(ABC):
         frame = self._rotate(frame)
         frame = self._crop(frame)
         frame = self._digital_zoom(frame)
+
         return frame
 
     @abstractmethod
