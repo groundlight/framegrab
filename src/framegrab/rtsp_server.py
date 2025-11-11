@@ -182,10 +182,8 @@ class RTSPServer:
         """
         if tune is not None and tune not in VALID_TUNE_OPTIONS:
             valid_opts = ", ".join(sorted(VALID_TUNE_OPTIONS))
-            raise ValueError(
-                f"Invalid tune '{tune}'. Valid options are: {valid_opts} or None"
-            )
-        
+            raise ValueError(f"Invalid tune '{tune}'. Valid options are: {valid_opts} or None")
+
         if self._running:
             raise RuntimeError(
                 "RTSPServer has already started. Streams can only be created prior to starting the server."
