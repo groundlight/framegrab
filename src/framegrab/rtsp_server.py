@@ -25,14 +25,6 @@ except ImportError as e:
 
 logger = logging.getLogger(__name__)
 
-# Valid x264enc tune values from GStreamer's GstX264EncTune enum.
-# See: https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c#GstX264EncTune
-VALID_TUNE_OPTIONS = {
-    "zerolatency",
-    "fastdecode",
-    "stillimage",
-}
-
 
 @dataclass
 class ClientState:
@@ -74,7 +66,6 @@ class Stream:
     height: int
     mount_point: str
     fps: float
-    tune: Optional[str] = None
 
 
 class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
@@ -92,15 +83,12 @@ class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
     def do_create_element(self, url):
         """Create the GStreamer pipeline for this stream."""
         fps_int = int(round(self.stream.fps, 0))  # Gstreamer wants an int here
-        tune_opts = ""
-        if self.stream.tune is not None:
-            tune_opts = f" tune={self.stream.tune}"
         pipeline = (
             f"appsrc name=source is-live=true format=GST_FORMAT_TIME "
             f"caps=video/x-raw,format=RGB,width={self.stream.width},"
             f"height={self.stream.height},framerate={fps_int}/1 "
             f"! videoconvert ! video/x-raw,format=I420 "
-            f"! x264enc speed-preset=ultrafast{tune_opts} "
+            f"! x264enc speed-preset=ultrafast tune=zerolatency "
             f"! rtph264pay name=pay0 pt=96"
         )
         return Gst.parse_launch(pipeline)
@@ -159,31 +147,7 @@ class RTSPServer:
         self._loop_thread = None
         self._running = False
 
-    def create_stream(
-        self,
-        callback: Callable[[], np.ndarray],
-        width: int,
-        height: int,
-        mount_point: str,
-        fps: float,
-        tune: Optional[str] = None,
-    ):
-        """Create a new RTSP stream.
-
-        Args:
-            callback: Function that returns a numpy array (BGR format) for each frame
-            width: Frame width in pixels
-            height: Frame height in pixels
-            mount_point: RTSP mount point path (e.g., "/stream1")
-            fps: Target frames per second
-            tune: x264 tuning option. Valid options: zerolatency, fastdecode, stillimage, or None.
-                  Default: None (no tuning, better compression/performance). Set to "zerolatency"
-                  for low latency (worse compression).
-        """
-        if tune is not None and tune not in VALID_TUNE_OPTIONS:
-            valid_opts = ", ".join(sorted(VALID_TUNE_OPTIONS))
-            raise ValueError(f"Invalid tune '{tune}'. Valid options are: {valid_opts} or None")
-
+    def create_stream(self, callback: Callable[[], np.ndarray], width: int, height: int, mount_point: str, fps: float):
         if self._running:
             raise RuntimeError(
                 "RTSPServer has already started. Streams can only be created prior to starting the server."
@@ -191,7 +155,7 @@ class RTSPServer:
 
         if mount_point in self.streams:
             raise ValueError(f"Stream '{mount_point}' exists")
-        self.streams[mount_point] = Stream(callback, width, height, mount_point, fps, tune)
+        self.streams[mount_point] = Stream(callback, width, height, mount_point, fps)
         self._mounts[mount_point] = MountState()
 
     def list_rtsp_urls(self) -> List[str]:
