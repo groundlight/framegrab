@@ -85,7 +85,7 @@ class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
         fps_int = int(round(self.stream.fps, 0))  # Gstreamer wants an int here
         pipeline = (
             f"appsrc name=source is-live=true format=GST_FORMAT_TIME "
-            f"caps=video/x-raw,format=RGB,width={self.stream.width},"
+            f"caps=video/x-raw,format=BGR,width={self.stream.width},"
             f"height={self.stream.height},framerate={fps_int}/1 "
             f"! videoconvert ! video/x-raw,format=I420 "
             f"! x264enc speed-preset=ultrafast tune=zerolatency "
@@ -261,7 +261,6 @@ class RTSPServer:
 
             try:
                 frame = stream.callback()
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 fb = frame.tobytes()
             except Exception:
                 logger.exception("grab failed for %s", stream.mount_point)
