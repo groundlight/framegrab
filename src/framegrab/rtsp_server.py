@@ -104,11 +104,11 @@ class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
         fps_int = int(round(self.stream.fps, 0))
         speed_preset = self.stream.speed_preset
         key_int_max = self.stream.keyframe_interval
-        
+
         encoder_opts = f"speed-preset={speed_preset} tune=zerolatency key-int-max={key_int_max}"
         if self.stream.bitrate_kbps is not None:
             encoder_opts += f" bitrate={self.stream.bitrate_kbps}"
-        
+
         pipeline = (
             f"appsrc name=source is-live=true format=GST_FORMAT_TIME "
             f"caps=video/x-raw,format=RGB,width={self.stream.width},"
@@ -200,16 +200,14 @@ class RTSPServer:
         """
         if speed_preset not in VALID_SPEED_PRESETS:
             valid_opts = ", ".join(sorted(VALID_SPEED_PRESETS))
-            raise ValueError(
-                f"Invalid speed_preset '{speed_preset}'. Valid options are: {valid_opts}"
-            )
-        
+            raise ValueError(f"Invalid speed_preset '{speed_preset}'. Valid options are: {valid_opts}")
+
         if bitrate_kbps is not None and bitrate_kbps <= 0:
             raise ValueError(f"bitrate_kbps must be positive, got {bitrate_kbps}")
-        
+
         if keyframe_interval < 1:
             raise ValueError(f"keyframe_interval must be at least 1, got {keyframe_interval}")
-        
+
         if self._running:
             raise RuntimeError(
                 "RTSPServer has already started. Streams can only be created prior to starting the server."
