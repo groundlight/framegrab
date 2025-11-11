@@ -25,19 +25,10 @@ except ImportError as e:
 
 logger = logging.getLogger(__name__)
 
-# Valid x264enc speed-preset values from GStreamer's GstX264EncPreset enum.
-# See: https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c#GstX264EncPreset
-VALID_SPEED_PRESETS = {
-    "ultrafast",
-    "superfast",
-    "veryfast",
-    "faster",
-    "fast",
-    "medium",
-    "slow",
-    "slower",
-    "veryslow",
-    "placebo",
+VALID_TUNE_OPTIONS = {
+    "zerolatency",
+    "fastdecode",
+    "stillimage",
 }
 
 @dataclass
@@ -80,9 +71,7 @@ class Stream:
     height: int
     mount_point: str
     fps: float
-    bitrate_kbps: Optional[int] = None
-    speed_preset: str = "veryfast"
-    keyframe_interval: Optional[int] = None
+    tune: Optional[str] = "zerolatency"
 
 
 class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
@@ -99,21 +88,16 @@ class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
 
     def do_create_element(self, url):
         """Create the GStreamer pipeline for this stream."""
-        fps_int = int(round(self.stream.fps, 0))
-        speed_preset = self.stream.speed_preset
-        
-        encoder_opts = f"speed-preset={speed_preset} tune=zerolatency"
-        if self.stream.keyframe_interval is not None:
-            encoder_opts += f" key-int-max={self.stream.keyframe_interval}"
-        if self.stream.bitrate_kbps is not None:
-            encoder_opts += f" bitrate={self.stream.bitrate_kbps}"
-
+        fps_int = int(round(self.stream.fps, 0))  # Gstreamer wants an int here
+        tune_opts = ""
+        if self.stream.tune is not None:
+            tune_opts = f" tune={self.stream.tune}"
         pipeline = (
             f"appsrc name=source is-live=true format=GST_FORMAT_TIME "
             f"caps=video/x-raw,format=RGB,width={self.stream.width},"
             f"height={self.stream.height},framerate={fps_int}/1 "
             f"! videoconvert ! video/x-raw,format=I420 "
-            f"! x264enc {encoder_opts} "
+            f"! x264enc speed-preset=ultrafast{tune_opts} "
             f"! rtph264pay name=pay0 pt=96"
         )
         return Gst.parse_launch(pipeline)
@@ -179,9 +163,7 @@ class RTSPServer:
         height: int,
         mount_point: str,
         fps: float,
-        bitrate_kbps: Optional[int] = None,
-        speed_preset: str = "veryfast",
-        keyframe_interval: Optional[int] = None,
+        tune: Optional[str] = "zerolatency",
     ):
         """Create a new RTSP stream.
 
@@ -191,34 +173,14 @@ class RTSPServer:
             height: Frame height in pixels
             mount_point: RTSP mount point path (e.g., "/stream1")
             fps: Target frames per second
-            bitrate_kbps: Target bitrate in kilobits per second. If None, uses quality-based encoding.
-            speed_preset: x264 speed preset. Valid options: ultrafast, superfast, veryfast, faster, fast,
-                         medium, slow, slower, veryslow, placebo. Default: "veryfast" (good balance).
-            keyframe_interval: Maximum interval between keyframes (GOP size). Lower = lower latency
-                              but less compression. If None, uses x264 default (automatic, recommended
-                              with tune=zerolatency). Default: None.
+            tune: x264 tuning option. Valid options: zerolatency, fastdecode, stillimage, or None.
+                  Default: "zerolatency" (low latency). Set to None for better compression/performance.
         """
-        if speed_preset not in VALID_SPEED_PRESETS:
-            valid_opts = ", ".join(sorted(VALID_SPEED_PRESETS))
+        if tune is not None and tune not in VALID_TUNE_OPTIONS:
+            valid_opts = ", ".join(sorted(VALID_TUNE_OPTIONS))
             raise ValueError(
-                f"Invalid speed_preset '{speed_preset}'. Valid options are: {valid_opts}"
+                f"Invalid tune '{tune}'. Valid options are: {valid_opts} or None"
             )
-        
-        if bitrate_kbps is not None:
-            try:
-                bitrate_kbps = int(bitrate_kbps)
-            except (ValueError, TypeError):
-                raise ValueError(f"bitrate_kbps must be an integer, got {type(bitrate_kbps).__name__}: {bitrate_kbps}")
-            if bitrate_kbps <= 0:
-                raise ValueError(f"bitrate_kbps must be positive, got {bitrate_kbps}")
-        
-        if keyframe_interval is not None:
-            try:
-                keyframe_interval = int(keyframe_interval)
-            except (ValueError, TypeError):
-                raise ValueError(f"keyframe_interval must be an integer, got {type(keyframe_interval).__name__}: {keyframe_interval}")
-            if keyframe_interval < 1:
-                raise ValueError(f"keyframe_interval must be at least 1, got {keyframe_interval}")
         
         if self._running:
             raise RuntimeError(
@@ -227,9 +189,7 @@ class RTSPServer:
 
         if mount_point in self.streams:
             raise ValueError(f"Stream '{mount_point}' exists")
-        self.streams[mount_point] = Stream(
-            callback, width, height, mount_point, fps, bitrate_kbps, speed_preset, keyframe_interval
-        )
+        self.streams[mount_point] = Stream(callback, width, height, mount_point, fps, tune)
         self._mounts[mount_point] = MountState()
 
     def list_rtsp_urls(self) -> List[str]:
