@@ -129,8 +129,6 @@ class RTSPDiscovery:
                 device_ips.append(device_ip)
         except Exception as e:
             logger.error(f"Error discovering device: {e}", exc_info=True)
-            #ONVIFDiscovery no need to stop, because it closes sockets automatically
-            #wsd.stop()  # This is supposed to clean up the threads but it doesn't seem to work, sock is still open after running this
 
         return device_ips
 
