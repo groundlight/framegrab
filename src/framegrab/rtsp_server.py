@@ -31,6 +31,7 @@ VALID_TUNE_OPTIONS = {
     "stillimage",
 }
 
+
 @dataclass
 class ClientState:
     """Per-client state for a single RTSP consumer.
