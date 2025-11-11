@@ -105,7 +105,7 @@ class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
             f"caps=video/x-raw,format=RGB,width={self.stream.width},"
             f"height={self.stream.height},framerate={fps_int}/1 "
             f"! videoconvert ! video/x-raw,format=I420 "
-            f"! x264enc speed-preset={speed_preset} tune=zerolatency "
+            f"! x264enc speed-preset={speed_preset} "
             f"! rtph264pay name=pay0 pt=96"
         )
         return Gst.parse_launch(pipeline)
