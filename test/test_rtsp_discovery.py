@@ -1,22 +1,34 @@
 import unittest
 
-from wsdiscovery.service import Service
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from framegrab.rtsp_discovery import RTSPDiscovery, ONVIFDeviceInfo, AutodiscoverMode
 
 
 class TestRTSPDiscovery(unittest.TestCase):
     def test_discover_camera_ips(self):
-        service = Service(
-            types="", scopes="", xAddrs=["http://localhost:8080"], epr="", instanceId=""
-        )
+        mock_discovery_result = [
+            {
+                'epr': 'urn:uuid:test-device-1',
+                'types': ['dn:NetworkVideoTransmitter', 'tds:Device'],
+                'scopes': ['onvif://www.onvif.org/type/NetworkVideoTransmitter'],
+                'xaddrs': ['http://localhost:8080/onvif/device_service'],
+                'host': 'localhost',
+                'port': 8080,
+                'use_https': False
+            }
+        ]
+        
         with patch(
-            "wsdiscovery.discovery.ThreadedWSDiscovery.searchServices",
-            return_value=[service],
-        ) as mock_camera_ips:
+            "framegrab.rtsp_discovery.RTSPDiscovery._get_wsd"
+        ) as mock_get_wsd:
+            # Mock ONVIFDiscovery instance
+            mock_discovery_instance = MagicMock()
+            mock_discovery_instance.discover.return_value = mock_discovery_result
+            mock_get_wsd.return_value = mock_discovery_instance
+            
             devices = RTSPDiscovery.discover_onvif_devices()
 
-            assert devices[0].xaddr == "http://localhost:8080"
+            assert devices[0].xaddr == "http://localhost:8080/onvif/device_service"
 
     def test_generate_rtsp_urls(self):
         device = ONVIFDeviceInfo(ip="0")
