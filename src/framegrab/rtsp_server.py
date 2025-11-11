@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 # Valid x264enc speed-preset values from GStreamer's GstX264EncPreset enum.
 # See: https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c#GstX264EncPreset
-
 VALID_SPEED_PRESETS = {
     "ultrafast",
     "superfast",
@@ -40,7 +39,6 @@ VALID_SPEED_PRESETS = {
     "veryslow",
     "placebo",
 }
-
 
 @dataclass
 class ClientState:
@@ -84,7 +82,7 @@ class Stream:
     fps: float
     bitrate_kbps: Optional[int] = None
     speed_preset: str = "veryfast"
-    keyframe_interval: int = 30
+    keyframe_interval: Optional[int] = None
 
 
 class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
@@ -103,9 +101,10 @@ class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
         """Create the GStreamer pipeline for this stream."""
         fps_int = int(round(self.stream.fps, 0))
         speed_preset = self.stream.speed_preset
-        key_int_max = self.stream.keyframe_interval
         
-        encoder_opts = f"speed-preset={speed_preset} tune=zerolatency key-int-max={key_int_max}"
+        encoder_opts = f"speed-preset={speed_preset} tune=zerolatency"
+        if self.stream.keyframe_interval is not None:
+            encoder_opts += f" key-int-max={self.stream.keyframe_interval}"
         if self.stream.bitrate_kbps is not None:
             encoder_opts += f" bitrate={self.stream.bitrate_kbps}"
         
@@ -182,7 +181,7 @@ class RTSPServer:
         fps: float,
         bitrate_kbps: Optional[int] = None,
         speed_preset: str = "veryfast",
-        keyframe_interval: int = 30,
+        keyframe_interval: Optional[int] = None,
     ):
         """Create a new RTSP stream.
 
@@ -196,7 +195,8 @@ class RTSPServer:
             speed_preset: x264 speed preset. Valid options: ultrafast, superfast, veryfast, faster, fast,
                          medium, slow, slower, veryslow, placebo. Default: "veryfast" (good balance).
             keyframe_interval: Maximum interval between keyframes (GOP size). Lower = lower latency
-                              but less compression. Default: 30 frames.
+                              but less compression. If None, uses x264 default (automatic, recommended
+                              with tune=zerolatency). Default: None.
         """
         if speed_preset not in VALID_SPEED_PRESETS:
             valid_opts = ", ".join(sorted(VALID_SPEED_PRESETS))
@@ -204,11 +204,21 @@ class RTSPServer:
                 f"Invalid speed_preset '{speed_preset}'. Valid options are: {valid_opts}"
             )
         
-        if bitrate_kbps is not None and bitrate_kbps <= 0:
-            raise ValueError(f"bitrate_kbps must be positive, got {bitrate_kbps}")
+        if bitrate_kbps is not None:
+            try:
+                bitrate_kbps = int(bitrate_kbps)
+            except (ValueError, TypeError):
+                raise ValueError(f"bitrate_kbps must be an integer, got {type(bitrate_kbps).__name__}: {bitrate_kbps}")
+            if bitrate_kbps <= 0:
+                raise ValueError(f"bitrate_kbps must be positive, got {bitrate_kbps}")
         
-        if keyframe_interval < 1:
-            raise ValueError(f"keyframe_interval must be at least 1, got {keyframe_interval}")
+        if keyframe_interval is not None:
+            try:
+                keyframe_interval = int(keyframe_interval)
+            except (ValueError, TypeError):
+                raise ValueError(f"keyframe_interval must be an integer, got {type(keyframe_interval).__name__}: {keyframe_interval}")
+            if keyframe_interval < 1:
+                raise ValueError(f"keyframe_interval must be at least 1, got {keyframe_interval}")
         
         if self._running:
             raise RuntimeError(
