@@ -261,7 +261,6 @@ class RTSPServer:
 
             try:
                 frame = stream.callback()
-                # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 fb = frame.tobytes()
             except Exception:
                 logger.exception("grab failed for %s", stream.mount_point)
