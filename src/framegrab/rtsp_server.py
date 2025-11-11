@@ -107,7 +107,7 @@ class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
             encoder_opts += f" key-int-max={self.stream.keyframe_interval}"
         if self.stream.bitrate_kbps is not None:
             encoder_opts += f" bitrate={self.stream.bitrate_kbps}"
-        
+
         pipeline = (
             f"appsrc name=source is-live=true format=GST_FORMAT_TIME "
             f"caps=video/x-raw,format=RGB,width={self.stream.width},"
