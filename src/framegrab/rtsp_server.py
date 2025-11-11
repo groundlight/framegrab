@@ -40,6 +40,7 @@ VALID_SPEED_PRESETS = {
     "placebo",
 }
 
+
 @dataclass
 class ClientState:
     """Per-client state for a single RTSP consumer.
@@ -101,7 +102,7 @@ class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
         """Create the GStreamer pipeline for this stream."""
         fps_int = int(round(self.stream.fps, 0))
         speed_preset = self.stream.speed_preset
-        
+
         encoder_opts = f"speed-preset={speed_preset} tune=zerolatency"
         if self.stream.keyframe_interval is not None:
             encoder_opts += f" key-int-max={self.stream.keyframe_interval}"
@@ -200,10 +201,8 @@ class RTSPServer:
         """
         if speed_preset not in VALID_SPEED_PRESETS:
             valid_opts = ", ".join(sorted(VALID_SPEED_PRESETS))
-            raise ValueError(
-                f"Invalid speed_preset '{speed_preset}'. Valid options are: {valid_opts}"
-            )
-        
+            raise ValueError(f"Invalid speed_preset '{speed_preset}'. Valid options are: {valid_opts}")
+
         if bitrate_kbps is not None:
             try:
                 bitrate_kbps = int(bitrate_kbps)
@@ -211,15 +210,17 @@ class RTSPServer:
                 raise ValueError(f"bitrate_kbps must be an integer, got {type(bitrate_kbps).__name__}: {bitrate_kbps}")
             if bitrate_kbps <= 0:
                 raise ValueError(f"bitrate_kbps must be positive, got {bitrate_kbps}")
-        
+
         if keyframe_interval is not None:
             try:
                 keyframe_interval = int(keyframe_interval)
             except (ValueError, TypeError):
-                raise ValueError(f"keyframe_interval must be an integer, got {type(keyframe_interval).__name__}: {keyframe_interval}")
+                raise ValueError(
+                    f"keyframe_interval must be an integer, got {type(keyframe_interval).__name__}: {keyframe_interval}"
+                )
             if keyframe_interval < 1:
                 raise ValueError(f"keyframe_interval must be at least 1, got {keyframe_interval}")
-        
+
         if self._running:
             raise RuntimeError(
                 "RTSPServer has already started. Streams can only be created prior to starting the server."
