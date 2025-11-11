@@ -187,10 +187,8 @@ class RTSPServer:
         """
         if speed_preset not in VALID_SPEED_PRESETS:
             valid_opts = ", ".join(sorted(VALID_SPEED_PRESETS))
-            raise ValueError(
-                f"Invalid speed_preset '{speed_preset}'. Valid options are: {valid_opts}"
-            )
-        
+            raise ValueError(f"Invalid speed_preset '{speed_preset}'. Valid options are: {valid_opts}")
+
         if self._running:
             raise RuntimeError(
                 "RTSPServer has already started. Streams can only be created prior to starting the server."
