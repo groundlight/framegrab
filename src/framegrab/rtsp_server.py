@@ -25,19 +25,12 @@ except ImportError as e:
 
 logger = logging.getLogger(__name__)
 
-# Valid x264enc speed-preset values from GStreamer's GstX264EncPreset enum.
-# See: https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c#GstX264EncPreset
-VALID_SPEED_PRESETS = {
-    "ultrafast",
-    "superfast",
-    "veryfast",
-    "faster",
-    "fast",
-    "medium",
-    "slow",
-    "slower",
-    "veryslow",
-    "placebo",
+# Valid x264enc tune values from GStreamer's GstX264EncTune enum.
+# See: https://gstreamer.freedesktop.org/documentation/x264/index.html?gi-language=c#GstX264EncTune
+VALID_TUNE_OPTIONS = {
+    "zerolatency",
+    "fastdecode",
+    "stillimage",
 }
 
 
@@ -81,7 +74,7 @@ class Stream:
     height: int
     mount_point: str
     fps: float
-    speed_preset: str = "ultrafast"
+    tune: Optional[str] = None
 
 
 class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
@@ -99,13 +92,15 @@ class RTSPStreamMediaFactory(GstRtspServer.RTSPMediaFactory):
     def do_create_element(self, url):
         """Create the GStreamer pipeline for this stream."""
         fps_int = int(round(self.stream.fps, 0))  # Gstreamer wants an int here
-        speed_preset = self.stream.speed_preset
+        tune_opts = ""
+        if self.stream.tune is not None:
+            tune_opts = f" tune={self.stream.tune}"
         pipeline = (
             f"appsrc name=source is-live=true format=GST_FORMAT_TIME "
             f"caps=video/x-raw,format=RGB,width={self.stream.width},"
             f"height={self.stream.height},framerate={fps_int}/1 "
             f"! videoconvert ! video/x-raw,format=I420 "
-            f"! x264enc speed-preset={speed_preset} "
+            f"! x264enc speed-preset=ultrafast{tune_opts} "
             f"! rtph264pay name=pay0 pt=96"
         )
         return Gst.parse_launch(pipeline)
@@ -171,7 +166,7 @@ class RTSPServer:
         height: int,
         mount_point: str,
         fps: float,
-        speed_preset: str = "ultrafast",
+        tune: Optional[str] = None,
     ):
         """Create a new RTSP stream.
 
@@ -181,14 +176,16 @@ class RTSPServer:
             height: Frame height in pixels
             mount_point: RTSP mount point path (e.g., "/stream1")
             fps: Target frames per second
-            speed_preset: x264 speed preset. Valid options: ultrafast, superfast, veryfast, faster, fast,
-                         medium, slow, slower, veryslow, placebo. Default: "ultrafast" (low latency).
-                         Use "medium" or "slow" for better compression/performance (accepts higher latency).
+            tune: x264 tuning option. Valid options: zerolatency, fastdecode, stillimage, or None.
+                  Default: None (no tuning, better compression/performance). Set to "zerolatency"
+                  for low latency (worse compression).
         """
-        if speed_preset not in VALID_SPEED_PRESETS:
-            valid_opts = ", ".join(sorted(VALID_SPEED_PRESETS))
-            raise ValueError(f"Invalid speed_preset '{speed_preset}'. Valid options are: {valid_opts}")
-
+        if tune is not None and tune not in VALID_TUNE_OPTIONS:
+            valid_opts = ", ".join(sorted(VALID_TUNE_OPTIONS))
+            raise ValueError(
+                f"Invalid tune '{tune}'. Valid options are: {valid_opts} or None"
+            )
+        
         if self._running:
             raise RuntimeError(
                 "RTSPServer has already started. Streams can only be created prior to starting the server."
@@ -196,7 +193,7 @@ class RTSPServer:
 
         if mount_point in self.streams:
             raise ValueError(f"Stream '{mount_point}' exists")
-        self.streams[mount_point] = Stream(callback, width, height, mount_point, fps, speed_preset)
+        self.streams[mount_point] = Stream(callback, width, height, mount_point, fps, tune)
         self._mounts[mount_point] = MountState()
 
     def list_rtsp_urls(self) -> List[str]:
