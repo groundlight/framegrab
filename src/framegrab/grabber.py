@@ -31,10 +31,6 @@ from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
 from .unavailable_module import UnavailableModuleOrObject
 
-root_logger = logging.getLogger()
-if root_logger.hasHandlers():
-    root_logger.handlers.clear()
-
 logger = logging.getLogger(__name__)
 
 # Create a logger for this module
