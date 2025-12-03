@@ -13,8 +13,3 @@ class TestAsciiMagicDependency(unittest.TestCase):
 
         ascii_output = art.to_ascii(columns=16)
         self.assertTrue(ascii_output.strip())
-
-
-if __name__ == "__main__":
-    unittest.main()
-

@@ -24,13 +24,7 @@ jobs:
     steps:
       - name: get code
         uses: actions/checkout@v3
-      - name: install python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Display Python version
-        run: python -c "import sys; print(sys.version)"
       - name: Build Docker image with dependencies
-        run: docker build -f docker/Dockerfile -t framegrab-test .
+        run: docker build --build-arg PYTHON_VERSION=${{ matrix.python-version }} -f docker/Dockerfile -t framegrab-test .
       - name: Run tests in Docker
         run: docker run --rm framegrab-test poetry run pytest

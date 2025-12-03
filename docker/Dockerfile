@@ -1,9 +1,8 @@
-FROM ubuntu:22.04
+ARG PYTHON_VERSION=3.10
+FROM python:${PYTHON_VERSION}-slim
 
-# Install Python and minimal GStreamer/RTSP dependencies
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
+# Install GStreamer/RTSP dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gstreamer1.0-tools \
     gstreamer1.0-rtsp \
     gstreamer1.0-plugins-base \
@@ -18,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN pip install poetry
+RUN pip install --no-cache-dir poetry
 
 # Set working directory
 WORKDIR /app
