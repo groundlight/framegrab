@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "framegrab"
-version = "0.14.1"
+version = "0.14.2"
 description = "Easily grab frames from cameras or streams"
 authors = ["Groundlight <info@groundlight.ai>"]
 license = "MIT"
@@ -14,7 +14,9 @@ opencv-python = "^4.4.0.46"
 pyyaml = "^6.0.2"
 imgcat = "^0.5.0"
 click = "^8.1.6"
-ascii-magic = "^2.3.0"
+# We are locking this version of ascii-magic so that we can continue to support Python 3.9. See: https://github.com/LeandroBarone/python-ascii_magic/issues/27
+# If https://github.com/LeandroBarone/python-ascii_magic/pull/28 is merged, we can switch to a more current version of ascii-magic
+ascii-magic = "==2.3"
 wsdiscovery = "^2.0.0"
 onvif-zeep = "^0.2.12"
 pydantic = "^2.9.2"
