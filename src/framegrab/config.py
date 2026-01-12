@@ -402,10 +402,34 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
     fps: OptionsField[Optional[int]] = OptionsField(key="fps", default=None)
 
 
-class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, WithMaxFPSMixin):
-    """Configuration class for RTSP Frame Grabber."""
+class RTSPFrameGrabberConfig(FrameGrabberConfig):
+    """Configuration class for RTSP Frame Grabber.
+
+    Supports two backends:
+    - "ffmpeg" (default): Uses OpenCV's default FFmpeg backend with drain thread.
+      Options: keep_connection_open, max_fps (for drain rate)
+    - "gstreamer": Uses GStreamer backend with zero-buffering (leaky queue) to always
+      get the most recent frame without any buffering delay. Requires OpenCV built with
+      GStreamer support. Options: max_fps (videorate element), timeout
+
+    FFmpeg-specific options:
+    - keep_connection_open: If True (default), keeps connection open with drain thread for
+      low-latency. If False, opens connection only when needed.
+    - max_fps: Controls drain thread rate (default: 30)
+
+    GStreamer-specific options:
+    - max_fps: Rate-limit using GStreamer videorate element (default: None = no limit)
+    - timeout: Connection/data timeout in seconds (default: 5 seconds)
+    """
 
     rtsp_url: str = Field(..., pattern=r"^rtsp://")
+    backend: str = Field(default="ffmpeg", pattern=r"^(ffmpeg|gstreamer)$")
+    # FFmpeg options
+    keep_connection_open: OptionsField[bool] = OptionsField(key="keep_connection_open", default=True)
+    # Shared option (different meaning per backend)
+    max_fps: OptionsField[Optional[float]] = OptionsField(key="max_fps", default=30)
+    # GStreamer options
+    timeout: OptionsField[Optional[float]] = OptionsField(key="timeout", default=5.0)
 
     @field_validator("rtsp_url", mode="before")
     def substitute_rtsp_password(cls, rtsp_url: str) -> str:
