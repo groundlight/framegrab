@@ -341,8 +341,23 @@ GenericUSBFrameGrabberConfig:
 
 RTSPFrameGrabberConfig:
   additionalProperties: false
-  description: Configuration class for RTSP Frame Grabber.
+  description: "Configuration class for RTSP Frame Grabber.\n\nSupports two backends:\n\
+    - \"ffmpeg\" (default): Uses OpenCV's default FFmpeg backend with drain thread.\n\
+    \  Options: keep_connection_open, max_fps (for drain rate)\n- \"gstreamer\": Uses\
+    \ GStreamer backend with zero-buffering (leaky queue) to always\n  get the most\
+    \ recent frame without any buffering delay. Requires OpenCV built with\n  GStreamer\
+    \ support. Options: max_fps (videorate element), timeout\n\nFFmpeg-specific options:\n\
+    - keep_connection_open: If True (default), keeps connection open with drain thread\
+    \ for\n  low-latency. If False, opens connection only when needed.\n- max_fps:\
+    \ Controls drain thread rate (default: 30)\n\nGStreamer-specific options:\n- max_fps:\
+    \ Rate-limit using GStreamer videorate element (default: None = no limit)\n- timeout:\
+    \ Connection/data timeout in seconds (default: 5 seconds)"
   properties:
+    backend:
+      default: ffmpeg
+      pattern: ^(ffmpeg|gstreamer)$
+      title: Backend
+      type: string
     crop:
       anyOf:
       - additionalProperties: true
@@ -367,7 +382,7 @@ RTSPFrameGrabberConfig:
       type: boolean
     max_fps:
       anyOf:
-      - type: integer
+      - type: number
       - type: 'null'
       default: 30
       options_key: max_fps
@@ -389,6 +404,13 @@ RTSPFrameGrabberConfig:
       pattern: ^rtsp://
       title: Rtsp Url
       type: string
+    timeout:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: 5.0
+      options_key: timeout
+      title: Timeout
   required:
   - rtsp_url
   title: RTSPFrameGrabberConfig
