@@ -2,19 +2,41 @@
 """Test script for RTSP GStreamer backend.
 
 This script tests the RTSPFrameGrabber with GStreamer backend against provided RTSP stream.
+Requires OpenCV built with GStreamer support.
 
 Usage:
-    python sample_scripts/stream_rtsp_with_gstreamer.py [rtsp_url] [num_frames] [max_fps]
+    python sample_scripts/stream_rtsp_with_gstreamer.py <rtsp_url> [num_frames] [max_fps] [protocol]
 
 Arguments:
-    rtsp_url    - RTSP stream URL
+    rtsp_url    - RTSP stream URL (required)
     num_frames  - Number of frames to grab (default: 10)
-    max_fps     - Maximum FPS rate limit using GStreamer videorate (default: None = no limit)
+    max_fps     - Maximum FPS rate limit using GStreamer videorate (default: None = no limit, use 0 to skip)
+    protocol    - Transport protocol: "tcp", "udp", or "tcp+udp" (default: GStreamer default)
 
 Examples:
+    # Basic usage
     python sample_scripts/stream_rtsp_with_gstreamer.py rtsp://localhost:8554/live/cam1 100
+
+    # With rate limiting
     python sample_scripts/stream_rtsp_with_gstreamer.py rtsp://localhost:8554/live/cam1 100 5
-    python sample_scripts/stream_rtsp_with_gstreamer.py rtsp://localhost:8554/live/cam1 50 2
+
+    # Force TCP protocol (use 0 for max_fps to skip rate limiting)
+    python sample_scripts/stream_rtsp_with_gstreamer.py rtsp://localhost:8554/live/cam1 50 0 tcp
+
+    # Force UDP protocol
+    python sample_scripts/stream_rtsp_with_gstreamer.py rtsp://localhost:8554/live/cam1 50 0 udp
+
+Docker usage (with GStreamer support):
+    # Build the Docker image
+    docker build -f docker/Dockerfile.gstreamer -t framegrab-gstreamer .
+
+    # Run with an RTSP stream (use host network for local streams)
+    docker run -it --rm --network host framegrab-gstreamer \\
+        python sample_scripts/stream_rtsp_with_gstreamer.py rtsp://localhost:8554/live/cam1 100
+
+    # Run with TCP protocol
+    docker run -it --rm --network host framegrab-gstreamer \\
+        python sample_scripts/stream_rtsp_with_gstreamer.py rtsp://localhost:8554/live/cam1 100 0 tcp
 """
 
 import sys
@@ -43,8 +65,8 @@ def check_gstreamer_support():
     return has_gstreamer
 
 
-def test_rtsp_stream(rtsp_url: str, num_frames: int = 10, max_fps: float = None, backend: str = "gstreamer"):
-    """Test RTSP stream grabbing with configurable backend."""
+def test_rtsp_stream(rtsp_url: str, num_frames: int = 10, max_fps: float = None, protocol: str = None):
+    """Test RTSP stream grabbing with GStreamer backend."""
     from framegrab import FrameGrabber
     from framegrab.config import RTSPFrameGrabberConfig
     
@@ -52,14 +74,16 @@ def test_rtsp_stream(rtsp_url: str, num_frames: int = 10, max_fps: float = None,
     print("-" * 80)
     
     try:
-        config = RTSPFrameGrabberConfig(rtsp_url=rtsp_url, name="test_rtsp", max_fps=max_fps, backend=backend)
+        config = RTSPFrameGrabberConfig(rtsp_url=rtsp_url, name="test_rtsp", max_fps=max_fps, backend="gstreamer", protocol=protocol)
         grabber = FrameGrabber.create_grabber(config)
         
-        print(f"Backend: {grabber.capture.getBackendName()} (config: {backend})")
-        if backend == "gstreamer" and max_fps and max_fps != 30:
+        print(f"Backend: {grabber.capture.getBackendName()}")
+        if protocol:
+            print(f"Protocol: {protocol}")
+        else:
+            print(f"Protocol: default (GStreamer auto-negotiation)")
+        if max_fps and max_fps != 30:
             print(f"Rate limit: {max_fps} fps (GStreamer videorate)")
-        elif backend == "ffmpeg":
-            print(f"Drain rate: {max_fps or 30} fps (FFmpeg drain thread)")
         else:
             print(f"Rate limit: None (source rate)")
         print(f"Grabbing {num_frames} frames...\n")
@@ -138,27 +162,13 @@ def test_rtsp_stream(rtsp_url: str, num_frames: int = 10, max_fps: float = None,
 
 
 def main():
-    # Get backend from args (4th argument) or use default
-    backend = "gstreamer"
-    if len(sys.argv) > 4:
-        backend = sys.argv[4].lower()
-        if backend not in ("gstreamer", "ffmpeg"):
-            print(f"Invalid backend: {sys.argv[4]}. Using 'gstreamer'.")
-            backend = "gstreamer"
+    # Check GStreamer support
+    if not check_gstreamer_support():
+        print("\nERROR: OpenCV does not have GStreamer support!")
+        print("Please use the Docker environment or rebuild OpenCV with GStreamer.")
+        sys.exit(1)
     
-    # Check GStreamer support only if using GStreamer backend
-    if backend == "gstreamer":
-        if not check_gstreamer_support():
-            print("\nERROR: OpenCV does not have GStreamer support!")
-            print("Please use the Docker environment, rebuild OpenCV with GStreamer,")
-            print("or use backend='ffmpeg' instead.")
-            sys.exit(1)
-    else:
-        print("\n" + "=" * 60)
-        print("Using FFmpeg backend (no GStreamer check needed)")
-        print("=" * 60)
-    
-    # Get RTSP URL from args or use default
+    # Get RTSP URL from args (required)
     if len(sys.argv) > 1:
         rtsp_url = sys.argv[1]
     else:
@@ -174,7 +184,7 @@ def main():
     else:
         num_frames = 10
     
-    # Get max_fps from args or use default (None = no limit for GStreamer, 30 for FFmpeg)
+    # Get max_fps from args or use default (None = no limit, 0 means no limit)
     max_fps = None
     if len(sys.argv) > 3:
         try:
@@ -185,8 +195,17 @@ def main():
             print(f"Invalid max_fps: {sys.argv[3]}. Using default.")
             max_fps = None
     
+    # Get protocol from args (4th argument) or use default (None = GStreamer default)
+    protocol = None
+    if len(sys.argv) > 4:
+        protocol = sys.argv[4].lower()
+        valid_protocols = ("tcp", "udp", "tcp+udp")
+        if protocol not in valid_protocols:
+            print(f"Invalid protocol: {sys.argv[4]}. Must be one of: {', '.join(valid_protocols)}. Using default.")
+            protocol = None
+    
     # Run the test
-    success = test_rtsp_stream(rtsp_url, num_frames=num_frames, max_fps=max_fps, backend=backend)
+    success = test_rtsp_stream(rtsp_url, num_frames=num_frames, max_fps=max_fps, protocol=protocol)
     sys.exit(0 if success else 1)
 
 
