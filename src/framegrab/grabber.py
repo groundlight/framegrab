@@ -4,6 +4,7 @@ import re
 import subprocess
 import time
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from threading import Lock, Thread
 from typing import Dict, List, Optional, Union
 
@@ -940,10 +941,6 @@ class RTSPFrameGrabber(FrameGrabber):
         self.capture = None
         self.lock = Lock()
         self.run = True
-        # Timing diagnostics (in milliseconds)
-        self.last_grab_time_ms = 0.0  # Time waiting for frame
-        self.last_retrieve_time_ms = 0.0  # Time decoding frame
-        self.last_total_time_ms = 0.0  # Total time
 
         if self.config.backend == "gstreamer":
             self._check_gstreamer_support()
@@ -990,7 +987,6 @@ class RTSPFrameGrabber(FrameGrabber):
 
         # Get tcp timeout in microseconds for GStreamer (default 5 seconds)
         tcp_timeout_us = int((self.config.timeout or 5.0) * 1_000_000)
-
         # Build protocol string only if explicitly set
         protocol_str = f"protocols={self.config.protocol} " if self.config.protocol else ""
 
@@ -1057,11 +1053,27 @@ class RTSPFrameGrabber(FrameGrabber):
             return self._grab_ffmpeg()
 
     def _grab_gstreamer(self) -> np.ndarray:
-        """Grab frame using GStreamer backend with timing breakdown."""
+        """Grab frame using GStreamer backend with timeout protection.
+        
+        Uses a thread pool to wrap the blocking grab() call with a timeout.
+        If the grab times out (e.g., stream disconnected), releases the capture
+        and returns None.
+        """
         if self.capture is None or not self.capture.isOpened():
             self._open_connection_gstreamer()
 
-        grabbed = self.capture.grab()
+        timeout = self.config.timeout or 5.0 + 1.0 # seconds
+        # Wrap blocking grab() in a thread with timeout
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(self.capture.grab)
+            try:
+                # stop blocking if grab takes longer than the timeout value
+                grabbed = future.result(timeout=timeout)
+            except FuturesTimeoutError:
+                logger.error(f"Grab timed out after {timeout}s for RTSP stream: {self.config.rtsp_url}")
+                self._close_connection()
+                return None
+
         if not grabbed:
             logger.error(f"Could not grab frame from RTSP stream: {self.config.rtsp_url}")
             return None
