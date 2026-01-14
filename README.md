@@ -488,7 +488,8 @@ RTSPFrameGrabberConfig:
     \ for\n  low-latency. If False, opens connection only when needed.\n- max_fps:\
     \ Controls drain thread rate (default: 30)\n\nGStreamer-specific options:\n- max_fps:\
     \ Rate-limit using GStreamer videorate element (default: None = no limit)\n- timeout:\
-    \ Connection/data timeout in seconds (default: 5 seconds)"
+    \ Connection/data timeout in seconds (default: 5 seconds)\n- protocol: Transport\
+    \ protocol (\"tcp\", \"udp\", or \"tcp+udp\"). If not set, uses GStreamer default."
   properties:
     backend:
       default: ffmpeg
@@ -537,6 +538,13 @@ RTSPFrameGrabberConfig:
       default: 0
       options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
+    protocol:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      options_key: protocol
+      title: Protocol
     rtsp_url:
       pattern: ^rtsp://
       title: Rtsp Url
