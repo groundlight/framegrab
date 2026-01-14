@@ -929,6 +929,7 @@ class RTSPFrameGrabber(FrameGrabber):
     GStreamer backend options:
     - max_fps: Rate-limit using GStreamer videorate element
     - timeout: Connection/data timeout in seconds (default: 5)
+    - protocol: Transport protocol ("tcp", "udp", or "tcp+udp"). If not set, uses GStreamer default.
 
     GStreamer backend requires OpenCV built with GStreamer support.
     """
@@ -968,7 +969,7 @@ class RTSPFrameGrabber(FrameGrabber):
         """Build GStreamer pipeline string for RTSP with zero-buffering.
 
         The pipeline uses:
-        - rtspsrc with protocol=tcp, latency=0, buffer-mode=none for minimal delay
+        - rtspsrc with latency=0, buffer-mode=none for minimal delay (protocol configurable)
         - rtspsrc tcp-timeout for connection/data timeouts
         - decodebin for auto-detecting and decoding any video codec
         - videorate (optional) for frame rate limiting via max_fps config
@@ -989,8 +990,12 @@ class RTSPFrameGrabber(FrameGrabber):
 
         # Get tcp timeout in microseconds for GStreamer (default 5 seconds)
         tcp_timeout_us = int((self.config.timeout or 5.0) * 1_000_000)
+
+        # Build protocol string only if explicitly set
+        protocol_str = f"protocols={self.config.protocol} " if self.config.protocol else ""
+
         pipeline = (
-            f"rtspsrc location={rtsp_url} protocol=tcp latency=0 buffer-mode=none tcp-timeout={tcp_timeout_us} ! "
+            f"rtspsrc location={rtsp_url} {protocol_str}latency=0 buffer-mode=none tcp-timeout={tcp_timeout_us} ! "
             f"decodebin ! "
             f"{rate_limit}"
             f"queue max-size-buffers=1 max-size-bytes=0 max-size-time=0 leaky=downstream ! "
