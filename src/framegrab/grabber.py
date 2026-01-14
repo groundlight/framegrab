@@ -968,11 +968,13 @@ class RTSPFrameGrabber(FrameGrabber):
         """Build GStreamer pipeline string for RTSP with zero-buffering.
 
         The pipeline uses:
-        - rtspsrc with latency=0 for minimal delay
+        - rtspsrc with protocol=tcp, latency=0, buffer-mode=none for minimal delay
+        - rtspsrc tcp-timeout for connection/data timeouts
         - decodebin for auto-detecting and decoding any video codec
         - videorate (optional) for frame rate limiting via max_fps config
-        - leaky queue (max-size-buffers=1, leaky=downstream) to drop old frames
-        - appsink with drop=true and max-buffers=1 for additional protection
+        - leaky queue (max-size-buffers=1, leaky=downstream) placed after decode to drop old frames
+        - videoconvert after queue to convert only surviving frames to BGR
+        - appsink with drop=true, max-buffers=1, sync=false for zero-latency delivery
         """
         rtsp_url = self.config.rtsp_url
 
@@ -985,22 +987,10 @@ class RTSPFrameGrabber(FrameGrabber):
         else:
             rate_limit = ""
 
-        # Get timeout in microseconds for GStreamer (default 5 seconds)
-        timeout_us = int((self.config.timeout or 5.0) * 1_000_000)
-        tcp_timeout_us = 5_000_000  # 5 seconds for TCP operations
-
-        # GStreamer pipeline for RTSP with zero-buffering
-        # - rtspsrc latency=0: Minimize internal buffering
-        # - rtspsrc timeout: Connection/data timeout in microseconds
-        # - rtspsrc tcp-timeout: TCP connection timeout in microseconds
-        # - decodebin: Auto-detects codec (H.264, H.265, MJPEG, etc.)
-        # - videorate (optional): Limits frame rate when max_fps is set
-        # - queue leaky=downstream max-size-buffers=1: Keep only newest frame, drop old ones
-        #   (placed before videoconvert so dropped frames don't waste CPU on color conversion)
-        # - videoconvert: Convert to BGR after queue (only for frames that survive)
-        # - appsink drop=true max-buffers=1: Additional safety to always get latest frame
+        # Get tcp timeout in microseconds for GStreamer (default 5 seconds)
+        tcp_timeout_us = int((self.config.timeout or 5.0) * 1_000_000)
         pipeline = (
-            f"rtspsrc location={rtsp_url} latency=0 buffer-mode=auto timeout={timeout_us} tcp-timeout={tcp_timeout_us} ! "
+            f"rtspsrc location={rtsp_url} protocol=tcp latency=0 buffer-mode=none tcp-timeout={tcp_timeout_us} ! "
             f"decodebin ! "
             f"{rate_limit}"
             f"queue max-size-buffers=1 max-size-bytes=0 max-size-time=0 leaky=downstream ! "
@@ -1016,11 +1006,9 @@ class RTSPFrameGrabber(FrameGrabber):
 
     def _open_connection_gstreamer(self) -> None:
         """Open RTSP connection using GStreamer backend with zero-buffering."""
+
         pipeline = self._build_gstreamer_pipeline()
-
-        # Use CAP_GSTREAMER backend explicitly
         self.capture = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
-
         if not self.capture.isOpened():
             raise ValueError(
                 f"Could not open RTSP stream: {self.config.rtsp_url}. "
@@ -1031,24 +1019,13 @@ class RTSPFrameGrabber(FrameGrabber):
         backend_name = self.capture.getBackendName()
         logger.info(f"Initialized RTSP capture with backend={backend_name} (GStreamer)")
 
-        if backend_name != "GSTREAMER":
-            logger.warning(
-                f"Expected GSTREAMER backend but got {backend_name}. "
-                "Zero-buffering may not work correctly."
-            )
-
     def _open_connection_ffmpeg(self) -> None:
-        """Open RTSP connection using FFmpeg backend (OpenCV default)."""
         self.capture = cv2.VideoCapture(self.config.rtsp_url)
-
         if not self.capture.isOpened():
             raise ValueError(
-                f"Could not open RTSP stream: {self.config.rtsp_url}. "
-                f"Is the RTSP URL correct? Is the camera connected to the network?"
+                f"Could not open RTSP stream: {self.config.rtsp_url}. Is the RTSP URL correct? Is the camera connected to the network?"
             )
-
-        backend_name = self.capture.getBackendName()
-        logger.debug(f"Initialized video capture with backend={backend_name}")
+        logger.debug(f"Initialized video capture with backend={self.capture.getBackendName()}")
 
     def _close_connection(self) -> None:
         """Release the video capture."""
@@ -1056,29 +1033,6 @@ class RTSPFrameGrabber(FrameGrabber):
             if self.capture is not None:
                 self.capture.release()
                 self.capture = None
-
-    def _init_drain_thread(self) -> None:
-        """Initialize the drain thread for FFmpeg backend.
-        
-        The drain thread continuously grabs frames to keep the buffer fresh,
-        so when grab() is called, we get a relatively recent frame.
-        """
-        if not self.config.keep_connection_open:
-            return  # No need to drain if we're not keeping the connection open
-
-        max_fps = self.config.max_fps or 30
-        self.drain_rate = 1 / max_fps
-        thread = Thread(target=self._drain)
-        thread.daemon = True
-        thread.start()
-
-    def _drain(self) -> None:
-        """Drain thread worker - continuously grabs frames to keep buffer fresh."""
-        while self.run:
-            with self.lock:
-                if self.capture is not None:
-                    _ = self.capture.grab()
-            time.sleep(self.drain_rate)
 
     def _grab_implementation(self) -> np.ndarray:
         """Grab a frame from the RTSP stream.
@@ -1102,24 +1056,12 @@ class RTSPFrameGrabber(FrameGrabber):
         if self.capture is None or not self.capture.isOpened():
             self._open_connection_gstreamer()
 
-        # grab() - waits for next frame (blocking if buffer empty)
-        t0 = time.time()
         grabbed = self.capture.grab()
-        t1 = time.time()
-
         if not grabbed:
             logger.error(f"Could not grab frame from RTSP stream: {self.config.rtsp_url}")
             return None
 
-        # retrieve() - decode and convert to numpy array
         ret, frame = self.capture.retrieve()
-        t2 = time.time()
-
-        # Store timing for diagnostics (in milliseconds)
-        self.last_grab_time_ms = (t1 - t0) * 1000
-        self.last_retrieve_time_ms = (t2 - t1) * 1000
-        self.last_total_time_ms = (t2 - t0) * 1000
-
         if not ret:
             logger.error(f"Could not retrieve frame from RTSP stream: {self.config.rtsp_url}")
             return None
@@ -1138,24 +1080,10 @@ class RTSPFrameGrabber(FrameGrabber):
             return self._grab_ffmpeg_open()
 
     def _grab_ffmpeg_open(self) -> np.ndarray:
-        """Grab frame when connection is open (FFmpeg backend)."""
-        t0 = time.time()
         with self.lock:
-            if self.config.keep_connection_open:
-                ret, frame = self.capture.retrieve()
-            else:
-                ret, frame = self.capture.read()
-        t1 = time.time()
-
-        # Store timing for diagnostics (in milliseconds)
-        self.last_grab_time_ms = 0.0  # Not separated for FFmpeg
-        self.last_retrieve_time_ms = 0.0
-        self.last_total_time_ms = (t1 - t0) * 1000
-
+            ret, frame = self.capture.retrieve() if self.config.keep_connection_open else self.capture.read()
         if not ret:
             logger.error(f"Could not read frame from {self.capture}")
-            return None
-
         return frame
 
     def release(self) -> None:
@@ -1163,6 +1091,22 @@ class RTSPFrameGrabber(FrameGrabber):
         if self.config.backend == "ffmpeg" and self.config.keep_connection_open:
             self.run = False  # Stop the drain thread
         self._close_connection()
+    
+    def _init_drain_thread(self):
+        if not self.config.keep_connection_open:
+            return  # No need to drain if we're not keeping the connection open
+
+        max_fps = self.config.max_fps
+        self.drain_rate = 1 / max_fps
+        thread = Thread(target=self._drain)
+        thread.daemon = True
+        thread.start()
+
+    def _drain(self):
+        while self.run:
+            with self.lock:
+                _ = self.capture.grab()
+            time.sleep(self.drain_rate)
 
     def get_fps(self) -> Optional[float]:
         """Get FPS from RTSP stream using OpenCV."""
