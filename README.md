@@ -5,26 +5,6 @@ FrameGrab is an open-source Python library designed to make it easy to grab fram
 
 FrameGrab also provides basic motion detection functionality. FrameGrab requires Python 3.9 or higher.
 
-## Table of Contents
-
-- [FrameGrab by Groundlight](#framegrab-by-groundlight)
-  - [A user-friendly library for grabbing images from cameras or streams](#a-user-friendly-library-for-grabbing-images-from-cameras-or-streams)
-  - [Table of Contents](#table-of-contents)
-  - [Installation](#installation)
-  - [Optional Dependencies](#optional-dependencies)
-  - [Usage](#usage)
-    - [Command line interface (CLI)](#command-line-interface-cli)
-    - [Frame Grabbing](#frame-grabbing)
-    - [Configurations](#configurations)
-    - [Autodiscovery](#autodiscovery)
-      - [RTSP Discovery](#rtsp-discovery)
-    - [Motion Detection](#motion-detection)
-  - [Examples](#examples)
-    - [Generic USB](#generic-usb)
-    - [YouTube Live](#youtube-live)
-    - [File Stream](#file-stream)
-  - [Contributing](#contributing)
-  - [License](#license)
 
 ## Installation
 
@@ -59,47 +39,6 @@ pip install framegrab[all]
 
 
 ## Usage
-
-### Command line interface (CLI)
-
-FrameGrab provides a CLI for discovering and previewing cameras.
-
-**Auto-detect source type:**
-```bash
-framegrab preview rtsp://admin:password@192.168.1.20/stream0    # RTSP camera
-framegrab preview camera_config.yaml                            # YAML config file
-```
-
-**Explicit input type:**
-```bash
-framegrab preview 12345678901 -i generic_usb                    # USB camera by serial number
-framegrab preview 35432343252 -i basler                         # Basler camera
-```
-
-**Discovery:**
-```bash
-framegrab autodiscover                                          # Find all cameras
-```
-
-**Output formats:**
-The CLI supports different ways to display camera frames using the `-o/--output` option:
-
-- `imgcat` (default): Displays images directly in compatible terminals like iTerm2
-- `cv2`: Opens frames in an OpenCV window (requires GUI)  
-- `ascii`: Shows frames as ASCII art in the terminal
-- `none`: Captures frames but doesn't display them
-
-```bash
-framegrab preview rtsp://camera-url -o cv2                      # OpenCV window
-framegrab preview camera_config.yaml -o ascii                   # ASCII art  
-framegrab autodiscover -o none                                  # No display
-```
-
-**Help:**
-```bash
-framegrab --help                                                # Show all commands
-framegrab preview --help                                        # Show preview options
-```
 
 ### Frame Grabbing
 
@@ -222,577 +161,381 @@ for grabber in grabbers.values():
     display_image(frame) # substitute this line for your preferred method of displaying images, such as cv2.imshow
     grabber.release()
 ```
-### Configurations
-#### Dictionary or YamlFormat
-The table below shows all available configurations and the cameras to which they apply. This is the format used when creating grabbers from dictionaries or yaml strings. If you want to use the python FrameGrabberConfig object, the format is slightly different to optimize for python readability (see format and examples). We use the python pydantic model to validate the dictionary and yaml format
-so if you want to know the correct format of your parameters, you can read more in config.py, or 
-use the python pydantic model to validate your configuration.
 
+### Command line interface (CLI)
 
-| Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense | Raspberry Pi CSI2 | HLS | YouTube Live | File Stream |
-|----------------------------|-----------------|------------|-----------|-----------|-----------|-----------|-----------|-----------|-------------|
-| name                       | On Robot Arm    | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| input_type                 | generic_usb    | required   | required  | required  | required  | required  | required | required | required |
-| id.serial_number           | 23458234       | optional   | -         | optional  | optional  | -  | - | - | - |
-| id.rtsp_url                | rtsp://…        | -          | required  | -         | -         | -         | - | - | - |
-| id.hls_url                 | https://.../*.m3u8     | -          | -         | -         | -         | -         | required | - | - |
-| id.youtube_url             | https://www.youtube.com/watch?v=...     | -          | -         | -         | -         | -         | - | required | - |
-| id.filename               | http://.../*.mp4 | -          | -         | -         | -         | -         | - | - | required |
-| options.resolution.height  | 480            | optional   | -         | -         | optional  | -  | - | - | - |
-| options.resolution.width   | 640            | optional   | -         | -         | optional  | -  | - | - | - |
-| options.zoom.digital       | 1.3            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.pixels.top    | 100            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.pixels.bottom | 400            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.pixels.left   | 100            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.pixels.right  | 400            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.relative.top  | 0.1            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.relative.bottom | 0.9          | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.relative.left | 0.1            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.crop.relative.right | 0.9            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
-| options.depth.side_by_side | 1              | -          | -         | -         | optional  | -  | - | - | - |
-| options.num_90_deg_rotations | 2              | optional          | optional         | optional         | optional  | optional  | optional | optional | optional |
-| options.keep_connection_open | True              | -          | optional         | -         | -  | - | optional | optional | - |
-| options.max_fps | 30              | -          | optional         | -         | -  | - | - | - | optional |
+FrameGrab provides a CLI for discovering and previewing cameras.
 
-
-In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
-
-#### python FrameGrabberConfig format
-You can also specify a configuration using the python FrameGrabberConfig object. This is useful if 
-you want quick validation of your configuration and your framegrab data stored under a validated, centralized object.
-
-##### Config Schema
-```yaml
-GenericUSBFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for Generic USB Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    fourcc:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      options_key: fourcc
-      title: Fourcc
-    fps:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: fps
-      title: Fps
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    resolution_height:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.height
-      title: Resolution Height
-    resolution_width:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.width
-      title: Resolution Width
-    serial_number:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Serial Number
-    video_stream:
-      default: false
-      options_key: video_stream
-      title: Video Stream
-      type: boolean
-  title: GenericUSBFrameGrabberConfig
-  type: object
-
-RTSPFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for RTSP Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    keep_connection_open:
-      default: true
-      options_key: keep_connection_open
-      title: Keep Connection Open
-      type: boolean
-    max_fps:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 30
-      options_key: max_fps
-      title: Max Fps
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    rtsp_url:
-      pattern: ^rtsp://
-      title: Rtsp Url
-      type: string
-  required:
-  - rtsp_url
-  title: RTSPFrameGrabberConfig
-  type: object
-
-RealSenseFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for RealSense Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    resolution_height:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.height
-      title: Resolution Height
-    resolution_width:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.width
-      title: Resolution Width
-    serial_number:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Serial Number
-    side_by_side_depth:
-      anyOf:
-      - type: boolean
-      - type: 'null'
-      default: null
-      options_key: depth.side_by_side
-      title: Side By Side Depth
-  title: RealSenseFrameGrabberConfig
-  type: object
-
-BaslerFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for Basler Frame Grabber.
-  properties:
-    basler_options:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: basler_options
-      title: Basler Options
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    serial_number:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Serial Number
-  title: BaslerFrameGrabberConfig
-  type: object
-
-RaspberryPiCSI2FrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for Raspberry Pi CSI-2 Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-  title: RaspberryPiCSI2FrameGrabberConfig
-  type: object
-
-HttpLiveStreamingFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for HTTP Live Streaming Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    hls_url:
-      pattern: ^https?://
-      title: Hls Url
-      type: string
-    keep_connection_open:
-      default: true
-      options_key: keep_connection_open
-      title: Keep Connection Open
-      type: boolean
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-  required:
-  - hls_url
-  title: HttpLiveStreamingFrameGrabberConfig
-  type: object
-
-YouTubeLiveFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for YouTube Live Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    keep_connection_open:
-      default: true
-      options_key: keep_connection_open
-      title: Keep Connection Open
-      type: boolean
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    youtube_url:
-      pattern: ^https?://
-      title: Youtube Url
-      type: string
-  required:
-  - youtube_url
-  title: YouTubeLiveFrameGrabberConfig
-  type: object
-
-FileStreamFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for File Stream Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    filename:
-      pattern: (?i)^.*\.(mp4|mov|mjpeg|avi|mkv|webm)$
-      title: Filename
-      type: string
-    max_fps:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 30
-      options_key: max_fps
-      title: Max Fps
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-  required:
-  - filename
-  title: FileStreamFrameGrabberConfig
-  type: object
-
-MockFrameGrabberConfig:
-  additionalProperties: false
-  description: Configuration class for Mock Frame Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    resolution_height:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.height
-      title: Resolution Height
-    resolution_width:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: null
-      options_key: resolution.width
-      title: Resolution Width
-    serial_number:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Serial Number
-  title: MockFrameGrabberConfig
-  type: object
-
-ROS2GrabberConfig:
-  additionalProperties: false
-  description: Configuration class for ROS 2 Grabber.
-  properties:
-    crop:
-      anyOf:
-      - additionalProperties: true
-        type: object
-      - type: 'null'
-      default: null
-      options_key: crop
-      title: Crop
-    digital_zoom:
-      anyOf:
-      - maximum: 4
-        minimum: 1
-        type: number
-      - type: 'null'
-      default: null
-      options_key: zoom.digital
-      title: Digital Zoom
-    name:
-      anyOf:
-      - type: string
-      - type: 'null'
-      default: null
-      title: Name
-    num_90_deg_rotations:
-      anyOf:
-      - type: integer
-      - type: 'null'
-      default: 0
-      options_key: rotation.num_90_deg_rotations
-      title: Num 90 Deg Rotations
-    topic:
-      pattern: ^(~|/)?([A-Za-z_][A-Za-z0-9_]*)(/[A-Za-z_][A-Za-z0-9_]*)*$
-      title: Topic
-      type: string
-  required:
-  - topic
-  title: ROS2GrabberConfig
-  type: object
-
+**Auto-detect source type:**
+```bash
+framegrab preview rtsp://admin:password@192.168.1.20/stream0    # RTSP camera
+framegrab preview camera_config.yaml                            # YAML config file
 ```
+
+**Explicit input type:**
+```bash
+framegrab preview 12345678901 -i generic_usb                    # USB camera by serial number
+framegrab preview 35432343252 -i basler                         # Basler camera
+```
+
+**Discovery:**
+```bash
+framegrab autodiscover                                          # Find all cameras
+```
+
+```bash
+# Autodiscover cameras and save their config to a file
+framegrab autodiscover -o none > framegrab_config.yaml
+
+# Preview cameras with the CLI
+framegrab preview framegrab_config.yaml 
+
+# Edit the file as need, and pass the configuration file as 
+# input to your program, e.g. grabbers = FrameGrabber.from_yaml('framegrab_config.yaml')
+```
+
+
+**Output formats:**
+The CLI supports different ways to display camera frames using the `-o/--output` option:
+
+- `imgcat` (default): Displays images directly in compatible terminals like iTerm2
+- `cv2`: Opens frames in an OpenCV window (requires GUI)  
+- `ascii`: Shows frames as ASCII art in the terminal
+- `none`: Captures frames but doesn't display them
+
+```bash
+framegrab preview rtsp://camera-url -o cv2                      # OpenCV window
+framegrab preview camera_config.yaml -o ascii                   # ASCII art  
+framegrab autodiscover -o none                                  # No display
+```
+
+**Help:**
+```bash
+framegrab --help                                                # Show all commands
+framegrab preview --help                                        # Show preview options
+```
+
+### Configurations
+
+The table below shows configuration options for each grabber type.
+
+<!-- start configuration table -->
+
+<div style="overflow-x: auto;">
+
+<table>
+  <thead>
+    <tr>
+      <th>Configuration Name</th>
+      <th>Type</th>
+      <th>generic_usb</th>
+      <th>rtsp</th>
+      <th>realsense</th>
+      <th>basler</th>
+      <th>rpi_csi2</th>
+      <th>hls</th>
+      <th>youtube_live</th>
+      <th>file</th>
+      <th>mock</th>
+      <th>ros2</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>input_type</td>
+      <td>string</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+      <td>🔴</td>
+    </tr>
+    <tr>
+      <td>id.filename</td>
+      <td>string</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>🔴</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>id.hls_url</td>
+      <td>string</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>🔴</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>id.rtsp_url</td>
+      <td>string</td>
+      <td>-</td>
+      <td>🔴</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>id.serial_number</td>
+      <td>string</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>id.topic</td>
+      <td>string</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>id.youtube_url</td>
+      <td>string</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>🔴</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>name</td>
+      <td>string</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>options.basler_options</td>
+      <td>dict</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>options.crop</td>
+      <td>dict</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>options.depth.side_by_side</td>
+      <td>bool</td>
+      <td>-</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>options.fourcc</td>
+      <td>string</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>options.fps</td>
+      <td>int</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>options.keep_connection_open</td>
+      <td>bool</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>options.max_fps</td>
+      <td>int</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>options.resolution.height</td>
+      <td>int</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>options.resolution.width</td>
+      <td>int</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>✅</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>options.rotation.num_90_deg_rotations</td>
+      <td>int</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>options.video_stream</td>
+      <td>bool</td>
+      <td>✅</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>options.zoom.digital</td>
+      <td>float</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+    </tr>
+  </tbody>
+</table>
+
+</div>
+
+<table>
+  <tr>
+    <td><strong>Legend:</strong></td>
+    <td>🔴 = required</td>
+    <td>✅ = optional</td>
+    <td>- = not supported</td>
+  </tr>
+</table>
+
+<!-- end configuration table -->
 
 ### Autodiscovery
 Autodiscovery automatically connects to cameras that are plugged into your machine or discoverable on the network, including `generic_usb`, `realsense`, `basler`, and ONVIF supported `rtsp` cameras. Note that `rpi_csi2` cameras are not yet supported by autodiscover. Default configurations will be loaded for each camera. Note that discovery of RTSP cameras will be disabled by default but can be enabled by setting `rtsp_discover_mode`. Refer to [RTSP Discovery](#rtsp-discovery) section for different options.
@@ -870,7 +613,7 @@ if m.motion_detected(frame):
 Framegrab provides tools for RTSP stream generation, which can be useful for testing applications.
 
 Basic usage looks like this:
-```
+```python
 server = RTSPServer(port=port)
 server.create_stream(get_frame_callback1, width, height, fps, mount_point='/stream0')
 server.create_stream(get_frame_callback2, width, height, fps, mount_point='/stream1')
@@ -903,27 +646,19 @@ For inspiration on how to implement an RTSP server, see [sample_scripts/video_to
 ## Examples
 
 ### Generic USB
-Here's an example of using the FrameGrab library to continuously capture frames and detect motion from a video stream:
+Continuously capture frames and detect motion from a video stream:
 
 ```python
-from framegrab import FrameGrabber, MotionDetector
+from framegrab import FrameGrabber
+from framegrab.config import GenericUSBFrameGrabberConfig
 
-motion_threshold = 1.0
-m = MotionDetector(pct_threshold=motion_threshold)
-
-config = {
-    'input_type': 'generic_usb',
-}
+config = GenericUSBFrameGrabberConfig(serial_number='6387278743')
 
 with FrameGrabber.create_grabber(config) as grabber:
     while True:
         frame = grabber.grab()
-        if frame is None:
-            print("No frame captured!")
-            continue
 
-        if m.motion_detected(frame):
-            print("Motion detected!")
+        # Process the frame as needed
 ```
 
 ### YouTube Live
@@ -931,14 +666,9 @@ Here's an example of using FrameGrab to capture frames from a YouTube Live strea
 
 ```python
 from framegrab import FrameGrabber
-import cv2
+from framegrab.config import YouTubeLiveFrameGrabberConfig
 
-config = {
-    'input_type': 'youtube_live',
-    'id': {
-        'youtube_url': 'https://www.youtube.com/watch?v=your_video_id'
-    }
-}
+config = YouTubeLiveFrameGrabberConfig(youtube_url='https://www.youtube.com/watch?v=your_video_id')
 
 with FrameGrabber.create_grabber(config) as grabber:
     frame = grabber.grab()
@@ -946,9 +676,6 @@ with FrameGrabber.create_grabber(config) as grabber:
         raise Exception("No frame captured")
 
     # Process the frame as needed
-    # For example, display it using cv2.imshow()
-    # For example, save it to a file
-    cv2.imwrite('youtube_frame.jpg', frame)
 ```
 
 ### File Stream
@@ -956,27 +683,19 @@ Here's an example of using FrameGrab to capture frames from a video file:
 
 ```python
 from framegrab import FrameGrabber
-import cv2
+from framegrab.config import FileStreamFrameGrabberConfig
 
-config = {
-    'input_type': 'file_stream',
-    'id': {
-        'filename': 'path/to/your/video.mjpeg'  # or .mp4, .avi, .mov, etc.
-    },
-    'options': {
-        'max_fps': 2,  # if a lower FPS than the original video's FPS is specified, Framegrab will skip extra frames as needed.
-    }
-}
+config = FileStreamFrameGrabberConfig(
+    filename='path/to/your/video.mjpeg',  # or .mp4, .avi, .mov, etc.
+    max_fps=2  # Framegrab will skip frames to match this FPS
+)
 
 with FrameGrabber.create_grabber(config) as grabber:
-  frame = grabber.grab()
-  if frame is None:
-      raise Exception("No frame captured")
+    frame = grabber.grab()
+    if frame is None:
+        raise Exception("No frame captured")
 
-  # Process the frame as needed
-  # For example, display it using cv2.imshow()
-  # For example, save it to a file
-  cv2.imwrite('file_stream_frame.jpg', frame)
+    # Process the frame as needed
 ```
 
 ## Contributing
