@@ -420,6 +420,7 @@ class RTSPFrameGrabberConfig(FrameGrabberConfig):
     GStreamer-specific options:
     - max_fps: Rate-limit using GStreamer videorate element (default: None = no limit)
     - timeout: Connection/data timeout in seconds (default: 5 seconds)
+    - protocol: Transport protocol ("tcp", "udp", or "tcp+udp"). If not set, uses GStreamer default.
     """
 
     rtsp_url: str = Field(..., pattern=r"^rtsp://")
@@ -430,6 +431,18 @@ class RTSPFrameGrabberConfig(FrameGrabberConfig):
     max_fps: OptionsField[Optional[float]] = OptionsField(key="max_fps", default=30)
     # GStreamer options
     timeout: OptionsField[Optional[float]] = OptionsField(key="timeout", default=5.0)
+    protocol: OptionsField[Optional[str]] = OptionsField(key="protocol", default=None)
+
+    VALID_PROTOCOLS: ClassVar[Tuple[str, ...]] = ("tcp", "udp", "tcp+udp")
+
+    @field_validator("protocol", mode="before")
+    def validate_protocol(cls, v):
+        """Validate that protocol is one of the allowed values."""
+        if v is not None and v not in cls.VALID_PROTOCOLS:
+            raise ValueError(
+                f"Invalid protocol '{v}'. Must be one of: {', '.join(cls.VALID_PROTOCOLS)}"
+            )
+        return v
 
     @field_validator("rtsp_url", mode="before")
     def substitute_rtsp_password(cls, rtsp_url: str) -> str:
