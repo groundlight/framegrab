@@ -439,9 +439,7 @@ class RTSPFrameGrabberConfig(FrameGrabberConfig):
     def validate_protocol(cls, v):
         """Validate that protocol is one of the allowed values."""
         if v is not None and v not in cls.VALID_PROTOCOLS:
-            raise ValueError(
-                f"Invalid protocol '{v}'. Must be one of: {', '.join(cls.VALID_PROTOCOLS)}"
-            )
+            raise ValueError(f"Invalid protocol '{v}'. Must be one of: {', '.join(cls.VALID_PROTOCOLS)}")
         return v
 
     @field_validator("rtsp_url", mode="before")

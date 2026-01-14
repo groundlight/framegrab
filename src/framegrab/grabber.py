@@ -4,7 +4,8 @@ import re
 import subprocess
 import time
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from threading import Lock, Thread
 from typing import Dict, List, Optional, Union
 
@@ -1054,7 +1055,7 @@ class RTSPFrameGrabber(FrameGrabber):
 
     def _grab_gstreamer(self) -> np.ndarray:
         """Grab frame using GStreamer backend with timeout protection.
-        
+
         Uses a thread pool to wrap the blocking grab() call with a timeout.
         If the grab times out (e.g., stream disconnected), releases the capture
         and returns None.
@@ -1062,7 +1063,7 @@ class RTSPFrameGrabber(FrameGrabber):
         if self.capture is None or not self.capture.isOpened():
             self._open_connection_gstreamer()
 
-        timeout = self.config.timeout or 5.0 + 1.0 # seconds
+        timeout = self.config.timeout or 5.0 + 1.0  # seconds
         # Wrap blocking grab() in a thread with timeout
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(self.capture.grab)
@@ -1108,7 +1109,7 @@ class RTSPFrameGrabber(FrameGrabber):
         if self.config.backend == "ffmpeg" and self.config.keep_connection_open:
             self.run = False  # Stop the drain thread
         self._close_connection()
-    
+
     def _init_drain_thread(self):
         if not self.config.keep_connection_open:
             return  # No need to drain if we're not keeping the connection open
