@@ -377,6 +377,8 @@ class TestAllGrabberTypes(unittest.TestCase):
                     params[param] = "ffmpeg"  # Default backend for RTSP
                 elif param == "timeout":
                     params[param] = 5.0  # Default timeout for RTSP
+                elif param == "protocol":
+                    params[param] = "tcp"  # Optional protocol for GStreamer RTSP
                 else:
                     raise ValueError(f"Unknown parameter: {param}")
 
