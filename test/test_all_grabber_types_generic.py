@@ -373,6 +373,10 @@ class TestAllGrabberTypes(unittest.TestCase):
                     params[param] = None # Unable to set this to a real value in our test environment since there is no real camera
                 elif param == "fps":
                     params[param] = None # Unable to set this to a real value in our test environment since there is no real camera
+                elif param == "backend":
+                    params[param] = "ffmpeg"  # Default backend for RTSP
+                elif param == "timeout":
+                    params[param] = 5.0  # Default timeout for RTSP
                 else:
                     raise ValueError(f"Unknown parameter: {param}")
 
