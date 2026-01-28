@@ -1,5 +1,5 @@
 # Dockerfile for framegrab with GStreamer backend support
-# Optimized for fast rebuilds - dependencies cached, source code last
+# Uses system OpenCV (with GStreamer) + dependencies from pyproject.toml
 #
 # Usage:
 #   docker build -f docker/Dockerfile.gstreamer -t framegrab-gstreamer .
@@ -42,36 +42,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
        print('✓ OpenCV', cv2.__version__, 'with GStreamer support')"
 
 # =============================================================================
-# Layer 2: Python dependencies (change occasionally - cached separately)
-# Copy only dependency files first for better caching
+# Layer 2: Python dependencies from pyproject.toml
 # =============================================================================
 WORKDIR /app
 
-COPY pyproject.toml ./
-
-# Install dependencies directly with pip (skip opencv since we have system version)
-# Extract deps from pyproject.toml and install them
-RUN pip3 install --no-cache-dir \
-    pyyaml \
-    imgcat \
-    click \
-    ascii-magic \
-    wsdiscovery \
-    onvif-zeep \
-    pydantic \
-    streamlink \
-    pytest
-
-# =============================================================================
-# Layer 3: Application source (changes frequently - not cached)
-# =============================================================================
+# Copy dependency files and source for pip install
+COPY pyproject.toml README.md ./
 COPY src/ ./src/
+
+# Install framegrab with youtube extra (reads versions from pyproject.toml)
+RUN pip3 install --no-cache-dir ".[youtube]"
+
+# Remove pip's opencv-python - we use system OpenCV (has GStreamer support)
+RUN pip3 uninstall -y opencv-python opencv-python-headless opencv-contrib-python 2>/dev/null || true
+
+# Downgrade numpy to 1.x - system OpenCV was compiled with numpy 1.x
+RUN pip3 install --no-cache-dir "numpy<2"
+
+# Install test dependencies
+RUN pip3 install --no-cache-dir pytest psutil
+
+# =============================================================================
+# Layer 3: Test files and sample scripts (changes frequently)
+# =============================================================================
 COPY test/ ./test/
 COPY sample_scripts/ ./sample_scripts/
-COPY README.md ./
-
-# Install the project (no deps, they're already installed)
-RUN pip3 install --no-cache-dir -e . --no-deps
 
 # Verify installation
 RUN python3 -c "from framegrab import FrameGrabber; print('✓ framegrab installed')"
