@@ -12,9 +12,11 @@ FrameGrab also provides basic motion detection functionality. FrameGrab requires
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
   - [Optional Dependencies](#optional-dependencies)
+    - [GStreamer Support](#gstreamer-support)
   - [Usage](#usage)
     - [Command line interface (CLI)](#command-line-interface-cli)
     - [Frame Grabbing](#frame-grabbing)
+      - [RTSP Backends](#rtsp-backends)
     - [Configurations](#configurations)
     - [Autodiscovery](#autodiscovery)
       - [RTSP Discovery](#rtsp-discovery)
@@ -57,62 +59,37 @@ To install all optional dependencies, run:
 pip install framegrab[all]
 ```
 
-**Note on GStreamer:** The `gstreamer` extra (`pip install framegrab[gstreamer]`) is a placeholder that documents the requirement but doesn't install GStreamer support (which requires system-level OpenCV). See the [GStreamer Support](#gstreamer-support-for-rtsp-streaming) section below for installation instructions.
+### GStreamer Support
 
-## GStreamer Support for RTSP Streaming
+The RTSP input type supports two backends: **FFmpeg** (default) and **GStreamer**. The GStreamer backend provides lower latency and better real-time performance for RTSP streaming.
 
-The RTSP input type in FrameGrab supports two backends:
-1. **FFmpeg backend** (default) - Works with standard `pip install opencv-python`
-2. **GStreamer backend** - Recommended for low-latency, real-time RTSP streaming
-
-### Why GStreamer for RTSP?
-
-The GStreamer backend provides:
+**Why GStreamer for RTSP?**
 - ✅ **Zero-buffering** with leaky queues for always-fresh frames
 - ✅ **Lower latency** (~60-80ms vs 200-500ms with FFmpeg)
 - ✅ **Better network handling** with configurable timeouts
 - ✅ **Frame rate limiting** at the pipeline level
 
-### Installing OpenCV with GStreamer Support
+By default, `pip install opencv-python` includes only FFmpeg support. To use GStreamer, you need OpenCV compiled with GStreamer libraries.
 
-By default, `pip install opencv-python` includes only FFmpeg support. To use GStreamer, you need OpenCV compiled with GStreamer libraries:
+#### Option 1: Docker (Recommended)
 
-#### Option 1: Using Conda (Recommended - Easiest) ⭐
-
-```bash
-# Create a new environment with OpenCV that has GStreamer support
-conda create -n framegrab python=3.10
-conda activate framegrab
-conda install -c conda-forge opencv
-pip install framegrab
-```
-
-**Why Conda?**
-- ✅ Pre-compiled OpenCV with GStreamer support
-- ✅ Cross-platform (Mac, Linux, Windows)
-- ✅ No manual compilation needed
-- ✅ Works consistently
-
-#### Option 2: Docker (Best for Production)
-
-Use the provided Dockerfile which includes GStreamer support:
+Use the sample `Dockerfile.gstreamer` which includes GStreamer support:
 
 ```bash
 # Build the Docker image
-docker compose -f docker/docker-compose.yaml build
+docker build -f docker/Dockerfile.gstreamer -t framegrab-gstreamer .
 
 # Run tests
-docker compose -f docker/docker-compose.yaml run --rm framegrab \
+docker run --rm -v $(pwd):/app framegrab-gstreamer \
   python3 -m pytest test/
 
 # Run your script
-docker compose -f docker/docker-compose.yaml run --rm framegrab \
+docker run --rm -v $(pwd):/app framegrab-gstreamer \
   python3 your_script.py
 ```
 
-#### Option 3: System OpenCV (Linux)
+#### Option 2: System OpenCV (Ubuntu/Debian)
 
-**Ubuntu/Debian:**
 ```bash
 # Install system OpenCV with GStreamer support
 sudo apt-get update
@@ -125,69 +102,20 @@ sudo apt-get install -y \
 # Install framegrab
 pip install framegrab
 
-# Uninstall pip opencv to use system version
-pip uninstall -y opencv-python opencv-python-headless
+# Remove pip's opencv-python - we use system OpenCV (has GStreamer support)
+pip3 uninstall -y opencv-python opencv-python-headless opencv-contrib-python 2>/dev/null || true
+
+# Downgrade numpy to 1.x - system OpenCV was compiled with numpy 1.x
+pip3 install --no-cache-dir "numpy<2"
 ```
 
-**Note:** System OpenCV may be an older version than the PyPI package.
-
-#### Option 4: macOS with Homebrew
-
-```bash
-# Install OpenCV and GStreamer via Homebrew
-brew install opencv gstreamer
-
-# Install framegrab
-pip install framegrab
-
-# You may need to set PYTHONPATH to find the Homebrew OpenCV
-export PYTHONPATH="/opt/homebrew/lib/python3.10/site-packages:$PYTHONPATH"
-```
-
-### Using GStreamer Backend
-
-To use the GStreamer backend for RTSP streams, set `backend="gstreamer"` in your config:
-
-```python
-from framegrab import FrameGrabber
-from framegrab.config import RTSPFrameGrabberConfig
-
-config = RTSPFrameGrabberConfig(
-    rtsp_url="rtsp://admin:password@192.168.1.100/stream",
-    backend="gstreamer",  # Use GStreamer backend
-    max_fps=15,           # Optional: limit frame rate
-    timeout=5.0           # Optional: connection timeout (seconds)
-)
-
-with FrameGrabber.create_grabber(config) as grabber:
-    frame = grabber.grab()
-```
-
-**FFmpeg backend (default):**
-```python
-config = RTSPFrameGrabberConfig(
-    rtsp_url="rtsp://admin:password@192.168.1.100/stream",
-    backend="ffmpeg",          # Use FFmpeg backend (default)
-    keep_connection_open=True, # Keep connection alive
-    max_fps=30                 # Drain thread frame rate
-)
-```
-
-### Verifying GStreamer Support
+#### Verifying GStreamer Support
 
 To check if your OpenCV installation has GStreamer support:
 
-```python
-import cv2
-build_info = cv2.getBuildInformation()
-print("GStreamer support:", "YES" if "GStreamer" in build_info and "YES" in build_info.split("GStreamer")[1][:50] else "NO")
-```
-
-Or from the command line:
 ```bash
 python3 -c "import cv2; print('GStreamer: YES' if 'GStreamer' in cv2.getBuildInformation() else 'GStreamer: NO')"
 ```
-
 
 ## Usage
 
@@ -308,6 +236,42 @@ with FrameGrabber.create_grabber_yaml(config) as grabber:
     frame = grabber.grab()
 ```
 
+#### RTSP Backends
+
+For RTSP streams, FrameGrab supports two backends:
+
+1. **FFmpeg backend** (default) - Works with standard `pip install opencv-python`
+2. **GStreamer backend** - Recommended for low-latency, real-time RTSP streaming (requires [GStreamer support](#gstreamer-support))
+
+To use the GStreamer backend, set `backend="gstreamer"` in your config:
+
+```python
+from framegrab import FrameGrabber
+from framegrab.config import RTSPFrameGrabberConfig
+
+config = RTSPFrameGrabberConfig(
+    rtsp_url="rtsp://admin:password@192.168.1.100/stream",
+    backend="gstreamer",  # Use GStreamer backend
+    max_fps=15,           # Optional: limit frame rate
+    timeout=5.0           # Optional: connection timeout (seconds)
+)
+
+with FrameGrabber.create_grabber(config) as grabber:
+    frame = grabber.grab()
+```
+
+Or using YAML/dictionary format:
+
+```yaml
+input_type: rtsp
+id:
+  rtsp_url: rtsp://admin:password@192.168.1.100/stream
+options:
+  backend: gstreamer
+  max_fps: 15
+  timeout: 5.0
+```
+
 You might have several cameras that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.create_grabbers`. Note that currently only a single Raspberry Pi CSI2 camera is supported, but these cameras can be used in conjunction with other types of cameras.
 
 If you have multiple cameras of the same type plugged in, it's recommended that you include serial numbers in the configurations; this ensures that each configuration is paired with the correct camera. If you don't provide serial numbers in your configurations, configurations will be paired with cameras in a sequential manner.
@@ -353,6 +317,7 @@ for grabber in grabbers.values():
     display_image(frame) # substitute this line for your preferred method of displaying images, such as cv2.imshow
     grabber.release()
 ```
+
 ### Configurations
 #### Dictionary or YamlFormat
 The table below shows all available configurations and the cameras to which they apply. This is the format used when creating grabbers from dictionaries or yaml strings. If you want to use the python FrameGrabberConfig object, the format is slightly different to optimize for python readability (see format and examples). We use the python pydantic model to validate the dictionary and yaml format
@@ -386,11 +351,6 @@ use the python pydantic model to validate your configuration.
 | options.max_fps | 30              | -          | optional (both backends)         | -         | -  | - | - | - | optional |
 | options.backend | "gstreamer"              | -          | optional ("ffmpeg" or "gstreamer")         | -         | -  | - | - | - | - |
 | options.timeout | 5.0              | -          | optional (timeout in seconds)         | -         | -  | - | - | - | - |
-
-**RTSP Backend Options:**
-- **FFmpeg backend** (default): Uses OpenCV's FFmpeg backend. Set `backend="ffmpeg"`. Supports `keep_connection_open` and `max_fps` (for drain thread rate).
-- **GStreamer backend**: Uses GStreamer pipeline with zero-buffering for low latency. Set `backend="gstreamer"`. Requires OpenCV built with GStreamer support (see [GStreamer Support](#gstreamer-support-for-rtsp-streaming)). Supports `max_fps` (for rate limiting) and `timeout` (for connection timeout).
-
 
 In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
 
