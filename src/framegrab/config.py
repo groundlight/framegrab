@@ -403,7 +403,7 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
 
 
 class RTSPFrameGrabberConfig(FrameGrabberConfig):
-    """Configuration class for RTSP Frame Grabber.
+    """Configuration class for RTSP FrameGrabber.
 
     Supports two backends:
     - "ffmpeg" (default): Uses OpenCV's default FFmpeg backend with drain thread.
