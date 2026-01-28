@@ -28,13 +28,6 @@ basler = ["pypylon"]
 realsense = ["pyrealsense2"]
 raspberrypi = ["picamera2"]
 youtube = ["streamlink"]
-# Note: The 'gstreamer' extra is a placeholder. GStreamer support requires OpenCV
-# compiled with GStreamer, which cannot be installed via pip. Use one of:
-#   1. conda install -c conda-forge opencv
-#   2. System package: apt-get install python3-opencv
-#   3. Docker: use the provided docker/Dockerfile
-# See README.md section "GStreamer Support for RTSP Streaming" for details.
-gstreamer = []
 all = ["pypylon", "pyrealsense2", "picamera2", "streamlink"]
 
 [tool.poetry.group.dev.dependencies]
