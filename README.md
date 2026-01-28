@@ -438,7 +438,7 @@ GenericUSBFrameGrabberConfig:
 
 RTSPFrameGrabberConfig:
   additionalProperties: false
-  description: "Configuration class for RTSP Frame Grabber.\n\nSupports two backends:\n\
+  description: "Configuration class for RTSP FrameGrabber.\n\nSupports two backends:\n\
     - \"ffmpeg\" (default): Uses OpenCV's default FFmpeg backend with drain thread.\n\
     \  Options: keep_connection_open, max_fps (for drain rate)\n- \"gstreamer\": Uses\
     \ GStreamer backend with zero-buffering (leaky queue) to always\n  get the most\
