@@ -194,14 +194,14 @@ class TestRTSPBackendsIntegration(unittest.TestCase):
         config = RTSPFrameGrabberConfig(
             rtsp_url="rtsp://test.example.com/stream",
             backend="gstreamer",
-            max_fps=15,
+            sample_rate=15,
             timeout=10.0
         )
-        
+
         # Don't actually connect - just verify config is set correctly
         # The actual pipeline construction is tested in test_gstreamer_backend_with_test_source
         self.assertEqual(config.backend, "gstreamer")
-        self.assertEqual(config.max_fps, 15)
+        self.assertEqual(config.sample_rate, 15)
         self.assertEqual(config.timeout, 10.0)
 
     @unittest.skipUnless(
@@ -247,6 +247,56 @@ class TestRTSPBackendsIntegration(unittest.TestCase):
         
         # Note: Timing verification would be flaky, so we just verify frames were grabbed
 
+    @unittest.skipUnless(
+        "GStreamer" in cv2.getBuildInformation() and
+        "YES" in cv2.getBuildInformation().split("GStreamer")[1][:50],
+        "GStreamer not available in OpenCV"
+    )
+    def test_gstreamer_backend_max_fps_higher_than_source(self):
+        """Test that max_fps higher than source FPS works without errors.
+
+        This verifies that when max_fps is set higher than the camera's native FPS,
+        the videorate element with drop-only=true passes frames through without
+        attempting to duplicate them (which would cause issues).
+        """
+        # Create a test pipeline with 10 fps source and 30 fps max-rate
+        pipeline = (
+            "videotestsrc num-buffers=10 ! "
+            "video/x-raw,width=640,height=480,framerate=10/1 ! "  # Source at 10 FPS
+            "videorate drop-only=true max-rate=30 ! "  # Request 30 FPS (higher than source)
+            "videoconvert ! "
+            "video/x-raw,format=BGR ! "
+            "appsink drop=true max-buffers=1 sync=false"
+        )
+
+        capture = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+
+        if not capture.isOpened():
+            self.skipTest("Could not open GStreamer test pipeline with max-rate > source fps")
+
+        # Grab frames - should work without errors
+        frames_grabbed = 0
+        max_attempts = 15  # Try to grab more than num-buffers to ensure it works
+
+        for _ in range(max_attempts):
+            ret, frame = capture.read()
+            if ret:
+                frames_grabbed += 1
+                # Verify frame is valid
+                self.assertIsInstance(frame, np.ndarray)
+                self.assertEqual(frame.shape, (480, 640, 3))
+            else:
+                # Expected when we run out of buffers
+                break
+
+        capture.release()
+
+        # Verify we successfully grabbed frames (should get ~10 frames from source)
+        self.assertGreater(frames_grabbed, 0,
+            "Should successfully grab frames when max_fps > source fps")
+        self.assertLessEqual(frames_grabbed, 12,
+            "Should not duplicate frames (drop-only=true)")
+
     # =========================================================================
     # Backend Comparison Tests
     # =========================================================================
@@ -272,6 +322,25 @@ class TestRTSPBackendsIntegration(unittest.TestCase):
                 rtsp_url="rtsp://test.example.com/stream",
                 backend="invalid_backend"
             )
+
+    def test_sample_rate_exceeds_60_raises_error(self):
+        """Test that sample_rate > 60 raises validation error."""
+        with self.assertRaises(Exception) as context:  # Pydantic ValidationError
+            RTSPFrameGrabberConfig(
+                rtsp_url="rtsp://test.example.com/stream",
+                backend="gstreamer",
+                sample_rate=61
+            )
+        self.assertIn("sample_rate cannot exceed 60", str(context.exception))
+
+    def test_sample_rate_at_60_is_valid(self):
+        """Test that sample_rate = 60 is valid."""
+        config = RTSPFrameGrabberConfig(
+            rtsp_url="rtsp://test.example.com/stream",
+            backend="gstreamer",
+            sample_rate=60
+        )
+        self.assertEqual(config.sample_rate, 60)
 
     # =========================================================================
     # Error Handling Tests

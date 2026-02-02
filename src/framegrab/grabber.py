@@ -929,7 +929,8 @@ class RTSPFrameGrabber(FrameGrabber):
     - max_fps: Controls drain thread rate (default: 30)
 
     GStreamer backend options:
-    - max_fps: Rate-limit using GStreamer videorate element
+    - sample_rate: Rate-limit using GStreamer's videorate element. Set lower than source FPS for
+      rate limiting (e.g., 5, 15). If set higher than source FPS, frames pass through unchanged.
     - timeout: Connection/data timeout in seconds (default: 5)
     - protocol: Transport protocol ("tcp", "udp", or "tcp+udp"). If not set, uses GStreamer default.
 
@@ -970,19 +971,19 @@ class RTSPFrameGrabber(FrameGrabber):
         - rtspsrc with latency=0, buffer-mode=none for minimal delay (protocol configurable)
         - rtspsrc tcp-timeout for connection/data timeouts
         - decodebin for auto-detecting and decoding any video codec
-        - videorate (optional) for frame rate limiting via max_fps config
+        - videorate (optional) for frame rate limiting via sample_rate config
         - leaky queue (max-size-buffers=1, leaky=downstream) placed after decode to drop old frames
         - videoconvert after queue to convert only surviving frames to BGR
         - appsink with drop=true, max-buffers=1, sync=false for zero-latency delivery
         """
         rtsp_url = self.config.rtsp_url
 
-        # Build the rate limiting portion if max_fps is set and not the default drain rate
-        if self.config.max_fps is not None and self.config.max_fps > 0 and self.config.max_fps != 30:
+        # Build the rate limiting portion if sample_rate is set
+        if self.config.sample_rate is not None and self.config.sample_rate > 0:
             # videorate element limits output frame rate
             # drop-only=true: only drop frames, never duplicate (for lower than source fps)
-            rate_limit = f"videorate drop-only=true max-rate={int(self.config.max_fps)} ! "
-            logger.info(f"RTSP rate limiting enabled: max_fps={self.config.max_fps}")
+            rate_limit = f"videorate drop-only=true max-rate={int(self.config.sample_rate)} ! "
+            logger.info(f"RTSP rate limiting enabled: sample_rate={self.config.sample_rate}")
         else:
             rate_limit = ""
 

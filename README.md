@@ -252,7 +252,7 @@ from framegrab.config import RTSPFrameGrabberConfig
 config = RTSPFrameGrabberConfig(
     rtsp_url="rtsp://admin:password@192.168.1.100/stream",
     backend="gstreamer",  # Use GStreamer backend
-    max_fps=15,           # Optional: limit frame rate
+    sample_rate=15,       # Optional: limit frame rate
     timeout=5.0           # Optional: connection timeout (seconds)
 )
 
@@ -268,7 +268,7 @@ id:
   rtsp_url: rtsp://admin:password@192.168.1.100/stream
 options:
   backend: gstreamer
-  max_fps: 15
+  sample_rate: 15
   timeout: 5.0
 ```
 
@@ -348,9 +348,10 @@ use the python pydantic model to validate your configuration.
 | options.depth.side_by_side | 1              | -          | -         | -         | optional  | -  | - | - | - |
 | options.num_90_deg_rotations | 2              | optional          | optional         | optional         | optional  | optional  | optional | optional | optional |
 | options.keep_connection_open | True              | -          | optional (FFmpeg backend)         | -         | -  | - | optional | optional | - |
-| options.max_fps | 30              | -          | optional (both backends)         | -         | -  | - | - | - | optional |
+| options.max_fps | 30              | -          | optional (FFmpeg backend)         | -         | -  | - | - | - | optional |
 | options.backend | "gstreamer"              | -          | optional ("ffmpeg" or "gstreamer")         | -         | -  | - | - | - | - |
-| options.timeout | 5.0              | -          | optional (timeout in seconds)         | -         | -  | - | - | - | - |
+| options.sample_rate | 15              | -          | optional (GStreamer backend)         | -         | -  | - | - | - | - |
+| options.timeout | 5.0              | -          | optional (GStreamer backend)         | -         | -  | - | - | - | - |
 
 In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
 

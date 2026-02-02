@@ -5,12 +5,12 @@ This script tests the RTSPFrameGrabber with GStreamer backend against provided R
 Requires OpenCV built with GStreamer support.
 
 Usage:
-    python sample_scripts/stream_rtsp_with_gstreamer.py <rtsp_url> [num_frames] [max_fps] [protocol]
+    python sample_scripts/stream_rtsp_with_gstreamer.py <rtsp_url> [num_frames] [sample_rate] [protocol]
 
 Arguments:
     rtsp_url    - RTSP stream URL (required)
     num_frames  - Number of frames to grab (default: 10)
-    max_fps     - Maximum FPS rate limit using GStreamer videorate (default: None = no limit, use 0 to skip)
+    sample_rate - Frame rate limit using GStreamer videorate (default: None = no limit, use 0 to skip)
     protocol    - Transport protocol: "tcp", "udp", or "tcp+udp" (default: GStreamer default)
 
 Examples:
@@ -20,7 +20,7 @@ Examples:
     # With rate limiting
     python sample_scripts/stream_rtsp_with_gstreamer.py rtsp://localhost:8554/live/cam1 100 5
 
-    # Force TCP protocol (use 0 for max_fps to skip rate limiting)
+    # Force TCP protocol (use 0 for sample_rate to skip rate limiting)
     python sample_scripts/stream_rtsp_with_gstreamer.py rtsp://localhost:8554/live/cam1 50 0 tcp
 
     # Force UDP protocol
@@ -65,25 +65,25 @@ def check_gstreamer_support():
     return has_gstreamer
 
 
-def test_rtsp_stream(rtsp_url: str, num_frames: int = 10, max_fps: float = None, protocol: str = None):
+def test_rtsp_stream(rtsp_url: str, num_frames: int = 10, sample_rate: float = None, protocol: str = None):
     """Test RTSP stream grabbing with GStreamer backend."""
     from framegrab import FrameGrabber
     from framegrab.config import RTSPFrameGrabberConfig
-    
+
     print(f"\nTesting RTSP stream: {rtsp_url}")
     print("-" * 80)
-    
+
     try:
-        config = RTSPFrameGrabberConfig(rtsp_url=rtsp_url, name="test_rtsp", max_fps=max_fps, backend="gstreamer", protocol=protocol)
+        config = RTSPFrameGrabberConfig(rtsp_url=rtsp_url, name="test_rtsp", sample_rate=sample_rate, backend="gstreamer", protocol=protocol)
         grabber = FrameGrabber.create_grabber(config)
-        
+
         print(f"Backend: {grabber.capture.getBackendName()}")
         if protocol:
             print(f"Protocol: {protocol}")
         else:
             print(f"Protocol: default (GStreamer auto-negotiation)")
-        if max_fps and max_fps != 30:
-            print(f"Rate limit: {max_fps} fps (GStreamer videorate)")
+        if sample_rate:
+            print(f"Rate limit: {sample_rate} fps (GStreamer videorate)")
         else:
             print(f"Rate limit: None (source rate)")
         print(f"Grabbing {num_frames} frames...\n")
@@ -136,8 +136,8 @@ def test_rtsp_stream(rtsp_url: str, num_frames: int = 10, max_fps: float = None,
         print(f"  Min grab time:       {min_time:.1f}ms")
         print(f"  Max grab time:       {max_time:.1f}ms")
         print(f"  Effective FPS:       {1000/avg_time:.1f}")
-        if max_fps:
-            print(f"  Target FPS:          {max_fps}")
+        if sample_rate:
+            print(f"  Target FPS:          {sample_rate}")
         
         grabber.release()
         
@@ -184,17 +184,17 @@ def main():
     else:
         num_frames = 10
     
-    # Get max_fps from args or use default (None = no limit, 0 means no limit)
-    max_fps = None
+    # Get sample_rate from args or use default (None = no limit, 0 means no limit)
+    sample_rate = None
     if len(sys.argv) > 3:
         try:
-            max_fps = float(sys.argv[3])
-            if max_fps == 0:
-                max_fps = None  # 0 means no limit
+            sample_rate = float(sys.argv[3])
+            if sample_rate == 0:
+                sample_rate = None  # 0 means no limit
         except ValueError:
-            print(f"Invalid max_fps: {sys.argv[3]}. Using default.")
-            max_fps = None
-    
+            print(f"Invalid sample_rate: {sys.argv[3]}. Using default.")
+            sample_rate = None
+
     # Get protocol from args (4th argument) or use default (None = GStreamer default)
     protocol = None
     if len(sys.argv) > 4:
@@ -203,9 +203,9 @@ def main():
         if protocol not in valid_protocols:
             print(f"Invalid protocol: {sys.argv[4]}. Must be one of: {', '.join(valid_protocols)}. Using default.")
             protocol = None
-    
+
     # Run the test
-    success = test_rtsp_stream(rtsp_url, num_frames=num_frames, max_fps=max_fps, protocol=protocol)
+    success = test_rtsp_stream(rtsp_url, num_frames=num_frames, sample_rate=sample_rate, protocol=protocol)
     sys.exit(0 if success else 1)
 
 
