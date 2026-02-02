@@ -402,10 +402,53 @@ class GenericUSBFrameGrabberConfig(WithResolutionMixin):
     fps: OptionsField[Optional[int]] = OptionsField(key="fps", default=None)
 
 
-class RTSPFrameGrabberConfig(FrameGrabberConfig, WithKeepConnectionOpenMixin, WithMaxFPSMixin):
-    """Configuration class for RTSP Frame Grabber."""
+class RTSPFrameGrabberConfig(FrameGrabberConfig):
+    """Configuration class for RTSP FrameGrabber.
+
+    Supports two backends:
+    - "ffmpeg" (default): Uses OpenCV's default FFmpeg backend with drain thread.
+      Options: keep_connection_open, max_fps (for drain rate)
+    - "gstreamer": Uses GStreamer backend with zero-buffering (leaky queue) to always
+      get the most recent frame without any buffering delay. Requires OpenCV built with
+      GStreamer support. Options: sample_rate (videorate element), timeout
+
+    FFmpeg-specific options:
+    - keep_connection_open: If True (default), keeps connection open with drain thread for
+      low-latency. If False, opens connection only when needed.
+    - max_fps: Controls drain thread rate (default: 30)
+
+    GStreamer-specific options:
+    - sample_rate: Rate-limit using GStreamer's videorate element (default: None, no rate limiting)
+    - timeout: Connection/data timeout in seconds (default: 5 seconds)
+    - protocol: Transport protocol ("tcp", "udp", or "tcp+udp"). If not set, uses GStreamer default.
+    """
 
     rtsp_url: str = Field(..., pattern=r"^rtsp://")
+    # Backend selection (applies to both FFmpeg and GStreamer)
+    backend: OptionsField[str] = OptionsField(key="backend", default="ffmpeg", pattern=r"^(ffmpeg|gstreamer)$")
+    # FFmpeg options
+    keep_connection_open: OptionsField[bool] = OptionsField(key="keep_connection_open", default=True)
+    max_fps: OptionsField[Optional[float]] = OptionsField(key="max_fps", default=30)
+    # GStreamer options
+    sample_rate: OptionsField[Optional[float]] = OptionsField(key="sample_rate", default=None)
+    timeout: OptionsField[Optional[float]] = OptionsField(key="timeout", default=5.0)
+    protocol: OptionsField[Optional[str]] = OptionsField(key="protocol", default=None)
+
+    VALID_PROTOCOLS: ClassVar[Tuple[str, ...]] = ("tcp", "udp", "tcp+udp")
+
+    @field_validator("sample_rate", mode="before")
+    def validate_sample_rate(cls, v):
+        """Validate that sample_rate does not exceed 60 FPS."""
+        if v is not None and v > 60:
+            raise ValueError(f"sample_rate cannot exceed 60 FPS, got {v}")
+        return v
+
+    @field_validator("protocol", mode="before")
+    def validate_protocol(cls, v):
+        """Validate that protocol is one of the allowed values."""
+        if v is not None and v not in cls.VALID_PROTOCOLS:
+            raise ValueError(f"Invalid protocol '{v}'. Must be one of: {', '.join(cls.VALID_PROTOCOLS)}")
+        return v
 
     @field_validator("rtsp_url", mode="before")
     def substitute_rtsp_password(cls, rtsp_url: str) -> str:

@@ -130,3 +130,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Test output artifacts
+output/*.jpg
+output/*.png

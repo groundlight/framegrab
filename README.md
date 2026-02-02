@@ -12,9 +12,11 @@ FrameGrab also provides basic motion detection functionality. FrameGrab requires
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
   - [Optional Dependencies](#optional-dependencies)
+    - [GStreamer Support](#gstreamer-support)
   - [Usage](#usage)
     - [Command line interface (CLI)](#command-line-interface-cli)
     - [Frame Grabbing](#frame-grabbing)
+      - [RTSP Backends](#rtsp-backends)
     - [Configurations](#configurations)
     - [Autodiscovery](#autodiscovery)
       - [RTSP Discovery](#rtsp-discovery)
@@ -57,6 +59,63 @@ To install all optional dependencies, run:
 pip install framegrab[all]
 ```
 
+### GStreamer Support
+
+The RTSP input type supports two backends: **FFmpeg** (default) and **GStreamer**. The GStreamer backend provides lower latency and better real-time performance for RTSP streaming.
+
+**Why GStreamer for RTSP?**
+- ✅ **Zero-buffering** with leaky queues for always-fresh frames
+- ✅ **Lower latency** (~60-80ms vs 200-500ms with FFmpeg)
+- ✅ **Better network handling** with configurable timeouts
+- ✅ **Frame rate limiting** at the pipeline level
+
+By default, `pip install opencv-python` includes only FFmpeg support. To use GStreamer, you need OpenCV compiled with GStreamer libraries.
+
+#### Option 1: Docker (Recommended)
+
+Use the sample `Dockerfile.gstreamer` which includes GStreamer support:
+
+```bash
+# Build the Docker image
+docker build -f docker/Dockerfile.gstreamer -t framegrab-gstreamer .
+
+# Run tests
+docker run --rm -v $(pwd):/app framegrab-gstreamer \
+  python3 -m pytest test/
+
+# Run your script
+docker run --rm -v $(pwd):/app framegrab-gstreamer \
+  python3 your_script.py
+```
+
+#### Option 2: System OpenCV (Ubuntu/Debian)
+
+```bash
+# Install system OpenCV with GStreamer support
+sudo apt-get update
+sudo apt-get install -y \
+  python3-opencv \
+  gstreamer1.0-plugins-base \
+  gstreamer1.0-plugins-good \
+  gstreamer1.0-libav
+
+# Install framegrab
+pip install framegrab
+
+# Remove pip's opencv-python - we use system OpenCV (has GStreamer support)
+pip3 uninstall -y opencv-python opencv-python-headless opencv-contrib-python 2>/dev/null || true
+
+# Downgrade numpy to 1.x - system OpenCV was compiled with numpy 1.x
+pip3 install --no-cache-dir "numpy<2"
+```
+
+#### Verifying GStreamer Support
+
+To check if your OpenCV installation has GStreamer support:
+
+```bash
+python3 -c "import cv2; print('GStreamer: YES' if 'GStreamer' in cv2.getBuildInformation() else 'GStreamer: NO')"
+```
 
 ## Usage
 
@@ -177,6 +236,42 @@ with FrameGrabber.create_grabber_yaml(config) as grabber:
     frame = grabber.grab()
 ```
 
+#### RTSP Backends
+
+For RTSP streams, FrameGrab supports two backends:
+
+1. **FFmpeg backend** (default) - Works with standard `pip install opencv-python`
+2. **GStreamer backend** - Recommended for low-latency, real-time RTSP streaming (requires [GStreamer support](#gstreamer-support))
+
+To use the GStreamer backend, set `backend="gstreamer"` in your config:
+
+```python
+from framegrab import FrameGrabber
+from framegrab.config import RTSPFrameGrabberConfig
+
+config = RTSPFrameGrabberConfig(
+    rtsp_url="rtsp://admin:password@192.168.1.100/stream",
+    backend="gstreamer",  # Use GStreamer backend
+    sample_rate=15,       # Optional: limit frame rate
+    timeout=5.0           # Optional: connection timeout (seconds)
+)
+
+with FrameGrabber.create_grabber(config) as grabber:
+    frame = grabber.grab()
+```
+
+Or using YAML/dictionary format:
+
+```yaml
+input_type: rtsp
+id:
+  rtsp_url: rtsp://admin:password@192.168.1.100/stream
+options:
+  backend: gstreamer
+  sample_rate: 15
+  timeout: 5.0
+```
+
 You might have several cameras that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.create_grabbers`. Note that currently only a single Raspberry Pi CSI2 camera is supported, but these cameras can be used in conjunction with other types of cameras.
 
 If you have multiple cameras of the same type plugged in, it's recommended that you include serial numbers in the configurations; this ensures that each configuration is paired with the correct camera. If you don't provide serial numbers in your configurations, configurations will be paired with cameras in a sequential manner.
@@ -222,6 +317,7 @@ for grabber in grabbers.values():
     display_image(frame) # substitute this line for your preferred method of displaying images, such as cv2.imshow
     grabber.release()
 ```
+
 ### Configurations
 #### Dictionary or YamlFormat
 The table below shows all available configurations and the cameras to which they apply. This is the format used when creating grabbers from dictionaries or yaml strings. If you want to use the python FrameGrabberConfig object, the format is slightly different to optimize for python readability (see format and examples). We use the python pydantic model to validate the dictionary and yaml format
@@ -251,9 +347,11 @@ use the python pydantic model to validate your configuration.
 | options.crop.relative.right | 0.9            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
 | options.depth.side_by_side | 1              | -          | -         | -         | optional  | -  | - | - | - |
 | options.num_90_deg_rotations | 2              | optional          | optional         | optional         | optional  | optional  | optional | optional | optional |
-| options.keep_connection_open | True              | -          | optional         | -         | -  | - | optional | optional | - |
-| options.max_fps | 30              | -          | optional         | -         | -  | - | - | - | optional |
-
+| options.keep_connection_open | True              | -          | optional (FFmpeg backend)         | -         | -  | - | optional | optional | - |
+| options.max_fps | 30              | -          | optional (FFmpeg backend)         | -         | -  | - | - | - | optional |
+| options.backend | "gstreamer"              | -          | optional ("ffmpeg" or "gstreamer")         | -         | -  | - | - | - | - |
+| options.sample_rate | 15              | -          | optional (GStreamer backend)         | -         | -  | - | - | - | - |
+| options.timeout | 5.0              | -          | optional (GStreamer backend)         | -         | -  | - | - | - | - |
 
 In addition to the configurations in the table above, you can set any Basler camera property by including `options.basler.<BASLER PROPERTY NAME>`. For example, it's common to set `options.basler.PixelFormat` to `RGB8`.
 
@@ -341,8 +439,26 @@ GenericUSBFrameGrabberConfig:
 
 RTSPFrameGrabberConfig:
   additionalProperties: false
-  description: Configuration class for RTSP Frame Grabber.
+  description: "Configuration class for RTSP FrameGrabber.\n\nSupports two backends:\n\
+    - \"ffmpeg\" (default): Uses OpenCV's default FFmpeg backend with drain thread.\n\
+    \  Options: keep_connection_open, max_fps (for drain rate)\n- \"gstreamer\": Uses\
+    \ GStreamer backend with zero-buffering (leaky queue) to always\n  get the most\
+    \ recent frame without any buffering delay. Requires OpenCV built with\n  GStreamer\
+    \ support. Options: sample_rate (videorate element), timeout\n\nFFmpeg-specific\
+    \ options:\n- keep_connection_open: If True (default), keeps connection open with\
+    \ drain thread for\n  low-latency. If False, opens connection only when needed.\n\
+    - max_fps: Controls drain thread rate (default: 30)\n\nGStreamer-specific options:\n\
+    - sample_rate: Rate-limit using GStreamer's videorate element (default: None,\
+    \ no rate limiting)\n- timeout: Connection/data timeout in seconds (default: 5\
+    \ seconds)\n- protocol: Transport protocol (\"tcp\", \"udp\", or \"tcp+udp\").\
+    \ If not set, uses GStreamer default."
   properties:
+    backend:
+      default: ffmpeg
+      options_key: backend
+      pattern: ^(ffmpeg|gstreamer)$
+      title: Backend
+      type: string
     crop:
       anyOf:
       - additionalProperties: true
@@ -367,7 +483,7 @@ RTSPFrameGrabberConfig:
       type: boolean
     max_fps:
       anyOf:
-      - type: integer
+      - type: number
       - type: 'null'
       default: 30
       options_key: max_fps
@@ -385,10 +501,31 @@ RTSPFrameGrabberConfig:
       default: 0
       options_key: rotation.num_90_deg_rotations
       title: Num 90 Deg Rotations
+    protocol:
+      anyOf:
+      - type: string
+      - type: 'null'
+      default: null
+      options_key: protocol
+      title: Protocol
     rtsp_url:
       pattern: ^rtsp://
       title: Rtsp Url
       type: string
+    sample_rate:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: null
+      options_key: sample_rate
+      title: Sample Rate
+    timeout:
+      anyOf:
+      - type: number
+      - type: 'null'
+      default: 5.0
+      options_key: timeout
+      title: Timeout
   required:
   - rtsp_url
   title: RTSPFrameGrabberConfig

@@ -4,6 +4,8 @@ import re
 import subprocess
 import time
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from threading import Lock, Thread
 from typing import Dict, List, Optional, Union
 
@@ -913,28 +915,114 @@ class GenericUSBFrameGrabber(FrameGrabberWithSerialNumber):
 
 
 class RTSPFrameGrabber(FrameGrabber):
-    """Handles RTSP streams.
+    """Handles RTSP streams with configurable backend.
 
-    Can operate in two modes based on the `keep_connection_open` configuration:
-        1. If `true`, keeps the connection open for low-latency frame grabbing, but consumes more CPU.  (default)
-        2. If `false`, opens the connection only when needed, which is slower but conserves resources.
+    Supports two backends:
+    - "ffmpeg" (default): Uses OpenCV's default FFmpeg backend with drain thread.
+      Keeps connection open and drains buffer to provide relatively fresh frames.
+    - "gstreamer": Uses GStreamer pipeline with a leaky queue (max-size-buffers=1) to ensure
+      we always get the most recent frame without any buffering delay. This eliminates the
+      need for a drain thread and provides minimal latency.
+
+    FFmpeg backend options:
+    - keep_connection_open: If True, keeps connection open with drain thread (default: True)
+    - max_fps: Controls drain thread rate (default: 30)
+
+    GStreamer backend options:
+    - sample_rate: Rate-limit using GStreamer's videorate element. Set lower than source FPS for
+      rate limiting (e.g., 5, 15). If set higher than source FPS, frames pass through unchanged.
+    - timeout: Connection/data timeout in seconds (default: 5)
+    - protocol: Transport protocol ("tcp", "udp", or "tcp+udp"). If not set, uses GStreamer default.
+
+    GStreamer backend requires OpenCV built with GStreamer support.
     """
 
     config_class = RTSPFrameGrabberConfig
 
     def _initialize_grabber_implementation(self):
+        self.capture = None
         self.lock = Lock()
         self.run = True
-        self.config.keep_connection_open = self.config.keep_connection_open
 
-        if self.config.keep_connection_open:
-            self._open_connection()
-            self._init_drain_thread()
+        if self.config.backend == "gstreamer":
+            self._check_gstreamer_support()
+            self._open_connection_gstreamer()
+        else:
+            # FFmpeg backend with original drain thread implementation
+            if self.config.keep_connection_open:
+                self._open_connection_ffmpeg()
+                self._init_drain_thread()
+
+    def _check_gstreamer_support(self) -> None:
+        """Verify that OpenCV was built with GStreamer support."""
+        build_info = cv2.getBuildInformation()
+        if "GStreamer" not in build_info or "YES" not in build_info.split("GStreamer")[1][:50]:
+            raise RuntimeError(
+                "OpenCV was not built with GStreamer support. "
+                "RTSP streaming with backend='gstreamer' requires GStreamer. "
+                "Please use the Docker environment, rebuild OpenCV with GStreamer, "
+                "or use backend='ffmpeg' instead."
+            )
+
+    def _build_gstreamer_pipeline(self) -> str:
+        """Build GStreamer pipeline string for RTSP with zero-buffering.
+
+        The pipeline uses:
+        - rtspsrc with latency=0, buffer-mode=none for minimal delay (protocol configurable)
+        - rtspsrc tcp-timeout for connection/data timeouts
+        - decodebin for auto-detecting and decoding any video codec
+        - videorate (optional) for frame rate limiting via sample_rate config
+        - leaky queue (max-size-buffers=1, leaky=downstream) placed after decode to drop old frames
+        - videoconvert after queue to convert only surviving frames to BGR
+        - appsink with drop=true, max-buffers=1, sync=false for zero-latency delivery
+        """
+        rtsp_url = self.config.rtsp_url
+
+        # Build the rate limiting portion if sample_rate is set
+        if self.config.sample_rate is not None and self.config.sample_rate > 0:
+            # videorate element limits output frame rate
+            # drop-only=true: only drop frames, never duplicate (for lower than source fps)
+            rate_limit = f"videorate drop-only=true max-rate={int(self.config.sample_rate)} ! "
+            logger.info(f"RTSP rate limiting enabled: sample_rate={self.config.sample_rate}")
+        else:
+            rate_limit = ""
+
+        # Get tcp timeout in microseconds for GStreamer (default 5 seconds)
+        tcp_timeout_us = int((self.config.timeout or 5.0) * 1_000_000)
+        # Build protocol string only if explicitly set
+        protocol_str = f"protocols={self.config.protocol} " if self.config.protocol else ""
+
+        pipeline = (
+            f"rtspsrc location={rtsp_url} {protocol_str}latency=0 buffer-mode=none tcp-timeout={tcp_timeout_us} ! "
+            f"decodebin ! "
+            f"{rate_limit}"
+            f"queue max-size-buffers=1 max-size-bytes=0 max-size-time=0 leaky=downstream ! "
+            f"videoconvert ! video/x-raw,format=BGR ! "
+            f"appsink drop=true max-buffers=1 sync=false"
+        )
+
+        logger.debug(f"GStreamer pipeline: {pipeline}")
+        return pipeline
 
     def _default_name(self) -> str:
         return self.config.rtsp_url
 
-    def _open_connection(self):
+    def _open_connection_gstreamer(self) -> None:
+        """Open RTSP connection using GStreamer backend with zero-buffering."""
+
+        pipeline = self._build_gstreamer_pipeline()
+        self.capture = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+        if not self.capture.isOpened():
+            raise ValueError(
+                f"Could not open RTSP stream: {self.config.rtsp_url}. "
+                f"Is the RTSP URL correct? Is the camera connected to the network? "
+                f"GStreamer pipeline: {pipeline}"
+            )
+
+        backend_name = self.capture.getBackendName()
+        logger.info(f"Initialized RTSP capture with backend={backend_name} (GStreamer)")
+
+    def _open_connection_ffmpeg(self) -> None:
         self.capture = cv2.VideoCapture(self.config.rtsp_url)
         if not self.capture.isOpened():
             raise ValueError(
@@ -942,22 +1030,75 @@ class RTSPFrameGrabber(FrameGrabber):
             )
         logger.debug(f"Initialized video capture with backend={self.capture.getBackendName()}")
 
-    def _close_connection(self):
+    def _close_connection(self) -> None:
+        """Release the video capture."""
         with self.lock:
             if self.capture is not None:
                 self.capture.release()
+                self.capture = None
 
     def _grab_implementation(self) -> np.ndarray:
-        if not self.config.keep_connection_open:
-            self._open_connection()
+        """Grab a frame from the RTSP stream.
+
+        For GStreamer backend:
+        - Uses leaky queue to always return the newest frame without buffering delay
+        - Uses separate grab() and retrieve() calls for timing breakdown
+        - Timeout is handled by GStreamer's rtspsrc timeout and tcp-timeout properties
+
+        For FFmpeg backend:
+        - If keep_connection_open is True, uses drain thread to keep buffer fresh
+        - If keep_connection_open is False, opens connection on each grab
+        """
+        if self.config.backend == "gstreamer":
+            return self._grab_gstreamer()
+        else:
+            return self._grab_ffmpeg()
+
+    def _grab_gstreamer(self) -> np.ndarray:
+        """Grab frame using GStreamer backend with timeout protection.
+
+        Uses a thread pool to wrap the blocking grab() call with a timeout.
+        If the grab times out (e.g., stream disconnected), releases the capture
+        and returns None.
+        """
+        if self.capture is None or not self.capture.isOpened():
+            self._open_connection_gstreamer()
+
+        timeout = self.config.timeout or 5.0 + 1.0  # seconds
+        # Wrap blocking grab() in a thread with timeout
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(self.capture.grab)
             try:
-                return self._grab_open()
+                # stop blocking if grab takes longer than the timeout value
+                grabbed = future.result(timeout=timeout)
+            except FuturesTimeoutError:
+                logger.error(f"Grab timed out after {timeout}s for RTSP stream: {self.config.rtsp_url}")
+                self._close_connection()
+                return None
+
+        if not grabbed:
+            logger.error(f"Could not grab frame from RTSP stream: {self.config.rtsp_url}")
+            return None
+
+        ret, frame = self.capture.retrieve()
+        if not ret:
+            logger.error(f"Could not retrieve frame from RTSP stream: {self.config.rtsp_url}")
+            return None
+
+        return frame
+
+    def _grab_ffmpeg(self) -> np.ndarray:
+        """Grab frame using FFmpeg backend (original implementation)."""
+        if not self.config.keep_connection_open:
+            self._open_connection_ffmpeg()
+            try:
+                return self._grab_ffmpeg_open()
             finally:
                 self._close_connection()
         else:
-            return self._grab_open()
+            return self._grab_ffmpeg_open()
 
-    def _grab_open(self) -> np.ndarray:
+    def _grab_ffmpeg_open(self) -> np.ndarray:
         with self.lock:
             ret, frame = self.capture.retrieve() if self.config.keep_connection_open else self.capture.read()
         if not ret:
@@ -965,9 +1106,10 @@ class RTSPFrameGrabber(FrameGrabber):
         return frame
 
     def release(self) -> None:
-        if self.config.keep_connection_open:
-            self.run = False  # to stop the buffer drain thread
-            self._close_connection()
+        """Release resources."""
+        if self.config.backend == "ffmpeg" and self.config.keep_connection_open:
+            self.run = False  # Stop the drain thread
+        self._close_connection()
 
     def _init_drain_thread(self):
         if not self.config.keep_connection_open:
