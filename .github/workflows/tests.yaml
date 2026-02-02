@@ -2,8 +2,6 @@
 name: test integ
 on:
   push:
-  pull_request:
-    types: [opened, synchronize, reopened]
 jobs:
   run-tests:
     runs-on: ubuntu-latest
