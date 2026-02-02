@@ -153,7 +153,7 @@ class TestRTSPBackends(unittest.TestCase):
     @patch('cv2.VideoCapture')
     @patch('cv2.getBuildInformation')
     def test_gstreamer_backend_with_max_fps(self, mock_build_info, mock_videocapture):
-        """Test that GStreamer backend includes videorate when max_fps is set."""
+        """Test that GStreamer backend includes videorate when sample_rate is set."""
         # Mock OpenCV with GStreamer support
         mock_build_info.return_value = "Video I/O:\n  GStreamer: YES\n"
 
@@ -165,7 +165,7 @@ class TestRTSPBackends(unittest.TestCase):
         config = RTSPFrameGrabberConfig(
             rtsp_url=self.test_rtsp_url,
             backend="gstreamer",
-            max_fps=15
+            sample_rate=15
         )
 
         grabber = RTSPFrameGrabber(config)

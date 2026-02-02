@@ -379,6 +379,8 @@ class TestAllGrabberTypes(unittest.TestCase):
                     params[param] = 5.0  # Default timeout for RTSP
                 elif param == "protocol":
                     params[param] = "tcp"  # Optional protocol for GStreamer RTSP
+                elif param == "sample_rate":
+                    params[param] = 15.0  # Sample rate for GStreamer RTSP
                 else:
                     raise ValueError(f"Unknown parameter: {param}")
 
