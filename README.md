@@ -164,7 +164,7 @@ framegrab preview --help                                        # Show preview o
 
 Frame Grabbers are defined by a configuration parameter. This parameter can take several forms: a python FrameGrabConfig object, a python dictionary object, a yaml string, or a yaml file.  The configuration combines the camera type, the camera ID, and the camera options.  The configuration is passed to the `FrameGrabber.create_grabber` method to create a grabber object.  The grabber object can then be used to grab frames from the camera.
 
-`config` can contain many details and settings about your camera must contain information about the `input_type` of the camera. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense`, `basler`, `rpi_csi2`, `hls`, `youtube_live`, and `file_stream`.
+`config` can contain many details and settings about your camera must contain information about the `input_type` of the camera. Available `input_type` options are: `generic_usb`, `rtsp`, `realsense`, `basler`, `rpi_csi2`, `hls`, `youtube_live`, and `file`.
 
 Here's an example of a single USB camera configured with several options:
 ```python
@@ -272,7 +272,7 @@ options:
   timeout: 5.0
 ```
 
-You might have several cameras that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.create_grabbers`. Note that currently only a single Raspberry Pi CSI2 camera is supported, but these cameras can be used in conjunction with other types of cameras.
+You might have several cameras that you want to use in the same application. In this case, you can load the configurations from a yaml file and use `FrameGrabber.from_yaml`. Note that currently only a single Raspberry Pi CSI2 camera is supported, but these cameras can be used in conjunction with other types of cameras.
 
 If you have multiple cameras of the same type plugged in, it's recommended that you include serial numbers in the configurations; this ensures that each configuration is paired with the correct camera. If you don't provide serial numbers in your configurations, configurations will be paired with cameras in a sequential manner.
 
@@ -311,7 +311,7 @@ from framegrab import FrameGrabber
 config_path = 'camera_config.yaml'
 grabbers = FrameGrabber.from_yaml(config_path)
 
-for grabber in grabbers.values():
+for grabber in grabbers:
     print(grabber.config)
     frame = grabber.grab()
     display_image(frame) # substitute this line for your preferred method of displaying images, such as cv2.imshow
@@ -333,7 +333,7 @@ use the python pydantic model to validate your configuration.
 | id.rtsp_url                | rtsp://…        | -          | required  | -         | -         | -         | - | - | - |
 | id.hls_url                 | https://.../*.m3u8     | -          | -         | -         | -         | -         | required | - | - |
 | id.youtube_url             | https://www.youtube.com/watch?v=...     | -          | -         | -         | -         | -         | - | required | - |
-| id.filename               | http://.../*.mp4 | -          | -         | -         | -         | -         | - | - | required |
+| id.filename               | path/to/video.mp4 | -          | -         | -         | -         | -         | - | - | required |
 | options.resolution.height  | 480            | optional   | -         | -         | optional  | -  | - | - | - |
 | options.resolution.width   | 640            | optional   | -         | -         | optional  | -  | - | - | - |
 | options.zoom.digital       | 1.3            | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
@@ -1007,10 +1007,12 @@ if m.motion_detected(frame):
 Framegrab provides tools for RTSP stream generation, which can be useful for testing applications.
 
 Basic usage looks like this:
-```
+```python
+from framegrab.rtsp_server import RTSPServer
+
 server = RTSPServer(port=port)
-server.create_stream(get_frame_callback1, width, height, fps, mount_point='/stream0')
-server.create_stream(get_frame_callback2, width, height, fps, mount_point='/stream1')
+server.create_stream(get_frame_callback1, width, height, mount_point='/stream0', fps=fps)
+server.create_stream(get_frame_callback2, width, height, mount_point='/stream1', fps=fps)
 server.start()
 time.sleep(n) # keep the server up 
 server.stop()
@@ -1034,7 +1036,7 @@ We test RTSP server functionality on Ubuntu. It may also work on Mac. It will _n
 
 We provide a [Dockerfile](docker/Dockerfile) that contains the necessary packages. 
 
-For inspiration on how to implement an RTSP server, see [sample_scripts/video_to_rtsp.py](sample_scripts/video_to_rtsp.py), which shows can you can convert multiple videos into RTSP streams with a single RTSP server. 
+For inspiration on how to implement an RTSP server, see [sample_scripts/video_to_rtsp.py](sample_scripts/video_to_rtsp.py), which shows how you can convert multiple videos into RTSP streams with a single RTSP server. 
 
 
 ## Examples
@@ -1096,7 +1098,7 @@ from framegrab import FrameGrabber
 import cv2
 
 config = {
-    'input_type': 'file_stream',
+    'input_type': 'file',
     'id': {
         'filename': 'path/to/your/video.mjpeg'  # or .mp4, .avi, .mov, etc.
     },
@@ -1113,7 +1115,7 @@ with FrameGrabber.create_grabber(config) as grabber:
   # Process the frame as needed
   # For example, display it using cv2.imshow()
   # For example, save it to a file
-  cv2.imwrite('file_stream_frame.jpg', frame)
+  cv2.imwrite('file_frame.jpg', frame)
 ```
 
 ## Contributing
