@@ -325,7 +325,7 @@ so if you want to know the correct format of your parameters, you can read more 
 use the python pydantic model to validate your configuration.
 
 
-| Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense | Raspberry Pi CSI2 | HLS | YouTube Live | File Stream |
+| Configuration Name         | Example         | Generic USB     | RTSP      | Basler    | Realsense | Raspberry Pi CSI2 | HLS | YouTube Live | File |
 |----------------------------|-----------------|------------|-----------|-----------|-----------|-----------|-----------|-----------|-------------|
 | name                       | On Robot Arm    | optional   | optional  | optional  | optional  | optional  | optional | optional | optional |
 | input_type                 | generic_usb    | required   | required  | required  | required  | required  | required | required | required |
