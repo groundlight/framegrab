@@ -18,7 +18,7 @@ click = "^8.1.6"
 # If https://github.com/LeandroBarone/python-ascii_magic/pull/28 is merged, we can switch to a more current version of ascii-magic
 ascii-magic = "==2.3"
 wsdiscovery = "^2.0.0"
-onvif-zeep = "^0.2.12"
+onvif-python = "^0.1.7"
 pydantic = "^2.9.2"
 pyrealsense2 = { version = "^2.55.1.6486", optional = true }
 picamera2 = { version = ">=0.3.21", optional = true }

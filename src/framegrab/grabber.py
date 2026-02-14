@@ -33,14 +33,6 @@ from .exceptions import GrabError
 from .rtsp_discovery import AutodiscoverMode, RTSPDiscovery
 from .unavailable_module import UnavailableModuleOrObject
 
-# The wsdiscovery packages calls logging.basicConfig, which will wipe out any logging config
-# that framegrab users have set, which is not good. To clear the config that wsdiscovery sets, we
-# will run the following
-# I made a PR to fix this aspect of python-ws-discovery: https://github.com/andreikop/python-ws-discovery/pull/89
-root_logger = logging.getLogger()
-if root_logger.hasHandlers():
-    root_logger.handlers.clear()
-
 logger = logging.getLogger(__name__)
 
 # Create a logger for this module
