@@ -1556,13 +1556,12 @@ class FileStreamFrameGrabber(FrameGrabber):
         return frame
 
     def _drop_frames(self) -> None:
-        """Drop frames to achieve target frame rate using frame position seeking."""
+        """Drop frames to achieve target frame rate by reading and discarding."""
         drop_frames = (self.fps_source / self.config.max_fps) - 1 + self.remainder
         frames_to_drop = round(drop_frames)
 
-        if frames_to_drop > 0:
-            current_pos = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
-            self.capture.set(cv2.CAP_PROP_POS_FRAMES, current_pos + frames_to_drop)
+        for _ in range(frames_to_drop):
+            self.capture.read()
 
         self.remainder = round(drop_frames - frames_to_drop, 2)
         logger.debug(f"Dropped {frames_to_drop} frames to meet {self.config.max_fps} FPS target")
