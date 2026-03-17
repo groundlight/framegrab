@@ -1556,12 +1556,7 @@ class FileStreamFrameGrabber(FrameGrabber):
         return frame
 
     def _drop_frames(self) -> None:
-        """Drop frames to achieve target frame rate by reading and discarding.
-
-        Sequential reads are used instead of CAP_PROP_POS_FRAMES seeking
-        because seeking forces the decoder to find the nearest keyframe and
-        decode forward, which is extremely expensive on H.264/H.265 video.
-        """
+        """Drop frames to achieve target frame rate by reading and discarding."""
         drop_frames = (self.fps_source / self.config.max_fps) - 1 + self.remainder
         frames_to_drop = round(drop_frames)
 
