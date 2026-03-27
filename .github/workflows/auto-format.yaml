@@ -19,7 +19,7 @@ jobs:
           configuration: "--profile black"
         # Run isort before black so that black has the final say in formatting.
       - name: run black to auto-format python code
-        uses: psf/black@23.1.0
+        uses: psf/black@26.3.0
         with:
           src: "src"
           options: "--verbose --line-length 120"
