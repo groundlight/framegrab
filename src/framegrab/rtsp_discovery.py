@@ -4,10 +4,8 @@ import urllib.parse
 from enum import Enum
 from typing import List, Optional
 
-from onvif import ONVIFCamera
+from onvif import ONVIFClient, ONVIFDiscovery
 from pydantic import BaseModel
-from wsdiscovery import QName
-from wsdiscovery.discovery import ThreadedWSDiscovery as WSDiscovery
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +14,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_CREDENTIALS = [
     ("admin", "admin"),
     ("", ""),
+    ("admin", "admin123"),
+    ("admintapo", "admin123"),
     ("admin", ""),
     ("root", "camera"),
     ("root", "root"),
@@ -72,14 +72,14 @@ class RTSPDiscovery:
     @classmethod
     def _get_wsd(cls):
         """
-        Get the WSDiscovery instance, creating it if it doesn't exist.
+        Get the ONVIFDiscovery instance, creating it if it doesn't exist.
 
         Returns:
-        WSDiscovery: The WSDiscovery instance.
+        ONVIFDiscovery: The ONVIFDiscovery instance.
         """
 
         if cls._wsd_instance is None:
-            cls._wsd_instance = WSDiscovery()
+            cls._wsd_instance = ONVIFDiscovery()
         return cls._wsd_instance
 
     @staticmethod
@@ -87,7 +87,7 @@ class RTSPDiscovery:
         auto_discover_mode: AutodiscoverMode = AutodiscoverMode.ip_only,
     ) -> List[ONVIFDeviceInfo]:
         """
-        Uses WSDiscovery to find ONVIF supported devices.
+        Uses ONVIFDiscovery to find ONVIF supported devices.
 
         Parameters:
         auto_discover_mode (AutodiscoverMode, optional): Options to try different default credentials stored in DEFAULT_CREDENTIALS.
@@ -104,7 +104,7 @@ class RTSPDiscovery:
         """
 
         device_ips = []
-        logger.debug("Starting WSDiscovery for ONVIF devices")
+        logger.debug("Starting ONVIFDiscovery for ONVIF devices")
 
         if auto_discover_mode == AutodiscoverMode.off:
             logger.debug("ONVIF device discovery disabled")
@@ -112,24 +112,23 @@ class RTSPDiscovery:
 
         try:
             wsd = RTSPDiscovery._get_wsd()
-            wsd.start()
-            types = [QName("http://www.onvif.org/ver10/network/wsdl", "NetworkVideoTransmitter")]
-            ret = wsd.searchServices(types=types)
+            types = "NetworkVideoTransmitter"
+            ret = wsd.discover(search=types) # search in Scopes and Types
             for service in ret:
-                xaddr = service.getXAddrs()[0]
-                parsed_url = urllib.parse.urlparse(xaddr)
-                ip = parsed_url.hostname
-                port = parsed_url.port or 80  # Use the default port 80 if not specified
+                xaddr = service['xaddrs'][0]
+                # Use the host and port directly from the service info if available
+                ip = service.get('host') or urllib.parse.urlparse(xaddr).hostname
+                port = service.get('port') or urllib.parse.urlparse(xaddr).port or 80
 
-                logger.debug(f"Found ONVIF service at {xaddr}")
+                logger.debug(f"Found ONVIF service at {xaddr} (IP: {ip}, Port: {port})")
                 device_ip = ONVIFDeviceInfo(ip=ip, port=port, username="", password="", xaddr=xaddr, rtsp_urls=[])
 
                 if auto_discover_mode is not AutodiscoverMode.ip_only:
                     RTSPDiscovery._try_logins(device=device_ip, auto_discover_mode=auto_discover_mode)
 
                 device_ips.append(device_ip)
-        finally:
-            wsd.stop()  # This is supposed to clean up the threads but it doesn't seem to work, sock is still open after running this
+        except Exception as e:
+            logger.error(f"Error discovering device: {e}", exc_info=True)
 
         return device_ips
 
@@ -148,9 +147,9 @@ class RTSPDiscovery:
         rtsp_urls = []
         try:
             # Assuming port 80, adjust if necessary
-            cam = ONVIFCamera(device.ip, device.port, device.username, device.password)
+            cam = ONVIFClient(device.ip, device.port, device.username, device.password)
             # Create media service
-            media_service = cam.create_media_service()
+            media_service = cam.media()
             # Get profiles
             profiles = media_service.GetProfiles()
             stream_setup = {
@@ -160,7 +159,7 @@ class RTSPDiscovery:
 
             # For each profile, get the RTSP URL
             for profile in profiles:
-                stream_uri = media_service.GetStreamUri({"StreamSetup": stream_setup, "ProfileToken": profile.token})
+                stream_uri = media_service.GetStreamUri(StreamSetup=stream_setup, ProfileToken=profile.token)
                 rtsp_urls.append(stream_uri.Uri)
         except Exception as e:
             msg = str(e).lower()
@@ -201,7 +200,7 @@ class RTSPDiscovery:
             return False
 
         if auto_discover_mode == AutodiscoverMode.light:
-            credentials = DEFAULT_CREDENTIALS[:2]
+            credentials = DEFAULT_CREDENTIALS[:4] # Try first 4 credentials
 
         for username, password in credentials:
             logger.debug(f"Trying {username}:{password} for device IP {device.ip}")
